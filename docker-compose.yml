@@ -1,0 +1,13 @@
+services:
+  Random-Pictures:
+    image: python:3.11-alpine  # 轻量Python镜像，体积小且稳定
+    container_name: Random-Pictures  # 容器名称，可自定义
+    restart: always  # 自动重启策略：异常退出/主机重启后自动恢复
+    privileged: false  # 最小权限原则，提升安全性
+    volumes:
+      - ./images:/app/images  # 主机图片目录挂载到容器内
+      - ./Random-Pictures.py:/app/Random-Pictures.py  # 主机代码文件挂载到容器内
+    ports:
+      - 8081:8081  # 端口映射：主机8081端口 → 容器8081端口
+    network_mode: 'bridge'  # Docker默认桥接网络，外部可正常访问
+    command: python /app/Random-Pictures.py  # 容器启动后自动运行Python服务
