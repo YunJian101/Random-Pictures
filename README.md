@@ -1,10 +1,10 @@
 # 是飞鱼随机图API - 完整使用文档
 
-**文档版本**：v2.0.0（权限修复增强版）
+**文档版本**：v1.0.2（权限修复增强版）
 
 **适用场景**：开发人员部署、运维人员管理、用户调用API
 
-**更新时间**：2026年1月4日（权限修复增强版）
+**更新时间**：2026年1月4日
 
 ## 📋 目录
 
@@ -61,18 +61,19 @@ docker compose up -d
 http://localhost:8081
 ```
 
-### 2.2 方法2：使用预构建镜像
+### 2.2 方法2：Docker run方式（简化）
 
 ```bash
-# 如果您有预构建的镜像（Docker Hub或私有仓库）
-docker pull [您的镜像仓库地址]/random-pictures-api:latest
+
+docker pull alioth1/random-pictures-api:latest
 
 # 启动服务
 docker run -d \
   --name random-pictures \
   -p 8081:8081 \
   -v $(pwd)/images:/app/images \
-  [您的镜像仓库地址]/random-pictures-api:latest
+  alioth1/random-pictures-api:latest
+  #  ghcr.io/yunjian101/random-pictures-api:latest
 ```
 
 ## 📁 目录结构说明
@@ -227,30 +228,13 @@ docker compose restart
 
 ## 🛠️ 常见问题排查
 
-### 8.1 权限问题（完整解决方案）
+### 8.1 权限问题（详细解决方案）
 
 **问题**：`Permission denied: '/app/images'`
 
-**原因**：Docker容器用户无法访问挂载目录
-
 **解决方案**：
-1. **预创建目录**（推荐）：
-   ```bash
-   mkdir -p ./images
-   chmod 755 ./images
-   ```
-2. **检查容器日志**：
-   ```bash
-   docker compose logs | grep "权限修复"
-   ```
-3. **验证目录权限**：
-   ```bash
-   docker exec -it random-pictures ls -la /app/images
-   ```
-
-### 8.2 其他常见错误
-- **图片不显示**：检查images目录是否包含有效图片文件
-- **布局异常**：确保`CATEGORY_PAGE_SIZE`和`HOME_PAGE_SIZE`是3的倍数
+- ✅ **自动修复**：最新镜像已内置强化的权限修复脚本，启动时自动执行
+- 📚 **详细指南**：请参阅 [TROUBLESHOOTING.md](TROUBLESHOOTING.md) 获取完整解决方案
 
 **快速修复**：
 ```bash
@@ -312,4 +296,4 @@ docker compose logs random-pictures | grep "权限修复"
 
 **技术支持**：如有问题请提交GitHub Issue或联系作者
 
-**版本**：v2.0.0 | **更新日期**：2026年1月4日
+**版本**：v1.0.2 | **更新日期**：2026年1月4日

@@ -1,19 +1,26 @@
 # =============================================================================
 # 是飞鱼随机图API - Docker Compose 部署配置
 # 使用说明：直接运行 docker compose up -d 启动服务
+# 注意：首次部署请确保 images 目录存在且权限正确
 # =============================================================================
+
 
 services:
   # 随机图API核心服务
   random-pictures:
     # 镜像配置
-    image: alioth1/random-pictures-api:latest    # Docker Hub镜像（用户可替换为GitHub Packages或私有仓库地址）
+    image: alioth1/random-pictures-api:latest
+        # ghcr.io/yunjian101/random-pictures-api:latest
+    # image: alioth1/random-pictures-api:v2.0.0   # 示例：使用特定版本镜像
+        # 镜像名称:标签（用户可替换为Docker Hub或私有仓库地址）
     container_name: random-pictures                 # 容器名称，便于管理
     restart: always                                 # 容器异常退出时自动重启
     
     # 存储卷配置
     volumes:
-      # 挂载图片目录
+      # 挂载图片目录（移除了SELinux标志，简化配置）
+      # :z,Z 是SELinux权限标志，大多数环境不需要，已移除以简化部署
+      # 镜像内置自动权限修复，支持实时文件同步
       - ./images:/app/images
     
     # 网络配置
@@ -33,7 +40,7 @@ services:
       
       # ========== 站点个性化配置 ==========
       # 以下配置留空则不显示对应元素
-      - FAVICON_URL=                                # 站点窗口标签页图标URL，支持本地或远程图片
+      - FAVICON_URL=                                # 站点图标URL，支持本地或远程图片
       - ICP_BEIAN_CODE=                             # ICP备案号，如"京ICP备12345678号"
       - ICP_BEIAN_URL=                              # 备案信息链接，如"https://beian.miit.gov.cn"
       
@@ -55,4 +62,37 @@ services:
       - CATEGORY_PAGE_SIZE=6                        # 分类详情页每页显示图片数量（推荐3/6/9/12等）
       - HOME_PAGE_SIZE=6                            # 首页每页显示分类数量（推荐3/6/9/12等）
 
+# =============================================================================
+# 使用示例：
+#
+# 1. 最小化部署（新手推荐）：
+#    docker compose up -d
+#
+# 2. 自定义配置示例：
+#    environment:
+#      - SITE_NAME=我的专属图库
+#      - FAVICON_URL=https://example.com/favicon.ico
+#      - NAV_BLOG_URL=https://blog.example.com
+#      - NAV_GITHUB_URL=https://github.com/my-repo
+#      - NAV_CUSTOM_TEXT=联系我们
+#      - NAV_CUSTOM_URL=https://example.com/contact
+#      - WELCOME_MESSAGE=欢迎使用我的个人图片库
+#      - COPYRIGHT_NOTICE=本图库所有图片版权归个人所有
+#      - ICP_BEIAN_CODE=京ICP备12345678号
+#
+# 3. 更换端口示例：
+#    ports:
+#      - "80:8081"
+#
+# 4. 常用命令：
+#    - 启动：docker compose up -d
+#    - 停止：docker compose down
+#    - 查看状态：docker compose ps
+#    - 查看日志：docker compose logs -f
+#    - 重启：docker compose restart
+#
+# 注意事项：
+# - 确保 images 目录存在，否则会自动创建空目录
+# - 支持实时文件同步，添加/删除图片无需重启服务
+# - 镜像内置权限修复，无需手动修改文件权限
 # =============================================================================
