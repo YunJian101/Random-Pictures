@@ -61,11 +61,13 @@ docker compose up -d
 http://localhost:8081
 ```
 
-### 2.2 方法2：Docker run方式（简化）
+### 2.2 方法2：使用Docker Run
 
 ```bash
-
+# 如果您有预构建的镜像（Docker Hub或私有仓库）
 docker pull alioth1/random-pictures-api:latest
+
+#   ghcr.io/yunjian101/random-pictures-api:latest
 
 # 启动服务
 docker run -d \
@@ -73,7 +75,6 @@ docker run -d \
   -p 8081:8081 \
   -v $(pwd)/images:/app/images \
   alioth1/random-pictures-api:latest
-  #  ghcr.io/yunjian101/random-pictures-api:latest
 ```
 
 ## 📁 目录结构说明
@@ -110,7 +111,9 @@ Random-Pictures/
 ```yaml
 services:
   random-pictures:
-    image: yunjian101/random-pictures-api:latest    # 镜像名称:标签（可替换为Docker Hub或私有仓库地址）
+    image: alioth1/random-pictures-api:latest
+#   ghcr.io/yunjian101/random-pictures-api:latest    
+# 镜像名称:标签（可替换为Docker Hub或私有仓库地址）
     container_name: random-pictures
     restart: always
     volumes:

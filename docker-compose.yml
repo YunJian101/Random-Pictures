@@ -10,9 +10,8 @@ services:
   random-pictures:
     # 镜像配置
     image: alioth1/random-pictures-api:latest
-        # ghcr.io/yunjian101/random-pictures-api:latest
-    # image: alioth1/random-pictures-api:v2.0.0   # 示例：使用特定版本镜像
-        # 镜像名称:标签（用户可替换为Docker Hub或私有仓库地址）
+    #      ghcr.io/yunjian101/random-pictures-api:latest
+    # 镜像名称:标签（用户可替换为Docker Hub或私有仓库地址）
     container_name: random-pictures                 # 容器名称，便于管理
     restart: always                                 # 容器异常退出时自动重启
     
