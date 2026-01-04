@@ -24,11 +24,11 @@ from socketserver import ThreadingMixIn
 from urllib.parse import urlparse, parse_qs, quote, unquote
 
 # ===================== 全局配置项 =====================
-IMG_ROOT_DIR = "/app/images"  # 图片根目录（可修改为本地路径，如 "./images"）
-PORT = 8081                   # 服务端口
+IMG_ROOT_DIR = os.getenv("IMG_ROOT_DIR", "/app/images")  # 图片根目录（支持环境变量）
+PORT = int(os.getenv("PORT", 8081))                    # 服务端口
 SUPPORTED_IMAGE_FORMATS = ('.jpg', '.jpeg', '.png', '.gif', '.webp')
-CATEGORY_PAGE_SIZE = 9        # 每个分类页显示的图片数量
-HOME_PAGE_SIZE = 9            # 首页分类分页大小
+CATEGORY_PAGE_SIZE = int(os.getenv("CATEGORY_PAGE_SIZE", 9))        # 每个分类页显示的图片数量
+HOME_PAGE_SIZE = int(os.getenv("HOME_PAGE_SIZE", 9))            # 首页分类分页大小
 
 # 性能配置
 MAX_THREADS = 50              # 最大线程数
@@ -37,11 +37,18 @@ BUFFER_SIZE = 16384           # 图片传输缓冲区大小
 CACHE_EXPIRE_SECONDS = 10      # 目录缓存有效期（秒，保证实时性）
 IMAGE_CACHE_SECONDS = 604800  # 图片直链缓存7天
 
-# 网站配置
-SITE_NAME = "是飞鱼随机图API"
-FAVICON_URL = "https://shifeiyu.cn/upload/%E7%AB%99%E7%82%B9logo.png"
-ICP_BEIAN_CODE = "粤ICP备20XXXXXXXX号"
-ICP_BEIAN_URL = "https://beian.miit.gov.cn/"
+# 网站配置（支持环境变量）
+SITE_NAME = os.getenv("SITE_NAME", "随机图API")
+FAVICON_URL = os.getenv("FAVICON_URL", "")
+ICP_BEIAN_CODE = os.getenv("ICP_BEIAN_CODE", "")
+ICP_BEIAN_URL = os.getenv("ICP_BEIAN_URL", "")
+NAV_HOME_URL = os.getenv("NAV_HOME_URL", "/")
+NAV_BLOG_URL = os.getenv("NAV_BLOG_URL", "")
+NAV_GITHUB_URL = os.getenv("NAV_GITHUB_URL", "")
+NAV_CUSTOM_TEXT = os.getenv("NAV_CUSTOM_TEXT", "")
+NAV_CUSTOM_URL = os.getenv("NAV_CUSTOM_URL", "")
+WELCOME_MESSAGE = os.getenv("WELCOME_MESSAGE", "欢迎使用是飞鱼随机图API")
+COPYRIGHT_NOTICE = os.getenv("COPYRIGHT_NOTICE", "本站所有图片均为用户上传，仅作学习所有，若有侵权，请与我联系我将及时删除！")
 
 # 全局缓存（用于存储目录修改时间，检测文件变化）
 global_cache = {
@@ -1025,21 +1032,22 @@ class ImageServerHandler(BaseHTTPRequestHandler):
         </div>
     </header>
 
-    <!-- 导航栏 -->
-    <div class="nav-bar">
-        <div class="nav-container">
-            <a href="/" class="nav-btn">首页</a>
-            <a href="http://shifeiyu.cn" target="_blank" class="nav-btn">博客</a>
-            <a href="https://github.com/YunJian101/Random-Pictures" target="_blank" class="nav-btn">开源地址</a>
+        <!-- 导航栏 -->
+        <div class="nav-bar">
+            <div class="nav-container">
+                <a href="{NAV_HOME_URL}" class="nav-btn">首页</a>
+                {f'<a href="{NAV_BLOG_URL}" target="_blank" class="nav-btn">博客</a>' if NAV_BLOG_URL else ''}
+                {f'<a href="{NAV_GITHUB_URL}" target="_blank" class="nav-btn">开源地址</a>' if NAV_GITHUB_URL else ''}
+                {f'<a href="{NAV_CUSTOM_URL}" target="_blank" class="nav-btn">{NAV_CUSTOM_TEXT}</a>' if NAV_CUSTOM_URL and NAV_CUSTOM_TEXT else ''}
+            </div>
         </div>
-    </div>
 
     <main class="container">
-        <h1 class="page-title">欢迎使用是飞鱼随机图API，共 {total_categories} 个分类</h1>
+        <h1 class="page-title">{WELCOME_MESSAGE}</h1>
         {categories_html}
         {pagination_html}
         <div class="copyright-notice">
-            本站所有图片均为用户上传，仅作学习所有，若有侵权，请与我联系我将及时删除！
+            {COPYRIGHT_NOTICE}
         </div>
     </main>
 
@@ -1469,9 +1477,10 @@ class ImageServerHandler(BaseHTTPRequestHandler):
     <!-- 导航栏 -->
     <div class="nav-bar">
         <div class="nav-container">
-            <a href="/" class="nav-btn">首页</a>
-            <a href="http://shifeiyu.cn" target="_blank" class="nav-btn">博客</a>
-            <a href="https://github.com/YunJian101/Random-Pictures" target="_blank" class="nav-btn">开源地址</a>
+            <a href="{NAV_HOME_URL}" class="nav-btn">首页</a>
+            {f'<a href="{NAV_BLOG_URL}" target="_blank" class="nav-btn">博客</a>' if NAV_BLOG_URL else ''}
+            {f'<a href="{NAV_GITHUB_URL}" target="_blank" class="nav-btn">开源地址</a>' if NAV_GITHUB_URL else ''}
+            {f'<a href="{NAV_CUSTOM_URL}" target="_blank" class="nav-btn">{NAV_CUSTOM_TEXT}</a>' if NAV_CUSTOM_URL and NAV_CUSTOM_TEXT else ''}
         </div>
     </div>
 

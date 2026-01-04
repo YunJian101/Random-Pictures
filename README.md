@@ -1,501 +1,315 @@
 # 是飞鱼随机图API - 完整使用文档
 
-**文档版本**：v1.0.1
+**文档版本**：v2.0.0（权限修复增强版）
 
 **适用场景**：开发人员部署、运维人员管理、用户调用API
 
-**更新时间**：2026年1月3日
+**更新时间**：2026年1月4日（权限修复增强版）
 
-## 目录
+## 📋 目录
 
 1. [项目介绍](#项目介绍)
-
 2. [快速开始](#快速开始)
-
 3. [目录结构说明](#目录结构说明)
-
 4. [配置说明](#配置说明)
-
 5. [API接口使用](#API接口使用)
-
 6. [Web管理界面使用](#Web管理界面使用)
-
 7. [运维管理](#运维管理)
-
 8. [常见问题排查](#常见问题排查)
-
 9. [扩展建议](#扩展建议)
-
 10. [赞助作者](#赞助作者)
-
 11. [许可证说明](#许可证说明)
 
-## 1. 项目介绍
+## 🚀 项目介绍
 
 ### 1.1 核心功能
 
 是飞鱼随机图API是一款高性能、支持实时文件更新的随机图片服务，专为轻量化部署和高可用性设计，核心特性如下：
 
 - **实时文件同步**：运行中新增、删除、修改图片或分类文件夹，Web界面3秒内自动感知变化，无需重启服务
-
-- **高性能随机算法**：随机接口无需加载全量图片列表，仅读取随机选中的单张图片路径，800张图片场景下响应时间<3ms
-
-- **灵活分页机制**：首页分类、分类内图片均支持分页展示（默认每页9张），降低大数量场景下的服务器负载
-
-- **智能缓存策略**：Web预览图缓存7天提升访问速度，随机接口禁用缓存保证每次刷新都是新图片
-
-- **全量跨域支持**：所有API接口默认开启跨域配置，可直接被前端JavaScript、小程序等调用，无需额外配置
-
-- **响应式UI设计**：Web管理界面适配PC、平板、手机等多种设备，操作简洁直观
-
-- **容器化部署**：基于Docker Compose实现一键部署，环境隔离、迁移便捷，兼容主流Linux发行版
+- **权限自动修复**：内置强化权限修复脚本，解决Docker挂载目录的读写权限问题
+- **高性能随机算法**：随机接口无需加载全量图片列表，仅读取随机选中的单张图片路径
+- **灵活分页机制**：首页分类、分类内图片均支持分页展示，推荐使用3的倍数配置
+- **智能缓存策略**：Web预览图缓存7天提升访问速度，随机接口禁用缓存保证随机性
+- **全量跨域支持**：所有API接口默认开启跨域配置，前端可直接调用
+- **响应式UI设计**：Web管理界面适配PC、平板、手机等多种设备
+- **私有仓库支持**：支持推送到私有Docker镜像仓库
 
 ### 1.2 技术栈
 
-- 后端：Python 3.6+（仅依赖内置库，无第三方依赖，部署零门槛）
+- 后端：Python 3.11+（基于Alpine Linux，体积小巧）
+- 部署：Docker + Docker Compose（强化的权限处理机制）
+- 网络：多线程HTTP服务 + CORS跨域支持
+- 存储：本地文件系统，内置自动权限修复
 
-- 部署：Docker + Docker Compose（容器编排，环境一致性保障）
+## 📥 快速开始
 
-- 网络：多线程HTTP服务（支持高并发）、CORS跨域标准实现
+### 2.1 方法1：完整部署（推荐）
 
-- 存储：本地文件系统（图片文件直接存储，无需数据库）
+```bash
+# 拉取项目
+git clone https://github.com/YunJian101/Random-Pictures
+cd Random-Pictures
 
-## 2. 快速开始
+# 创建图片目录
+mkdir -p images
 
-本项目提供两种部署方式，可根据实际需求选择，均支持一键启动服务：
+# 启动服务（内置权限自动修复）
+docker compose up -d
 
-### 3.1 方法1：通过Git拉取仓库部署（推荐，更新便捷）
-
-1. 拉取仓库
-`git clone https://github.com/YunJian101/Random-Pictures`
-
-2. 进入目录
-`cd Random-Pictures`
-
-3. 构建容器（兼容不同Docker Compose版本）
-`docker compose up -d || docker-compose up`
-
-4. 网页访问
-`http://localhost:8081`（本地部署）或 `http://服务器IP:8081`（服务器部署）
-
-### 3.2 方法2：手动创建文件部署（无需Git环境）
-
-1. 分别复制docker-compose.yml和Random-Pictures.py文件保存到本地同一个文件夹下
-
-2. 在该文件夹内创建用于保存随机图的images文件夹（核心存储目录）
-`mkdir -p images`
-
-3. 构建Compose容器（兼容不同Docker Compose版本）
-`docker compose up -d || docker-compose up`
-
-4. 网页访问
-`http://localhost:8081`（本地部署）或 `http://服务器IP:8081`（服务器部署）
-
-## 3. 目录结构说明
-
-项目目录结构清晰，核心目录用途明确，便于管理：
-
-```Plain Text
-
-/Random-Pictures/          # 项目根目录（固定为Random-Pictures）
-├── docker-compose.yml     # Docker Compose配置文件（容器编排核心）
-├── Random-Pictures.py     # 主程序文件（Python代码，实现API核心逻辑）
-├── images/                # 图片存储核心目录（重点！所有图片放此目录）
-│   ├── 风景/              # 自定义分类文件夹（可任意新增/删除/重命名）
-│   │   ├── 1.jpg          # 分类内图片（支持jpg/png/gif/webp等格式）
-│   │   ├── 2.png
-│   │   └── 3.webp
-│   ├── 动漫/              # 另一分类文件夹
-│   └── banner.gif         # 根目录图片（无分类，直接显示在首页根目录分类中）
+# 访问服务
+http://localhost:8081
 ```
 
-**关键说明**：
+### 2.2 方法2：使用预构建镜像
 
-- `images/` 目录：所有图片必须放在此目录下，支持多级分类文件夹，新增/删除图片/文件夹后，Web界面和API会实时同步（3秒内）
+```bash
+# 如果您有预构建的镜像（Docker Hub或私有仓库）
+docker pull [您的镜像仓库地址]/random-pictures-api:latest
 
-- `Random-Pictures.py`：程序核心文件，修改后需重启服务生效（`docker-compose restart`）
+# 启动服务
+docker run -d \
+  --name random-pictures \
+  -p 8081:8081 \
+  -v $(pwd)/images:/app/images \
+  [您的镜像仓库地址]/random-pictures-api:latest
+```
 
-- `docker-compose.yml`：容器配置文件，修改后需重新执行 `docker compose up -d || docker-compose up` 生效
+## 📁 目录结构说明
 
-## 4. 配置说明
+```
+Random-Pictures/
+├── docker-compose.yml     # Docker Compose配置文件（含详细注释）
+├── Dockerfile             # 镜像构建文件（强化权限修复）
+├── Random-Pictures.py     # 主程序文件
+├── images/                # 图片存储目录（自动权限修复）
+│   ├── 风景/
+│   │   ├── 图片1.jpg
+│   │   └── 图片2.png
+│   └── 动漫/
+├── README.md              # 本文档
+└── CONFIGURATION.md       # 详细配置说明
+```
 
-项目支持两种配置方式：修改程序代码配置、通过Docker环境变量覆盖，推荐使用环境变量（无需修改代码，更灵活）。
+## ⚙️ 配置说明
 
-### 5.1 Docker Compose配置（docker-compose.yml）
+### 4.1 布局设计说明
 
-完整优化版配置如下，关键配置项已标注说明：
+**重要**：为了达到最佳的视觉效果，首页和分类页采用**每行固定显示3个**的网格布局。因此以下配置项强烈建议设置为**3的倍数**：
 
-```Plain Text
+- `CATEGORY_PAGE_SIZE`：分类详情页每页显示图片数量（推荐：3、6、9、12等）
+- `HOME_PAGE_SIZE`：首页每页显示分类数量（推荐：3、6、9、12等）
 
-version: '3.8'  # Compose文件版本（兼容Docker 19.03+）
+配置非3的倍数时，最后一排可能会留有空位，影响布局美观。
 
+### 4.2 docker-compose.yml配置
+
+完整的环境变量配置如下：
+
+```yaml
 services:
-  Random-Pictures:
-    image: python:3.11-alpine  # 轻量Python镜像，体积小且稳定
-    container_name: Random-Pictures  # 容器名称，可自定义
-    restart: always  # 自动重启策略：异常退出/主机重启后自动恢复
-    privileged: false  # 最小权限原则，提升安全性
+  random-pictures:
+    image: yunjian101/random-pictures-api:latest    # 镜像名称:标签（可替换为Docker Hub或私有仓库地址）
+    container_name: random-pictures
+    restart: always
     volumes:
-      - ./images:/app/images  # 主机图片目录（images）挂载到容器内
-      - ./Random-Pictures.py:/app/Random-Pictures.py  # 主机代码文件挂载到容器内
+      - ./images:/app/images  # 挂载图片目录（内置权限修复）
     ports:
-      - 8081:8081  # 端口映射：主机8081端口 → 容器8081端口
-    network_mode: 'bridge'  # Docker默认桥接网络，外部可正常访问
-    command: python /app/Random-Pictures.py  # 容器启动后自动运行Python服务
+      - "8081:8081"
+    environment:
+      # 基础配置
+      - SITE_NAME=随机图API
+      - IMG_ROOT_DIR=/app/images
+      - PORT=8081
+      
+      # 站点个性化配置
+      - FAVICON_URL=
+      - ICP_BEIAN_CODE=
+      - ICP_BEIAN_URL=
+      
+      # 导航栏按钮配置
+      - NAV_HOME_URL=/
+      - NAV_BLOG_URL=
+      - NAV_GITHUB_URL=
+      - NAV_CUSTOM_TEXT=
+      - NAV_CUSTOM_URL=
+      
+      # 文本内容配置
+      - WELCOME_MESSAGE=欢迎使用是飞鱼随机图API
+      - COPYRIGHT_NOTICE=本站所有图片均为用户上传，仅作学习所有，若有侵权，请与我联系我将及时删除！
+      
+      # 性能配置（建议使用3的倍数）
+      - CATEGORY_PAGE_SIZE=6
+      - HOME_PAGE_SIZE=6
 ```
 
-### 5.2 程序配置（Random-Pictures.py）
+### 4.3 个性化配置示例
 
-程序内置默认配置，可通过修改代码或环境变量覆盖，核心配置项如下（代码开头部分）：
-
-```Plain Text
-
-# 优先从环境变量读取配置，未设置则使用默认值（适配Docker部署）
-import os
-
-# 核心配置项
-IMG_ROOT_DIR = os.getenv("IMG_ROOT_DIR", "/app/images")  # 图片根目录（与Docker挂载一致）
-PORT = int(os.getenv("PORT", 8081))                     # 服务端口
-SUPPORTED_IMAGE_FORMATS = ('.jpg', '.jpeg', '.png', '.gif', '.webp')  # 支持的图片格式
-CATEGORY_PAGE_SIZE = int(os.getenv("CATEGORY_PAGE_SIZE", 9))  # 分类页每页图片数量
-HOME_PAGE_SIZE = int(os.getenv("HOME_PAGE_SIZE", 9))      # 首页分类分页大小
-
-# 性能配置
-MAX_THREADS = 50              # 最大并发线程数
-TIMEOUT = 10                  # 请求超时时间（秒）
-BUFFER_SIZE = 16384           # 图片传输缓冲区大小（16KB）
-CACHE_EXPIRE_SECONDS = 10     # 目录缓存有效期（秒，保证实时性）
-IMAGE_CACHE_SECONDS = 604800  # 图片直链缓存时间（7天，604800秒）
-
-# 网站配置（Web界面显示用）
-SITE_NAME = "是飞鱼随机图API"
-FAVICON_URL = "https://shifeiyu.cn/upload/%E7%AB%99%E7%82%B9logo.png"
-ICP_BEIAN_CODE = "粤ICP备20XXXXXXXX号"
-ICP_BEIAN_URL = "https://beian.miit.gov.cn/"
-```
-
-### 5.3 配置修改示例（自定义端口）
-
-若需要将服务端口改为8082，操作如下：
-
-1. 修改docker-compose.yml：
-        `ports:
-  - "8082:8081"  # 主机端口改为8082，容器端口保持8081
+```yaml
+# 自定义配置示例
 environment:
-  - PORT=8081  # 容器内端口不变，与command启动端口一致`
-
-2. 重新构建Compose后重启容器
-
-3. 访问地址变为：`http://服务器IP:8082`
-
-### 5.4 站点图标与导航栏链接修改
-
-项目支持自定义站点图标（Favicon）和Web界面导航栏按钮的跳转链接，满足个性化品牌和功能需求，修改均通过调整程序配置文件实现，步骤如下：
-
-#### 5.4.1 修改站点图标（Favicon）
-
-站点图标即浏览器标签页显示的小图标，默认使用项目配置的远程图标，可修改为自定义图标，支持本地图标和远程图标两种方式：
-
-1. **准备图标文件**：推荐使用尺寸为16x16px或32x32px的png、ico格式图片，命名建议为favicon.png或favicon.ico
-
-2. **放置图标（本地图标方式）**：将图标文件复制到项目根目录的images目录下（如“images/favicon.png”），无需重启服务自动同步
-
-3. **修改配置文件**：打开Random-Pictures.py文件，找到“网站配置”区域的FAVICON_URL配置项，按需求修改：使用本地图标：设置为项目图片直链接口地址，格式为 `FAVICON_URL = "http://服务器IP:端口/image?path=图标相对路径"`，示例：`FAVICON_URL = "http://192.168.1.100:8081/image?path=favicon.png"`
-
-4. 使用远程图标：直接设置为远程图标URL，示例：`FAVICON_URL = "https://your-domain.com/favicon.ico"`
-
-5. **生效配置**：修改完成后，执行 `docker-compose restart` 重启服务，刷新浏览器缓存即可看到新图标（若未生效，可按Ctrl+F5强制刷新）
-
-#### 5.4.2 修改导航栏按钮跳转链接
-
-Web界面导航栏默认包含“首页”“博客”“开源地址”等按钮，其跳转链接定义在Random-Pictures.py的Web页面渲染代码中，修改步骤如下：
-
-1. **定位配置代码**：打开Random-Pictures.py文件，搜索“导航栏按钮配置”相关代码块（核心关键词：nav、href、button），找到对应按钮的链接配置部分，示例代码结构：`# 导航栏按钮配置（示例结构）
-nav_buttons = [
-    {"name": "首页", "href": "/"},
-    {"name": "博客", "href": "https://your-blog.com"},
-    {"name": "开源地址", "href": "https://github.com/your-repo"}
-` `]`
-
-2. **修改跳转链接**：根据需求调整每个按钮的href属性值：调整现有按钮链接：直接修改href后的URL，示例：将“随机图片”按钮链接改为指定分类随机，修改为 `"href": "/random?type=风景"`
-
-3. 新增按钮（可选）：在nav_buttons列表中添加新字典项，格式为 `{"name": "按钮名称", "href": "跳转链接"}`，示例：`{"name": "官方网站", "href": "https://your-domain.com"}`
-
-4. 删除按钮（可选）：直接删除对应字典项即可
-
-5. **生效配置**：保存修改后，执行 `docker-compose restart` 重启服务，访问Web界面即可看到导航栏按钮链接已更新
-
-**注意事项**：
-
-- 修改Random-Pictures.py文件后必须重启服务，否则配置无法生效
-
-- 本地图标路径需与images目录下的实际路径一致，区分大小写，建议使用简单命名避免特殊字符
-
-- 跳转链接支持相对路径（如“/random”）和绝对路径（如“https://your-domain.com”），相对路径基于当前服务域名
-
-## 5. API接口使用
-
-### 6.1 接口通用规则
-
-- 所有接口均支持GET请求，无需POST/PUT等其他方法
-
-- 支持跨域访问，可直接在前端JS、小程序、APP等场景调用
-
-- 响应格式：图片接口直接返回图片二进制流，列表接口返回JSON格式
-
-- 编码规则：分类名称、图片路径含中文或特殊字符时，浏览器会自动URL编码，无需手动处理
-
-### 6.2 核心接口：随机图片接口
-
-最常用接口，用于获取随机图片，支持全局随机和分类随机。
-
-|接口地址|参数|说明|示例|
-|---|---|---|---|
-|/random|无|全局随机：从所有图片中随机返回一张|http://服务器IP:8081/random|
-|/random|type=分类名称|分类随机：从指定分类中随机返回一张|http://服务器IP:8081/random?type=风景|
-**使用场景**：
-
-- 前端页面背景图：`<img src="http://服务器IP:8081/random?type=风景" alt="随机风景图"&gt;`
-
-- 小程序/APP配图：直接调用接口获取图片流，无需额外处理
-
-### 6.3 图片直链接口
-
-通过图片相对路径直接访问指定图片，支持7天缓存，适合固定引用某张图片的场景。
-
-|接口地址|参数|说明|示例|
-|---|---|---|---|
-|/image|path=图片相对路径|图片相对路径为images目录下的路径（如“风景/1.jpg”），支持多级目录|http://服务器IP:8081/image?path=风景/1.jpg|
-**注意事项**：
-
-- 路径区分大小写，需与实际文件路径完全一致（如“风景”不能写为“fengjing”）
-
-- 若图片被删除或路径错误，接口会返回404错误
-
-- 中文路径会被浏览器自动URL编码，无需手动处理
-
-### 6.4 分类列表API
-
-获取所有图片分类信息，支持分页，返回JSON格式数据，适合开发自定义管理界面。
-
-|接口地址|参数|说明|示例|
-|---|---|---|---|
-|/api/categories|page=页码（默认1）|分页获取分类列表，每页数量由配置文件中HOME_PAGE_SIZE指定（默认9）|http://服务器IP:8081/api/categories?page=1|
-**返回示例**：
-
-```Plain Text
-
-{
-  "categories": {
-    "风景": [
-      {
-        "name": "1.jpg",
-        "url": "/image?path=%E9%A3%8E%E6%99%AF/1.jpg",
-        "path": "风景/1.jpg"
-      }
-    ],
-    "动漫": [
-      {
-        "name": "2.png",
-        "url": "/image?path=%E5%8A%A8%E6%BC%AB/2.png",
-        "path": "动漫/2.png"
-      }
-    ]
-  },
-  "current_page": 1,
-  "total_pages": 2,
-  "total_categories": 15,
-  "items_per_page": 9
-}
+  - SITE_NAME=我的专属图库
+  - FAVICON_URL=https://example.com/favicon.ico
+  - NAV_BLOG_URL=https://blog.example.com
+  - NAV_GITHUB_URL=https://github.com/my-repo
+  - NAV_CUSTOM_TEXT=联系我们
+  - NAV_CUSTOM_URL=https://example.com/contact
+  - WELCOME_MESSAGE=欢迎使用我的个人图片库
+  - COPYRIGHT_NOTICE=本图库所有图片版权归个人所有
 ```
 
-### 6.5 分类图片API
+## 🔌 API接口使用
 
-获取指定分类下的所有图片信息，支持分页，返回JSON格式数据，便于批量获取分类内图片。
+### 5.1 接口通用规则
 
-|接口地址|参数|说明|示例|
-|---|---|---|---|
-|/api/category/images|name=分类名称&page=页码（默认1）|分页获取指定分类图片，每页数量由配置文件中CATEGORY_PAGE_SIZE指定（默认9）|http://服务器IP:8081/api/category/images?name=风景&page=1|
-**返回示例**：
+- 所有接口支持GET请求和跨域访问
+- 响应格式：图片接口返回二进制流，列表接口返回JSON
+- 自动URL编码处理中文路径
 
-```Plain Text
+### 5.2 核心接口
 
-{
-  "category_name": "风景",
-  "images": [
-    {
-      "name": "1.jpg",
-      "url": "/image?path=%E9%A3%8E%E6%99%AF/1.jpg",
-      "path": "风景/1.jpg"
-    },
-    {
-      "name": "2.png",
-      "url": "/image?path=%E9%A3%8E%E6%99%AF/2.png",
-      "path": "风景/2.png"
-    }
-  ],
-  "current_page": 1,
-  "total_pages": 5,
-  "total_images": 42,
-  "page_size": 9
-}
+| 接口 | 参数 | 说明 | 示例 |
+|------|------|------|------|
+| `/` | 无 | Web管理界面 | `http://localhost:8081/` |
+| `/random` | 无 | 全局随机图片 | `http://localhost:8081/random` |
+| `/random` | `type=分类名` | 分类随机图片 | `http://localhost:8081/random?type=风景` |
+| `/image` | `path=图片路径` | 图片直链 | `http://localhost:8081/image?path=风景/1.jpg` |
+| `/api/categories` | `page=页码` | 分类列表API | `http://localhost:8081/api/categories?page=1` |
+| `/api/category/images` | `name=分类名&page=页码` | 分类图片API | `http://localhost:8081/api/category/images?name=风景&page=1` |
+
+## 🖥️ Web管理界面使用
+
+### 6.1 首页功能
+
+- **分类预览**：网格布局展示图片分类，每行3个
+- **快捷操作**：复制链接、随机查看、查看全部分类
+- **使用方法提示**：清晰的操作指引
+- **分页导航**：支持多页分类浏览
+
+### 6.2 分类详情页
+
+- **图片展示**：分页显示分类内所有图片
+- **大图预览**：点击图片在新窗口查看
+- **版权声明**：自动使用配置的版权文本
+
+### 6.3 响应式设计
+
+- **PC端**：3列网格布局
+- **平板端**：2列自适应
+- **手机端**：1列优化显示
+
+## 🔧 运维管理
+
+### 7.1 图片管理
+
+- **实时同步**：新增/删除图片3秒内生效
+- **自动权限**：镜像启动时自动修复挂载目录权限
+- **格式支持**：jpg、jpeg、png、gif、webp
+
+### 7.2 服务管理命令
+
+```bash
+# 启动服务
+docker compose up -d
+
+# 停止服务
+docker compose down
+
+# 查看状态
+docker compose ps
+
+# 查看日志
+docker compose logs -f
+
+# 重启服务
+docker compose restart
 ```
 
-## 6. Web管理界面使用
+## 🛠️ 常见问题排查
 
-项目内置响应式Web管理界面，无需额外部署，部署完成后访问 `http://服务器IP:8081` 即可直接使用，适配PC、平板、手机等多种设备。
+### 8.1 权限问题（完整解决方案）
 
-### 7.1 首页功能
+**问题**：`Permission denied: '/app/images'`
 
-首页核心功能为分类概览，直观展示所有图片分类信息：
+**原因**：Docker容器用户无法访问挂载目录
 
-- 分类预览：每个分类卡片显示第一张图片作为预览图，点击预览图可查看大图
+**解决方案**：
+1. **预创建目录**（推荐）：
+   ```bash
+   mkdir -p ./images
+   chmod 755 ./images
+   ```
+2. **检查容器日志**：
+   ```bash
+   docker compose logs | grep "权限修复"
+   ```
+3. **验证目录权限**：
+   ```bash
+   docker exec -it random-pictures ls -la /app/images
+   ```
 
-- 信息展示：显示分类名称及该分类下的图片数量
+### 8.2 其他常见错误
+- **图片不显示**：检查images目录是否包含有效图片文件
+- **布局异常**：确保`CATEGORY_PAGE_SIZE`和`HOME_PAGE_SIZE`是3的倍数
 
-- 快捷操作：每张分类卡片配备“随机一张”按钮，点击可快速获取该分类的随机图片
+**快速修复**：
+```bash
+# 1. 预创建目录（推荐）
+mkdir -p ./images && chmod 755 ./images
 
-- 分页导航：当分类数量超过1页时，底部显示分页控件，支持页码切换
+# 2. 重新部署
+docker compose down && docker compose up -d
 
-### 7.2 分类详情页功能
+# 3. 检查修复日志
+docker compose logs random-pictures | grep "权限修复"
+```
 
-点击分类卡片的“查看全部”按钮，或直接访问 `http://服务器IP:8081/category?name=分类名称`，即可进入对应分类的详情页，核心功能：
-
-- 图片预览：分页展示该分类下的所有图片，点击图片可在新窗口打开大图查看
-
-- 信息展示：页面顶部显示分类名称、图片总数、当前页码/总页码
-
-- 分页控制：支持上一页、下一页切换，也可直接点击页码快速跳转
-
-- 快捷随机：页面顶部提供“随机一张”按钮，可快速获取当前分类的随机图片
-
-### 7.3 响应式适配说明
-
-界面会根据设备屏幕尺寸自动调整布局，提升不同设备的使用体验：
-
-- PC端：分类卡片、图片按3列网格排列，布局宽松，信息展示完整
-
-- 平板端：自动适配为2列网格布局，平衡展示效果和屏幕利用率
-
-- 手机端：切换为1列布局，放大按钮和文字尺寸，便于触摸操作
-
-## 7. 运维管理
-
-### 8.1 图片管理
-
-项目采用本地文件系统存储图片，管理操作直接针对images目录进行，无需额外配置，核心操作规范如下：
-
-- **图片上传**：将图片文件直接复制到项目根目录（Random-Pictures）下的images目录或其子分类文件夹中，无需重启服务，3秒内自动同步至Web界面和API
-
-- **分类管理**：新增分类时，在images目录下创建对应名称的文件夹即可；重命名/删除分类时，直接操作对应的文件夹，变更实时生效
-
-- **图片删除**：直接删除images目录下的目标图片文件，或删除整个分类文件夹（含内部所有图片），删除后Web界面和API将不再显示对应内容
-
-- **格式与命名要求**：仅支持jpg、jpeg、png、gif、webp格式图片；文件/文件夹名称建议使用中文、英文或数字，避免!@#$%&*等特殊字符，防止URL编码异常
-
-### 8.2 推荐工具：Openlist配合管理
-
-针对远程管理、批量操作等场景，推荐使用轻量级文件管理工具Openlist配合本项目使用，提升运维效率。
-
-**核心优势**：
-
-- 可视化操作：通过Web界面即可完成图片上传、分类创建、文件删除等操作，无需登录服务器操作命令行，降低运维门槛
-
-- 轻量化部署：支持Docker容器化部署，可与本项目通过Docker Compose联动编排，部署流程简洁
-
-- 权限可控：支持设置访问密码，仅授权人员可操作图片文件，提升管理安全性
-
-- 实时同步兼容：与本项目的实时文件同步机制完全兼容，通过Openlist操作的文件变更可即时同步至项目中
-
-**使用指引**：部署Openlist后，将其管理目录指向项目根目录下的images目录，即可精准管理本项目的图片和分类文件夹，具体部署流程可参考Openlist官方文档。
-
-## 8. 常见问题排查
-
-### 9.1 新增图片/分类不生效
-
-**现象**：在images目录新增图片或分类后，Web界面和API未显示。
+### 8.2 图片不显示
 
 **排查步骤**：
+1. 确认images目录下有图片文件
+2. 检查容器日志：`docker compose logs random-pictures`
+3. 验证API接口：`curl http://localhost:8081/api/categories`
 
-1. 路径校验：确认新增内容放在项目根目录（Random-Pictures）下的images目录，而非其他目录
+### 8.3 布局异常
 
-2. 格式校验：检查图片格式是否为支持的jpg、jpeg、png、gif、webp
+**确保配置为3的倍数**：
+- `CATEGORY_PAGE_SIZE`: 3, 6, 9, 12...
+- `HOME_PAGE_SIZE`: 3, 6, 9, 12...
 
-3. 缓存等待：项目目录缓存有效期为10秒，最多等待10秒后刷新Web界面重试
+## 🚀 扩展建议
 
-4. 权限检查：确保新增的文件/文件夹有可读权限，可执行命令 `chmod -R 644 /Random-Pictures/images` 配置权限（需替换为实际项目路径）
+### 9.1 功能扩展
+- Web上传界面
+- API认证机制
+- 图片压缩优化
+- CDN集成支持
 
-### 9.2 随机图片接口返回404
+### 9.2 性能优化
+- Redis缓存集成
+- 对象存储支持
+- 负载均衡部署
 
-**现象**：访问 /random 或 /random?type=分类名称 时返回404错误。
+## 💝 赞助作者
 
-**排查步骤**：
+如果本项目对您有帮助，欢迎通过以下方式赞助：
 
-1. 图片检查：执行 `ls -l /Random-Pictures/images`（替换为实际路径），确认images目录下有支持格式的图片文件
+**支付宝 / 微信**：转账时备注"随机图API赞助"
 
-2. 分类校验：若为分类随机（带type参数），确认分类名称与images目录下的文件夹名称完全一致（区分大小写）
+<!-- 支付方式图片 -->
+<div style="display: flex; gap: 20px;">
+  <img src="images/Donate/Alipay-Payment.jpg" alt="支付宝支付" width="200">
+  <img src="images/Donate/WeChat-Pay.png" alt="微信支付" width="200">
+</div>
 
-3. 文件完整性：检查图片文件是否损坏，可将怀疑损坏的图片移至其他目录，测试接口是否恢复正常
+## 📄 许可证说明
 
-### 9.3 Web界面图片加载失败
-
-**现象**：Web界面显示分类，但预览图提示“图片加载失败”。
-
-**排查步骤**：
-
-1. 路径检查：点击加载失败的图片，查看浏览器地址栏的path参数，确认对应的图片文件在images目录下存在
-
-2. 权限检查：执行 `chmod 644 /Random-Pictures/images/xxx.jpg`（替换为实际图片路径），确保图片文件有可读权限
-
-3. 文件检查：将加载失败的图片下载到本地，用图片查看器打开，确认文件未损坏
-
-## 9. 扩展建议
-
-本项目为轻量化基础版本，可根据实际需求进行以下扩展，提升功能、性能和安全性：
-
-### 10.1 功能扩展
-
-- Web上传功能：在管理界面添加图片上传按钮，支持批量上传并选择目标分类
-
-- API认证：添加API Key验证机制，仅允许授权用户调用接口，防止滥用
-
-- 日志记录：集成日志模块，记录访问IP、请求接口、响应时间等信息，便于运维分析
-
-- 图片压缩：集成PIL库，自动压缩上传的大尺寸图片，减少存储占用和传输耗时
-
-### 10.2 性能扩展
-
-- CDN集成：将图片直链接口接入CDN，提升异地访问速度，减轻源服务器压力
-
-- 存储扩展：将图片存储从本地改为对象存储（如阿里云OSS、腾讯云COS），支持更大规模图片存储
-
-- 缓存优化：引入Redis缓存分类列表和图片路径，提升高并发场景下的接口响应速度
-
-### 10.3 安全扩展
-
-- HTTPS部署：通过Nginx反向代理配置SSL证书，实现HTTPS访问，保障数据传输安全
-
-- 访问限制：添加IP访问频率限制，防止单IP大量请求占用服务器资源
-
-- 文件校验：增强图片格式校验，防止上传伪装成图片的恶意脚本文件
-
-## 10. 赞助作者
-
-本项目为开源免费项目，开发与维护需投入大量时间和精力。如果本项目对您有帮助，欢迎通过以下方式赞助作者，您的支持是项目持续优化的动力！
-
-### 
-
-- **支付宝** **/微信**：转账时可备注“随机图API赞助”（若无法显示图片，可联系作者获取最新赞赏码）
-<!-- 支付宝支付 -->
-<img src="images/Donate/Alipay-Payment.jpg" alt="支付宝支付" width="200" height="auto">
-<!-- 微信支付 -->
-<img src="images/Donate/WeChat-Pay.png" alt="微信支付" width="200" height="auto" style="margin-right: 10px;">
-
-
-## 11. 许可证说明
-
-本项目遵循**GPL-3.0 许可证**（GNU General Public License v3.0）开源发布，您在使用、修改和分发本项目时，需严格遵守该许可证的相关规定。
-
-
+本项目遵循 **GPL-3.0 许可证** 开源发布。
 
 完整的许可证文本可访问 [GNU官方网站](https://www.gnu.org/licenses/gpl-3.0.html) 查看。
+
+---
+
+**技术支持**：如有问题请提交GitHub Issue或联系作者
+
+**版本**：v2.0.0 | **更新日期**：2026年1月4日
