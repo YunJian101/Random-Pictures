@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>503 - 服务暂不可用 | 随机图片API</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#6366f1',
+                        secondary: '#10b981',
+                        accent: '#f59e0b',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- 引入Font Awesome图标 - 多CDN竞争加载 -->
+    <script>
+    (function() {
+        var cdnList = [
+            'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css',
+            'https://cdn.bootcdn.net/ajax/libs/font-awesome/6.5.1/css/all.min.css',
+            'https://lib.baomitu.com/font-awesome/6.5.1/css/all.min.css'
+        ];
+        
+        var loaded = false;
+        var links = [];
+        
+        // 同时加载所有CDN
+        cdnList.forEach(function(cdn) {
+            var link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = cdn;
+            
+            link.onload = function() {
+                if (!loaded) {  // 第一个加载成功的
+                    loaded = true;
+                    console.log('✅ Font Awesome CDN加载成功:', cdn);
+                    // 移除其他未完成的链接
+                    links.forEach(function(l) {
+                        if (l !== link && l.parentNode) {
+                            l.parentNode.removeChild(l);
+                        }
+                    });
+                }
+            };
+            
+            links.push(link);
+            document.head.appendChild(link);
+        });
+    })();
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', 'Microsoft YaHei', sans-serif; }
+        .bg-gradient { background: linear-gradient(135deg, #f5f7ff 0%, #eef2ff 100%); }
+        .bg-gradient-main {
+            background: linear-gradient(to bottom right, rgba(99, 102, 241, 0.1), rgba(16, 185, 129, 0.1));
+        }
+        .text-gradient {
+            background: linear-gradient(to right, #6366f1, #10b981);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            color: transparent;
+        }
+        .pulse-animation {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+    </style>
+</head>
+<body class="bg-gradient min-h-screen flex flex-col items-center justify-center p-4">
+    <!-- 背景装饰 -->
+    <div class="fixed inset-0 bg-gradient-main -z-10"></div>
+
+    <header class="fixed top-0 w-full max-w-4xl flex justify-between items-center py-4 px-6 bg-white/80 backdrop-blur-sm rounded-b-lg shadow-sm">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-gradient-to-r from-primary to-secondary flex items-center justify-center shadow-lg">
+                <i class="fa-solid fa-images text-white text-xl"></i>
+            </div>
+            <h1 class="text-xl md:text-2xl font-bold text-gradient">随机图片API</h1>
+        </div>
+        <a href="/" class="text-primary hover:opacity-80 transition-colors">
+            <i class="fa-solid fa-house mr-1"></i> 返回首页
+        </a>
+    </header>
+
+    <main class="w-full max-w-2xl bg-white rounded-2xl shadow-lg p-8 md:p-10 mt-16">
+        <div class="flex flex-col items-center text-center mb-8">
+            <div class="text-9xl font-bold text-gradient mb-4 pulse-animation">503</div>
+            <h2 class="text-2xl font-semibold text-gray-800 mb-2">服务暂不可用</h2>
+            <p class="text-gray-600 max-w-md">服务器正在维护或负载过高，预计{{recover_time}}后恢复服务</p>
+        </div>
+
+        <div class="bg-amber-50 rounded-xl p-6 mb-8 border border-amber-100">
+            <h3 class="text-lg font-semibold text-amber-700 mb-4 flex items-center">
+                <i class="fa-solid fa-screwdriver-wrench mr-2"></i> 维护说明
+            </h3>
+            <p class="text-gray-600 mb-3">{{maintain_reason}}</p>
+            <ul class="space-y-1 text-gray-600 text-sm">
+                <li>📅 维护时间：{{maintain_start}} ~ {{maintain_end}}</li>
+                <li>📢 维护内容：{{maintain_content}}</li>
+                <li>📞 紧急联系：support@random-img-api.com</li>
+            </ul>
+        </div>
+
+        <div class="bg-gradient-main rounded-xl p-6 mb-8 border border-primary/10">
+            <h3 class="text-lg font-semibold text-primary mb-4 flex items-center">
+                <i class="fa-solid fa-bell mr-2"></i> 订阅恢复通知
+            </h3>
+            <div class="flex flex-col md:flex-row gap-3 max-w-md mx-auto">
+                <input type="email" placeholder="输入你的邮箱" class="px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary w-full">
+                <button class="bg-primary text-white py-2 px-6 rounded-lg hover:opacity-90 transition-colors whitespace-nowrap">
+                    订阅通知
+                </button>
+            </div>
+        </div>
+
+        <div class="flex justify-center">
+            <a href="/status" class="bg-primary text-white py-3 px-6 rounded-lg hover:opacity-90 transition-colors flex items-center">
+                <i class="fa-solid fa-server mr-2"></i> 查看实时服务状态
+            </a>
+        </div>
+    </main>
+
+    <footer class="mt-8 text-gray-500 text-sm text-center">
+        <p>© 2026 随机图片API - 稳定运行2000+天</p>
+        <p class="mt-1 text-xs">感谢你的理解与支持，维护完成后将提供更稳定的服务</p>
+    </footer>
+</body>
+</html>

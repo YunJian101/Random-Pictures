@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>429 - 请求过于频繁 | 随机图片API</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#6366f1',
+                        secondary: '#10b981',
+                        accent: '#f59e0b',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- 引入Font Awesome图标 - 多CDN竞争加载 -->
+    <script>
+    (function() {
+        var cdnList = [
+            'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css',
+            'https://cdn.bootcdn.net/ajax/libs/font-awesome/6.5.1/css/all.min.css',
+            'https://lib.baomitu.com/font-awesome/6.5.1/css/all.min.css'
+        ];
+        
+        var loaded = false;
+        var links = [];
+        
+        // 同时加载所有CDN
+        cdnList.forEach(function(cdn) {
+            var link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = cdn;
+            
+            link.onload = function() {
+                if (!loaded) {  // 第一个加载成功的
+                    loaded = true;
+                    console.log('✅ Font Awesome CDN加载成功:', cdn);
+                    // 移除其他未完成的链接
+                    links.forEach(function(l) {
+                        if (l !== link && l.parentNode) {
+                            l.parentNode.removeChild(l);
+                        }
+                    });
+                }
+            };
+            
+            links.push(link);
+            document.head.appendChild(link);
+        });
+    })();
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', 'Microsoft YaHei', sans-serif; }
+        .bg-gradient { background: linear-gradient(135deg, #f5f7ff 0%, #eef2ff 100%); }
+        .bg-gradient-main {
+            background: linear-gradient(to bottom right, rgba(99, 102, 241, 0.1), rgba(16, 185, 129, 0.1));
+        }
+        .text-gradient {
+            background: linear-gradient(to right, #6366f1, #10b981);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            color: transparent;
+        }
+        .countdown-bar {
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+        .countdown-progress {
+            height: 100%;
+            background: #6366f1;
+            border-radius: 4px;
+            width: {{progress}}%;
+            transition: width 1s linear;
+        }
+    </style>
+</head>
+<body class="bg-gradient min-h-screen flex flex-col items-center justify-center p-4">
+    <!-- 背景装饰 -->
+    <div class="fixed inset-0 bg-gradient-main -z-10"></div>
+
+    <header class="fixed top-0 w-full max-w-4xl flex justify-between items-center py-4 px-6 bg-white/80 backdrop-blur-sm rounded-b-lg shadow-sm">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-gradient-to-r from-primary to-secondary flex items-center justify-center shadow-lg">
+                <i class="fa-solid fa-images text-white text-xl"></i>
+            </div>
+            <h1 class="text-xl md:text-2xl font-bold text-gradient">随机图片API</h1>
+        </div>
+        <a href="/" class="text-primary hover:opacity-80 transition-colors">
+            <i class="fa-solid fa-house mr-1"></i> 返回首页
+        </a>
+    </header>
+
+    <main class="w-full max-w-2xl bg-white rounded-2xl shadow-lg p-8 md:p-10 mt-16">
+        <div class="flex flex-col items-center text-center mb-8">
+            <div class="text-9xl font-bold text-gradient mb-4">429</div>
+            <h2 class="text-2xl font-semibold text-gray-800 mb-2">请求过于频繁</h2>
+            <p class="text-gray-600 max-w-md">你已超出{{limit}}次/分钟的请求限制，请等待{{wait_time}}秒后再试</p>
+        </div>
+
+        <div class="bg-gradient-main rounded-xl p-6 mb-8 w-full border border-primary/10">
+            <h3 class="text-lg font-semibold text-primary mb-3 flex items-center">
+                <i class="fa-solid fa-clock mr-2"></i> 冷却倒计时
+            </h3>
+            <div class="countdown-bar mb-2">
+                <div class="countdown-progress"></div>
+            </div>
+            <p class="text-center text-gray-600 text-sm" id="countdown-text">剩余 {{wait_time}} 秒</p>
+        </div>
+
+        <div class="bg-white rounded-xl p-6 mb-8 border border-primary/10">
+            <h3 class="text-lg font-semibold text-primary mb-4 flex items-center">
+                <i class="fa-solid fa-gauge-high mr-2"></i> 限流规则说明
+            </h3>
+            <ul class="space-y-2 text-gray-600 list-disc list-inside">
+                <li>普通用户：60次/分钟，1000次/天</li>
+                <li>捐赠用户：300次/分钟，10000次/天</li>
+                <li>APIKey用户：无频率限制（需申请）</li>
+            </ul>
+            <a href="/donate" class="mt-4 inline-block bg-accent text-white py-2 px-4 rounded-lg hover:opacity-90 transition-colors">
+                <i class="fa-solid fa-gem mr-1"></i> 升级为捐赠用户
+            </a>
+        </div>
+
+        <div class="flex justify-center">
+            <button id="refresh-btn" class="bg-primary text-white py-3 px-6 rounded-lg hover:opacity-90 transition-colors flex items-center disabled:opacity-50" disabled>
+                <i class="fa-solid fa-rotate-right mr-2"></i> 重新尝试
+            </button>
+        </div>
+    </main>
+
+    <footer class="mt-8 text-gray-500 text-sm text-center">
+        <p>© 2026 随机图片API - 稳定运行2000+天</p>
+    </footer>
+
+    <script>
+        // 简单的倒计时逻辑
+        let waitTime = {{wait_time}};
+        const countdownText = document.getElementById('countdown-text');
+        const refreshBtn = document.getElementById('refresh-btn');
+        const progressBar = document.querySelector('.countdown-progress');
+        
+        const countdown = setInterval(() => {
+            waitTime--;
+            const progress = (waitTime / {{wait_time}}) * 100;
+            progressBar.style.width = `${100 - progress}%`;
+            countdownText.textContent = `剩余 ${waitTime} 秒`;
+            
+            if (waitTime <= 0) {
+                clearInterval(countdown);
+                countdownText.textContent = "冷却完成！";
+                refreshBtn.disabled = false;
+                refreshBtn.addEventListener('click', () => window.location.reload());
+            }
+        }, 1000);
+    </script>
+</body>
+</html>

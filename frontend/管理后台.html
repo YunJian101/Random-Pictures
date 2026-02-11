@@ -1,0 +1,2958 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>图片API · 管理后台</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- 多CDN竞争加载 Font Awesome 4.7.0 -->
+<script>
+    (function() {
+        var cdnList = [
+            'https://cdn.bootcdn.net/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css',
+            'https://lib.baomitu.com/font-awesome/4.7.0/css/font-awesome.min.css',
+            'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css'
+        ];
+        var loaded = false;
+        var links = [];
+        cdnList.forEach(function(cdn) {
+            var link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = cdn;
+            link.onload = function() {
+                if (!loaded) {
+                    loaded = true;
+                    links.forEach(function(l) {
+                        if (l !== link && l.parentNode) {
+                            l.parentNode.removeChild(l);
+                        }
+                    });
+                }
+            };
+            links.push(link);
+            document.head.appendChild(link);
+        });
+    })();
+</script>
+<style>
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background: linear-gradient(135deg, #f0f4ff 0%, #f7f9ff 100%);
+    transition: background 0.3s ease, color 0.3s ease;
+  }
+
+  /* 夜间模式 */
+  body.dark-mode {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    color: #e4e6eb;
+  }
+
+  .card {
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    transition: background 0.3s ease, border-color 0.3s ease;
+  }
+
+  .dark-mode .card {
+    background: #242526;
+    border: 1px solid #3e4042;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+  }
+
+  .dark-mode input,
+  .dark-mode textarea,
+  .dark-mode select {
+    background: #3e4042;
+    border-color: #4e4f50;
+    color: #e4e6eb;
+  }
+
+  .dark-mode .text-gray-500 {
+    color: #b0b3b8;
+  }
+
+  .dark-mode .text-gray-400 {
+    color: #8a8d91;
+  }
+
+  .dark-mode .text-gray-800 {
+    color: #e4e6eb;
+  }
+
+  .dark-mode .text-gray-700 {
+    color: #e4e6eb;
+  }
+
+  .dark-mode .text-gray-600 {
+    color: #b0b3b8;
+  }
+
+  .dark-mode .border-gray-100 {
+    border-color: #3e4042;
+  }
+
+  .dark-mode .border-gray-200 {
+    border-color: #4e4f50;
+  }
+
+  .dark-mode .border-gray-50 {
+    border-color: #3e4042;
+  }
+
+  .dark-mode .bg-gray-50 {
+    background: #3e4042;
+  }
+
+  .dark-mode .bg-gray-100 {
+    background: #3e4042;
+  }
+
+  .dark-mode .bg-white {
+    background: #242526;
+  }
+
+  .dark-mode .hover\:bg-gray-50:hover {
+    background: #3e4042;
+  }
+
+  .dark-mode .hover\:shadow-sm:hover {
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+
+  .dark-mode .table-row:hover {
+    background: #3e4042;
+  }
+
+  .dark-mode .toast {
+    background: #3e4042;
+    border-color: #4e4f50;
+    color: #e4e6eb;
+  }
+
+  .dark-mode .toast.text-green-700 {
+    color: #0be881;
+  }
+
+  .dark-mode .toast.bg-green-50 {
+    background: #1a2e1a;
+    border-color: #0be881;
+  }
+
+  .dark-mode .toast.text-red-700 {
+    color: #ff6370;
+  }
+
+  .dark-mode .toast.bg-red-50 {
+    background: #2e1a1a;
+    border-color: #ff6370;
+  }
+
+  .dark-mode .bg-blue-50 {
+    background: #1a243e;
+  }
+
+  .dark-mode .text-blue-600 {
+    color: #5177ff;
+  }
+
+  .dark-mode .bg-green-50 {
+    background: #1a2e1a;
+  }
+
+  .dark-mode .text-green-600 {
+    color: #0be881;
+  }
+
+  .dark-mode .bg-red-50 {
+    background: #2e1a1a;
+  }
+
+  .dark-mode .text-red-600 {
+    color: #ff6370;
+  }
+
+  .dark-mode .bg-yellow-50 {
+    background: #2e2a1a;
+  }
+
+  .dark-mode .text-yellow-600 {
+    color: #ffd93d;
+  }
+
+  .dark-mode .bg-purple-50 {
+    background: #2a1a2e;
+  }
+
+  .dark-mode .text-purple-600 {
+    color: #a855f7;
+  }
+
+  .dark-mode .bg-pink-50 {
+    background: #2e1a24;
+  }
+
+  .dark-mode .text-pink-600 {
+    color: #ec4899;
+  }
+
+  .dark-mode .bg-cyan-50 {
+    background: #1a242e;
+  }
+
+  .dark-mode .text-cyan-600 {
+    color: #06b6d4;
+  }
+
+  .dark-mode .bg-indigo-50 {
+    background: #1a1a2e;
+  }
+
+  .dark-mode .text-indigo-600 {
+    color: #6366f1;
+  }
+
+  .dark-mode .bg-orange-50 {
+    background: #2e241a;
+  }
+
+  .dark-mode .text-orange-600 {
+    color: #f97316;
+  }
+
+  .dark-mode .fixed.bg-white {
+    background: #1a1a2e;
+    border-bottom: 1px solid #3e4042;
+  }
+
+  .dark-mode .text-blue-700 {
+    color: #5177ff;
+  }
+
+  .dark-mode .border-b {
+    border-bottom-color: #3e4042;
+  }
+
+  .dark-mode .font-mono {
+    background: #3e4042;
+  }
+
+  .dark-mode .modal {
+    background: rgba(0,0,0,0.7);
+  }
+
+  .dark-mode .modal > .bg-white {
+    background: #242526;
+  }
+
+  .btn {
+    border-radius: 10px;
+    transition: all 0.2s;
+    cursor: pointer;
+  }
+  .btn-primary {
+    background: linear-gradient(90deg, #4169ff, #5177ff);
+    color: white;
+  }
+  .btn-primary:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(65, 105, 255, 0.2);
+  }
+  .btn-danger {
+    background: linear-gradient(90deg, #ff4757, #ff6370);
+    color: white;
+  }
+  .btn-danger:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(255, 71, 87, 0.2);
+  }
+  .btn-success {
+    background: linear-gradient(90deg, #05c46b, #0be881);
+    color: white;
+  }
+  .btn-success:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(5, 196, 107, 0.2);
+  }
+  .btn-light {
+    background: #f1f5ff;
+    color: #374259;
+  }
+  .btn-light:hover {
+    background: #e8f0fe;
+    transform: translateY(-1px);
+  }
+
+  .dark-mode .btn-light {
+    background: #3e4042;
+    color: #e4e6eb;
+  }
+
+  .dark-mode .btn-light:hover {
+    background: #4e4f50;
+  }
+
+  .modal {
+    animation: fadeIn 0.2s ease;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .table-row:hover {
+    background: #f9fbfd;
+  }
+  .sidebar-item.active {
+    background: #e8f0fe;
+    color: #4169ff;
+    font-weight: 600;
+  }
+
+  .dark-mode .sidebar-item.active {
+    background: #3e4042;
+    color: #5177ff;
+  }
+
+  .toast {
+    animation: slideIn 0.3s ease;
+  }
+  @keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+  .upload-area:hover {
+    border-color: #4169ff;
+    background: #f8fbff;
+  }
+
+  .dark-mode .upload-area:hover {
+    border-color: #5177ff;
+    background: #1a243e;
+  }
+
+  /* 主题切换按钮动画 */
+  .theme-toggle {
+    transition: transform 0.3s ease;
+  }
+  .theme-toggle:hover {
+    transform: rotate(180deg);
+  }
+</style>
+</head>
+<body class="min-h-screen pb-20">
+
+<!-- 顶部导航 -->
+<div class="fixed top-0 left-0 right-0 bg-white shadow-sm z-50">
+  <div class="flex items-center justify-between px-4 h-16 max-w-7xl mx-auto">
+    <div class="flex items-center gap-2">
+      <i class="fa fa-picture-o text-blue-500 text-xl"></i>
+      <span class="font-semibold text-gray-800">随机图API · 管理后台</span>
+    </div>
+    <div class="flex items-center gap-4">
+      <!-- 主题切换按钮 -->
+      <button class="theme-toggle p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors" id="themeToggleBtn" title="切换主题">
+        <i class="fa fa-sun-o text-gray-600" id="themeIcon"></i>
+      </button>
+      <!-- 通知铃铛 -->
+      <button class="relative p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors">
+        <i class="fa fa-bell text-gray-600"></i>
+        <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+      </button>
+      <span class="text-sm text-gray-500">超级管理员</span>
+      <button class="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors" id="logoutBtn">
+        <i class="fa fa-sign-out text-gray-600"></i>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 主体 -->
+<div class="pt-20 px-4 max-w-7xl mx-auto flex flex-col md:flex-row gap-6">
+
+  <!-- 侧边栏 -->
+  <div class="w-full md:w-56 shrink-0">
+    <div class="card p-4 sticky top-20">
+      <div class="text-xs text-gray-400 font-medium mb-2">管理菜单</div>
+      <div class="flex flex-col gap-1">
+        <button class="sidebar-item btn btn-light flex items-center gap-2 px-3 py-2 text-left w-full text-sm font-medium" id="menuImgManage">
+          <i class="fa fa-th-large w-4 text-center"></i> 图片管理
+        </button>
+        <button class="sidebar-item btn btn-light flex items-center gap-2 px-3 py-2 text-left w-full text-sm font-medium" id="menuUpload">
+          <i class="fa fa-upload w-4 text-center"></i> 上传图片
+        </button>
+        <button class="sidebar-item btn btn-light flex items-center gap-2 px-3 py-2 text-left w-full text-sm font-medium" id="menuCategory">
+          <i class="fa fa-folder w-4 text-center"></i> 分类管理
+        </button>
+        <button class="sidebar-item btn btn-light flex items-center gap-2 px-3 py-2 text-left w-full text-sm font-medium" id="menuUser">
+          <i class="fa fa-users w-4 text-center"></i> 用户管理
+        </button>
+        <button class="sidebar-item btn btn-light flex items-center gap-2 px-3 py-2 text-left w-full text-sm font-medium" id="menuFeedback">
+          <i class="fa fa-comments w-4 text-center"></i> 用户反馈
+        </button>
+        <button class="sidebar-item btn btn-light flex items-center gap-2 px-3 py-2 text-left w-full text-sm font-medium" id="menuSetting">
+          <i class="fa fa-cog w-4 text-center"></i> 系统设置
+        </button>
+        <button class="sidebar-item btn btn-light flex items-center gap-2 px-3 py-2 text-left w-full text-sm font-medium" id="menuLog">
+          <i class="fa fa-history w-4 text-center"></i> 操作日志
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 内容区 -->
+  <div class="flex-1 space-y-6">
+
+    <!-- 统计 -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="card p-4 hover:shadow-md transition-shadow">
+        <div class="text-sm text-gray-500">总图片</div>
+        <div class="text-2xl font-bold mt-1">2,589</div>
+        <div class="text-xs text-green-500 mt-1"><i class="fa fa-arrow-up"></i> 较昨日 +12%</div>
+      </div>
+      <div class="card p-4 hover:shadow-md transition-shadow">
+        <div class="text-sm text-gray-500">今日访问</div>
+        <div class="text-2xl font-bold mt-1">15,682</div>
+        <div class="text-xs text-green-500 mt-1"><i class="fa fa-arrow-up"></i> 较昨日 +8%</div>
+      </div>
+      <div class="card p-4 hover:shadow-md transition-shadow">
+        <div class="text-sm text-gray-500">未读反馈</div>
+        <div class="text-2xl font-bold mt-1 text-red-500">18</div>
+        <div class="text-xs text-red-500 mt-1"><i class="fa fa-arrow-up"></i> 较昨日 +3</div>
+      </div>
+      <div class="card p-4 hover:shadow-md transition-shadow">
+        <div class="text-sm text-gray-500">占用空间</div>
+        <div class="text-2xl font-bold mt-1">12.8GB</div>
+        <div class="text-xs text-yellow-500 mt-1"><i class="fa fa-exclamation-circle"></i> 已使用 64%</div>
+      </div>
+    </div>
+
+    <!-- 图片管理 -->
+    <div class="card p-5 hidden" id="imgManageSection">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
+        <h2 class="text-lg font-semibold">图片管理</h2>
+        <div class="flex gap-2">
+          <div class="relative">
+            <input type="text" placeholder="搜索文件名/分类" class="pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500">
+            <i class="fa fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+          </div>
+          <button id="btnUploadMain" class="btn btn-primary px-3 py-1.5 text-sm">
+            <i class="fa fa-upload mr-1"></i> 上传
+          </button>
+        </div>
+      </div>
+
+      <!-- 批量操作工具栏 -->
+      <div class="flex gap-2 mb-4 flex-wrap">
+        <button class="btn btn-light px-3 py-1 text-sm" id="selectAllBtn">
+          <i class="fa fa-check-square-o mr-1"></i> 全选
+        </button>
+        <button class="btn btn-light px-3 py-1 text-sm" id="selectNoneBtn">
+          <i class="fa fa-square-o mr-1"></i> 取消全选
+        </button>
+        <button class="btn btn-light px-3 py-1 text-sm" id="downloadSelectedBtn">
+          <i class="fa fa-download mr-1"></i> 下载选中
+        </button>
+        <button class="btn btn-light px-3 py-1 text-sm" id="moveSelectedBtn">
+          <i class="fa fa-arrows mr-1"></i> 移动
+        </button>
+        <button class="btn btn-light px-3 py-1 text-sm" id="renameSelectedBtn">
+          <i class="fa fa-pencil mr-1"></i> 重命名
+        </button>
+        <button class="btn btn-danger px-3 py-1 text-sm" id="deleteSelectedBtn">
+          <i class="fa fa-trash mr-1"></i> 删除选中
+        </button>
+        <select class="btn btn-light px-3 py-1 text-sm outline-none">
+          <option>全部分类</option>
+          <option>二次元</option>
+          <option>人物</option>
+          <option>自然风光</option>
+          <option>壁纸</option>
+        </select>
+        <select class="btn btn-light px-3 py-1 text-sm outline-none">
+          <option>按时间排序</option>
+          <option>按大小排序</option>
+          <option>按名称排序</option>
+        </select>
+      </div>
+
+      <!-- 图片列表表格 -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm" id="imgTable">
+          <thead>
+            <tr class="border-b border-gray-100">
+              <th class="py-3 px-2 text-left font-medium text-gray-500 w-10">
+                <input type="checkbox" class="rounded" id="headerCheckbox">
+              </th>
+              <th class="py-3 px-2 text-left font-medium text-gray-500">预览</th>
+              <th class="py-3 px-2 text-left font-medium text-gray-500">文件名</th>
+              <th class="py-3 px-2 text-left font-medium text-gray-500">分类</th>
+              <th class="py-3 px-2 text-left font-medium text-gray-500">大小</th>
+              <th class="py-3 px-2 text-left font-medium text-gray-500">分辨率</th>
+              <th class="py-3 px-2 text-left font-medium text-gray-500">时间</th>
+              <th class="py-3 px-2 text-left font-medium text-gray-500 w-32">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="table-row border-b border-gray-50" data-id="1">
+              <td class="py-3 px-2"><input type="checkbox" class="rounded imgCheckbox"></td>
+              <td class="py-3 px-2">
+                <img src="https://picsum.photos/64/64?1" class="w-12 h-12 rounded object-cover imgPreview">
+              </td>
+              <td class="py-3 px-2">anime_001.webp</td>
+              <td class="py-3 px-2">二次元</td>
+              <td class="py-3 px-2">128KB</td>
+              <td class="py-3 px-2">1920×1080</td>
+              <td class="py-3 px-2 text-gray-500">2026-02-09</td>
+              <td class="py-3 px-2">
+                <div class="flex gap-1">
+                  <button class="text-blue-500 text-sm p-1 viewImgBtn" title="查看详情">
+                    <i class="fa fa-eye"></i>
+                  </button>
+                  <button class="text-blue-500 text-sm p-1 downloadImgBtn" title="下载">
+                    <i class="fa fa-download"></i>
+                  </button>
+                  <button class="text-green-600 text-sm p-1 renameImgBtn" title="重命名">
+                    <i class="fa fa-pencil"></i>
+                  </button>
+                  <button class="text-yellow-500 text-sm p-1 moveImgBtn" title="移动">
+                    <i class="fa fa-arrows"></i>
+                  </button>
+                  <button class="text-red-500 text-sm p-1 deleteImgBtn" title="删除">
+                    <i class="fa fa-trash"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+            <tr class="table-row border-b border-gray-50" data-id="2">
+              <td class="py-3 px-2"><input type="checkbox" class="rounded imgCheckbox"></td>
+              <td class="py-3 px-2">
+                <img src="https://picsum.photos/64/64?2" class="w-12 h-12 rounded object-cover imgPreview">
+              </td>
+              <td class="py-3 px-2">people_023.jpg</td>
+              <td class="py-3 px-2">人物</td>
+              <td class="py-3 px-2">256KB</td>
+              <td class="py-3 px-2">2560×1440</td>
+              <td class="py-3 px-2 text-gray-500">2026-02-08</td>
+              <td class="py-3 px-2">
+                <div class="flex gap-1">
+                  <button class="text-blue-500 text-sm p-1 viewImgBtn" title="查看详情">
+                    <i class="fa fa-eye"></i>
+                  </button>
+                  <button class="text-blue-500 text-sm p-1 downloadImgBtn" title="下载">
+                    <i class="fa fa-download"></i>
+                  </button>
+                  <button class="text-green-600 text-sm p-1 renameImgBtn" title="重命名">
+                    <i class="fa fa-pencil"></i>
+                  </button>
+                  <button class="text-yellow-500 text-sm p-1 moveImgBtn" title="移动">
+                    <i class="fa fa-arrows"></i>
+                  </button>
+                  <button class="text-red-500 text-sm p-1 deleteImgBtn" title="删除">
+                    <i class="fa fa-trash"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 上传区域 -->
+      <div id="mainUploadArea" class="upload-area mt-4 p-4 border border-dashed border-gray-200 rounded-lg flex items-center justify-center gap-3 cursor-pointer">
+        <i class="fa fa-upload text-gray-400 text-2xl"></i>
+        <div class="text-gray-400">点击或拖拽文件到此处上传</div>
+        <input type="file" id="mainFileInput" class="hidden" multiple>
+      </div>
+
+      <!-- 上传设置 -->
+      <div id="mainUploadSettings" class="hidden mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="text-sm text-gray-700 mb-1 block">默认分类</label>
+          <select class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
+            <option>全部分类</option>
+            <option>二次元</option>
+            <option>人物</option>
+            <option>自然风光</option>
+            <option>壁纸</option>
+            <option>其他</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-sm text-gray-700 mb-1 block">文件命名规则</label>
+          <select class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
+            <option>保持原文件名</option>
+            <option>自动生成随机名</option>
+            <option>时间戳 + 序号</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-sm text-gray-700 mb-1 block">图片压缩</label>
+          <select class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
+            <option>不压缩</option>
+            <option>压缩 80%</option>
+            <option>压缩 60%</option>
+            <option>压缩 40%</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-sm text-gray-700 mb-1 block">最大分辨率限制</label>
+          <select class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
+            <option>不限制</option>
+            <option>1920×1080</option>
+            <option>2560×1440</option>
+            <option>3840×2160 (4K)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 待上传文件列表 -->
+      <div id="mainUploadList" class="hidden">
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="text-sm font-semibold">待上传文件 <span class="text-gray-400 font-normal">(3/10)</span></h3>
+          <button class="btn btn-light px-3 py-1 text-sm" id="clearUploadListBtn">
+            <i class="fa fa-trash mr-1"></i> 清空列表
+          </button>
+        </div>
+        <div class="space-y-2" id="uploadFileListContainer">
+          <div class="flex items-center justify-between p-3 border border-gray-100 rounded-lg hover:bg-gray-50">
+            <div class="flex items-center gap-3">
+              <img src="https://picsum.photos/40/40?1" class="w-10 h-10 rounded object-cover">
+              <div>
+                <div class="text-sm font-medium">anime_004.webp</div>
+                <div class="text-xs text-gray-400">245KB | 1920×1080</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="px-2 py-0.5 bg-blue-50 text-blue-600 text-xs rounded-full">待上传</span>
+              <button class="text-red-400 hover:text-red-600 removeMainUploadFile">
+                <i class="fa fa-times"></i>
+              </button>
+            </div>
+          </div>
+          <div class="flex items-center justify-between p-3 border border-gray-100 rounded-lg hover:bg-gray-50">
+            <div class="flex items-center gap-3">
+              <img src="https://picsum.photos/40/40?2" class="w-10 h-10 rounded object-cover">
+              <div>
+                <div class="text-sm font-medium">nature_130.jpg</div>
+                <div class="text-xs text-gray-400">320KB | 2560×1440</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="px-2 py-0.5 bg-blue-50 text-blue-600 text-xs rounded-full">待上传</span>
+              <button class="text-red-400 hover:text-red-600 removeMainUploadFile">
+                <i class="fa fa-times"></i>
+              </button>
+            </div>
+          </div>
+          <div class="flex items-center justify-between p-3 border border-gray-100 rounded-lg hover:bg-gray-50">
+            <div class="flex items-center gap-3">
+              <img src="https://picsum.photos/40/40?3" class="w-10 h-10 rounded object-cover">
+              <div>
+                <div class="text-sm font-medium">wallpaper_022.png</div>
+                <div class="text-xs text-gray-400">485KB | 3840×2160</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="px-2 py-0.5 bg-blue-50 text-blue-600 text-xs rounded-full">待上传</span>
+              <button class="text-red-400 hover:text-red-600 removeMainUploadFile">
+                <i class="fa fa-times"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 上传进度条 -->
+        <div class="mt-4 hidden" id="uploadProgressArea">
+          <div class="flex justify-between text-sm mb-1">
+            <span>上传中...</span>
+            <span id="uploadProgressText">0%</span>
+          </div>
+          <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
+            <div class="h-full bg-gradient-to-r from-blue-500 to-blue-400 transition-all duration-300" id="uploadProgressBar" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 mt-4">
+          <button class="btn btn-light px-4 py-2" id="cancelUploadBtn">取消</button>
+          <button class="btn btn-primary px-4 py-2" id="startMainUploadBtn">
+            <i class="fa fa-upload mr-1"></i> 开始上传
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 分类管理 -->
+    <div class="card p-5 hidden" id="categorySection">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
+        <h2 class="text-lg font-semibold">分类管理</h2>
+        <button class="btn btn-primary px-3 py-1.5 text-sm" id="addCategoryBtn">
+          <i class="fa fa-plus mr-1"></i> 新建分类
+        </button>
+      </div>
+
+      <!-- 分类列表 -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="border border-gray-100 rounded-xl p-4 hover:shadow-sm transition-shadow">
+          <div class="flex items-start justify-between mb-3">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-pink-500 to-pink-400 flex items-center justify-center">
+                <i class="fa fa-star text-white text-lg"></i>
+              </div>
+              <div>
+                <h3 class="font-medium">二次元</h3>
+                <p class="text-xs text-gray-400">1,258 张图片</p>
+              </div>
+            </div>
+            <span class="px-2 py-0.5 bg-green-50 text-green-600 text-xs rounded-full">启用</span>
+          </div>
+          <div class="text-xs text-gray-500 mb-3">描述：包含动漫、游戏等二次元相关图片</div>
+          <div class="flex gap-2">
+            <button class="btn btn-light flex-1 px-2 py-1 text-xs editCategoryBtn">
+              <i class="fa fa-pencil mr-1"></i> 编辑
+            </button>
+            <button class="btn btn-light px-2 py-1 text-xs">
+              <i class="fa fa-eye"></i>
+            </button>
+            <button class="btn btn-light px-2 py-1 text-xs text-red-500 deleteCategoryBtn">
+              <i class="fa fa-trash"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="border border-gray-100 rounded-xl p-4 hover:shadow-sm transition-shadow">
+          <div class="flex items-start justify-between mb-3">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-blue-400 flex items-center justify-center">
+                <i class="fa fa-user text-white text-lg"></i>
+              </div>
+              <div>
+                <h3 class="font-medium">人物</h3>
+                <p class="text-xs text-gray-400">856 张图片</p>
+              </div>
+            </div>
+            <span class="px-2 py-0.5 bg-green-50 text-green-600 text-xs rounded-full">启用</span>
+          </div>
+          <div class="text-xs text-gray-500 mb-3">描述：人物肖像、写真等</div>
+          <div class="flex gap-2">
+            <button class="btn btn-light flex-1 px-2 py-1 text-xs editCategoryBtn">
+              <i class="fa fa-pencil mr-1"></i> 编辑
+            </button>
+            <button class="btn btn-light px-2 py-1 text-xs">
+              <i class="fa fa-eye"></i>
+            </button>
+            <button class="btn btn-light px-2 py-1 text-xs text-red-500 deleteCategoryBtn">
+              <i class="fa fa-trash"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="border border-gray-100 rounded-xl p-4 hover:shadow-sm transition-shadow">
+          <div class="flex items-start justify-between mb-3">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-green-500 to-green-400 flex items-center justify-center">
+                <i class="fa fa-leaf text-white text-lg"></i>
+              </div>
+              <div>
+                <h3 class="font-medium">自然风光</h3>
+                <p class="text-xs text-gray-400">325 张图片</p>
+              </div>
+            </div>
+            <span class="px-2 py-0.5 bg-green-50 text-green-600 text-xs rounded-full">启用</span>
+          </div>
+          <div class="text-xs text-gray-500 mb-3">描述：山水、风景、自然景观</div>
+          <div class="flex gap-2">
+            <button class="btn btn-light flex-1 px-2 py-1 text-xs editCategoryBtn">
+              <i class="fa fa-pencil mr-1"></i> 编辑
+            </button>
+            <button class="btn btn-light px-2 py-1 text-xs">
+              <i class="fa fa-eye"></i>
+            </button>
+            <button class="btn btn-light px-2 py-1 text-xs text-red-500 deleteCategoryBtn">
+              <i class="fa fa-trash"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="border border-gray-100 rounded-xl p-4 hover:shadow-sm transition-shadow">
+          <div class="flex items-start justify-between mb-3">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-purple-400 flex items-center justify-center">
+                <i class="fa fa-picture-o text-white text-lg"></i>
+              </div>
+              <div>
+                <h3 class="font-medium">壁纸</h3>
+                <p class="text-xs text-gray-400">150 张图片</p>
+              </div>
+            </div>
+            <span class="px-2 py-0.5 bg-green-50 text-green-600 text-xs rounded-full">启用</span>
+          </div>
+          <div class="text-xs text-gray-500 mb-3">描述：高清壁纸、桌面背景</div>
+          <div class="flex gap-2">
+            <button class="btn btn-light flex-1 px-2 py-1 text-xs editCategoryBtn">
+              <i class="fa fa-pencil mr-1"></i> 编辑
+            </button>
+            <button class="btn btn-light px-2 py-1 text-xs">
+              <i class="fa fa-eye"></i>
+            </button>
+            <button class="btn btn-light px-2 py-1 text-xs text-red-500 deleteCategoryBtn">
+              <i class="fa fa-trash"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="border border-gray-100 rounded-xl p-4 hover:shadow-sm transition-shadow opacity-60">
+          <div class="flex items-start justify-between mb-3">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-gray-400 to-gray-300 flex items-center justify-center">
+                <i class="fa fa-folder-o text-white text-lg"></i>
+              </div>
+              <div>
+                <h3 class="font-medium">其他</h3>
+                <p class="text-xs text-gray-400">0 张图片</p>
+              </div>
+            </div>
+            <span class="px-2 py-0.5 bg-gray-100 text-gray-500 text-xs rounded-full">禁用</span>
+          </div>
+          <div class="text-xs text-gray-500 mb-3">描述：未分类或其他内容</div>
+          <div class="flex gap-2">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 用户管理 -->
+    <div class="card p-5 hidden" id="userSection">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
+        <h2 class="text-lg font-semibold">用户管理</h2>
+        <div class="flex gap-2">
+          <div class="relative">
+            <input type="text" placeholder="搜索用户名/邮箱" class="pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500">
+            <i class="fa fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+          </div>
+          <button class="btn btn-primary px-3 py-1.5 text-sm" id="addUserBtn">
+            <i class="fa fa-plus mr-1"></i> 新建用户
+          </button>
+        </div>
+      </div>
+
+      <!-- 用户列表 -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm" id="userTable">
+          <thead>
+            <tr class="border-b border-gray-100">
+              <th class="py-3 px-2 text-left font-medium text-gray-500 w-10">
+                <input type="checkbox" class="rounded" id="userHeaderCheckbox">
+              </th>
+              <th class="py-3 px-2 text-left font-medium text-gray-500">用户ID</th>
+              <th class="py-3 px-2 text-left font-medium text-gray-500">用户名</th>
+              <th class="py-3 px-2 text-left font-medium text-gray-500">邮箱</th>
+              <th class="py-3 px-2 text-left font-medium text-gray-500">角色</th>
+              <th class="py-3 px-2 text-left font-medium text-gray-500">注册时间</th>
+              <th class="py-3 px-2 text-left font-medium text-gray-500">最后登录IP</th>
+              <th class="py-3 px-2 text-left font-medium text-gray-500">状态</th>
+              <th class="py-3 px-2 text-left font-medium text-gray-500 w-32">操作</th>
+            </tr>
+          </thead>
+          <tbody id="userTableBody">
+            <tr>
+              <td colspan="9" class="py-8 text-center text-gray-500">
+                <i class="fa fa-user-o text-4xl mb-2"></i>
+                <p>暂无用户数据</p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="mt-4 text-gray-500">
+        显示 1-10 条，共 10 条
+      </div>
+    </div>
+
+    <!-- 用户反馈 -->
+    <div class="card p-5 hidden" id="feedbackSection">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
+        <h2 class="text-lg font-semibold">用户反馈</h2>
+        <div class="flex gap-2">
+          <div class="relative">
+            <input type="text" placeholder="搜索反馈内容" class="pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500">
+            <i class="fa fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+          </div>
+          <button class="btn btn-primary px-3 py-1.5 text-sm" id="addFeedbackBtn">
+            <i class="fa fa-plus mr-1"></i> 新建反馈
+          </button>
+        </div>
+      </div>
+
+      <!-- 反馈列表 -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm" id="feedbackTable">
+          <thead>
+            <tr class="border-b border-gray-100">
+              <th class="py-3 px-2 text-left font-medium text-gray-500 w-10">
+                <input type="checkbox" class="rounded" id="feedbackHeaderCheckbox">
+              </th>
+              <th class="py-3 px-2 text-left font-medium text-gray-500">反馈ID</th>
+              <th class="py-3 px-2 text-left font-medium text-gray-500">用户ID</th>
+              <th class="py-3 px-2 text-left font-medium text-gray-500">反馈内容</th>
+              <th class="py-3 px-2 text-left font-medium text-gray-500">反馈时间</th>
+              <th class="py-3 px-2 text-left font-medium text-gray-500">状态</th>
+              <th class="py-3 px-2 text-left font-medium text-gray-500 w-32">操作</th>
+            </tr>
+          </thead>
+          <tbody id="feedbackTableBody">
+            <tr>
+              <td colspan="7" class="py-8 text-center text-gray-500">
+                <i class="fa fa-comment-o text-4xl mb-2"></i>
+                <p>暂无反馈数据</p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="mt-4 text-gray-500">
+        显示 1-10 条，共 10 条
+      </div>
+    </div>
+
+    <!-- 系统设置 -->
+    <div class="card p-5 hidden" id="settingSection">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
+        <h2 class="text-lg font-semibold">系统设置</h2>
+        <button class="btn btn-primary px-3 py-1.5 text-sm" id="saveSettingBtn">
+          <i class="fa fa-save mr-1"></i> 保存设置
+        </button>
+      </div>
+
+      <!-- 设置表单 -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="text-sm text-gray-700 mb-1 block">网站名称</label>
+          <input type="text" placeholder="请输入网站名称" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
+        </div>
+        <div>
+          <label class="text-sm text-gray-700 mb-1 block">网站域名</label>
+          <input type="text" placeholder="请输入网站域名" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
+        </div>
+        <div>
+          <label class="text-sm text-gray-700 mb-1 block">管理员邮箱</label>
+          <input type="email" placeholder="请输入管理员邮箱" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
+        </div>
+        <div>
+          <label class="text-sm text-gray-700 mb-1 block">上传文件大小限制</label>
+          <select class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
+            <option>1MB</option>
+            <option>2MB</option>
+            <option>5MB</option>
+            <option>10MB</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-sm text-gray-700 mb-1 block">上传文件类型限制</label>
+          <select class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
+            <option>图片</option>
+            <option>视频</option>
+            <option>音频</option>
+            <option>文档</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-sm text-gray-700 mb-1 block">上传文件数量限制</label>
+          <select class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
+            <option>1</option>
+            <option>5</option>
+            <option>10</option>
+            <option>20</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- 操作日志 -->
+    <div class="card p-5 hidden" id="logSection">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
+        <h2 class="text-lg font-semibold">操作日志</h2>
+        <div class="flex gap-2">
+          <div class="relative">
+            <input type="text" placeholder="搜索操作内容" class="pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500">
+            <i class="fa fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+          </div>
+          <button class="btn btn-primary px-3 py-1.5 text-sm" id="clearLogBtn">
+            <i class="fa fa-trash mr-1"></i> 清空日志
+          </button>
+        </div>
+      </div>
+
+      <!-- 日志列表 -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm" id="logTable">
+          <thead>
+            <tr class="border-b border-gray-100">
+              <th class="py-3 px-2 text-left font-medium text-gray-500 w-10">
+                <input type="checkbox" class="rounded" id="logHeaderCheckbox">
+              </th>
+              <th class="py-3 px-2 text-left font-medium text-gray-500">日志ID</th>
+              <th class="py-3 px-2 text-left font-medium text-gray-500">操作用户</th>
+              <th class="py-3 px-2 text-left font-medium text-gray-500">操作内容</th>
+              <th class="py-3 px-2 text-left font-medium text-gray-500">操作时间</th>
+              <th class="py-3 px-2 text-left font-medium text-gray-500">操作IP</th>
+              <th class="py-3 px-2 text-left font-medium text-gray-500 w-32">操作</th>
+            </tr>
+          </thead>
+          <tbody id="logTableBody">
+            <tr>
+              <td colspan="7" class="py-8 text-center text-gray-500">
+                <i class="fa fa-history text-4xl mb-2"></i>
+                <p>暂无日志数据</p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="mt-4 text-gray-500">
+        显示 1-10 条，共 10 条
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // 初始化默认激活第一个菜单
+    document.getElementById('menuImgManage').classList.add('active');
+    // 默认显示图片管理页面
+    document.getElementById('imgManageSection').style.display = 'block';
+  });
+
+// ==================== 用户管理功能 ====================
+// 从后端API加载用户数据
+async function loadUsersFromAPI() {
+  try {
+    console.log('开始从后端API加载用户数据...');
+    const response = await fetch('http://localhost:8081/api/admin/users', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    console.log('API响应状态:', response.status);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    console.log('API返回数据:', result);
+    
+    if (result.code === 200) {
+      renderUsersFromAPI(result.data.users);
+    } else {
+      console.error('获取用户列表失败:', result.msg);
+      showErrorInUserSection('获取用户列表失败: ' + result.msg);
+    }
+  } catch (error) {
+    console.error('网络错误:', error);
+    showErrorInUserSection('网络连接失败，请检查后端服务是否启动');
+  }
+}
+
+// 渲染从API获取的用户列表
+function renderUsersFromAPI(users) {
+  const tbody = document.getElementById('userTableBody');
+  
+  if (!users || users.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="9" class="py-8 text-center text-gray-500">
+          <i class="fa fa-user-o text-4xl mb-2"></i>
+          <p>暂无用户数据</p>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = users.map(user => `
+    <tr class="border-b border-gray-100 hover:bg-gray-50">
+      <td class="py-3 px-2">
+        <input type="checkbox" class="rounded user-checkbox" data-user-id="${user.id}">
+      </td>
+      <td class="py-3 px-2 font-mono text-sm text-gray-600">${user.user_id}</td>
+      <td class="py-3 px-2">
+        <div class="flex items-center gap-3">
+          <img src="${user.avatar_url}" alt="${user.username}" class="w-8 h-8 rounded-full">
+          <span>${user.username}</span>
+        </div>
+      </td>
+      <td class="py-3 px-2">${user.email || '-'}</td>
+      <td class="py-3 px-2">
+        <span class="px-2 py-0.5 ${user.role === 'admin' ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-blue-600'} text-xs rounded-full">
+          ${user.role === 'admin' ? '管理员' : '普通用户'}
+        </span>
+      </td>
+      <td class="py-3 px-2 text-gray-500">${new Date(user.created_at).toLocaleDateString('zh-CN')}</td>
+      <td class="py-3 px-2 text-gray-500">${user.last_login_ip || '-'}</td>
+      <td class="py-3 px-2">
+        <span class="px-2 py-0.5 ${user.is_banned ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'} text-xs rounded-full">
+          ${user.is_banned ? '已封禁' : '正常'}
+        </span>
+      </td>
+      <td class="py-3 px-2">
+        <div class="flex gap-1">
+          <button class="text-blue-500 text-sm p-1 viewUserBtn" title="查看详情" data-user-id="${user.id}">
+            <i class="fa fa-eye"></i>
+          </button>
+          <button class="text-green-600 text-sm p-1 editUserBtn" title="编辑" data-user-id="${user.id}">
+            <i class="fa fa-pencil"></i>
+          </button>
+          ${user.is_banned ? 
+            `<button class="text-green-600 text-sm p-1 unbanUserBtn" title="解封" data-user-id="${user.id}">
+              <i class="fa fa-check-circle"></i>
+            </button>` : 
+            `<button class="text-orange-500 text-sm p-1 banUserBtn" title="封禁" data-user-id="${user.id}">
+              <i class="fa fa-ban"></i>
+            </button>`
+          }
+          <button class="text-red-500 text-sm p-1 deleteUserBtn" title="删除" data-user-id="${user.id}">
+            <i class="fa fa-trash"></i>
+          </button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+  
+  // 更新用户总数显示
+  document.querySelector('#userSection .text-gray-500').textContent = `显示 1-${Math.min(users.length, 10)} 条，共 ${users.length} 条`;
+}
+
+// 显示错误信息在用户管理区域
+function showErrorInUserSection(message) {
+  const tbody = document.getElementById('userTableBody');
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="9" class="py-8 text-center text-red-500">
+        <i class="fa fa-exclamation-circle text-4xl mb-2"></i>
+        <p>${message}</p>
+        <button class="btn btn-primary mt-4" onclick="loadUsersFromAPI()">重新加载</button>
+      </td>
+    </tr>
+  `;
+}
+
+// 用户操作事件监听器
+document.addEventListener('click', function(e) {
+  // 查看用户详情
+  if (e.target.closest('.viewUserBtn')) {
+    const userId = e.target.closest('.viewUserBtn').dataset.userId;
+    viewUserDetail(userId);
+  }
+  
+  // 编辑用户
+  if (e.target.closest('.editUserBtn')) {
+    const userId = e.target.closest('.editUserBtn').dataset.userId;
+    editUser(userId);
+  }
+  
+  // 封禁用户
+  if (e.target.closest('.banUserBtn')) {
+    const userId = e.target.closest('.banUserBtn').dataset.userId;
+    banUser(userId);
+  }
+  
+  // 解封用户
+  if (e.target.closest('.unbanUserBtn')) {
+    const userId = e.target.closest('.unbanUserBtn').dataset.userId;
+    unbanUser(userId);
+  }
+  
+  // 删除用户
+  if (e.target.closest('.deleteUserBtn')) {
+    const userId = e.target.closest('.deleteUserBtn').dataset.userId;
+    deleteUser(userId);
+  }
+});
+
+// 用户操作函数
+async function viewUserDetail(userId) {
+  try {
+    const response = await fetch(`http://localhost:8081/api/admin/users/${userId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const result = await response.json();
+    if (result.code === 200) {
+      const user = result.data.user;
+      // 填充详情弹窗
+      document.getElementById('detailUserAvatar').src = `https://ui-avatars.com/api/?name=${user.username}&background=4169ff&color=fff&size=128`;
+      document.getElementById('detailUserName').textContent = user.username;
+      document.getElementById('detailUserEmail').textContent = user.email || '-';
+      document.getElementById('detailUserId').textContent = user.user_id || user.id;
+      document.getElementById('detailUserType').textContent = user.role === 'admin' ? '管理员' : (user.role === 'vip' ? 'VIP用户' : '普通用户');
+      document.getElementById('detailRegisterTime').textContent = user.created_at ? new Date(user.created_at).toLocaleDateString('zh-CN') : '-';
+      document.getElementById('detailLastLoginIP').textContent = user.last_login_ip || '-';
+
+      // 设置状态徽章
+      const statusBadge = document.getElementById('detailUserStatusBadge');
+      if (user.is_banned) {
+        statusBadge.textContent = '已封禁';
+        statusBadge.className = 'inline-block px-2 py-1 rounded text-xs bg-red-50 text-red-600';
+      } else {
+        statusBadge.textContent = '活跃';
+        statusBadge.className = 'inline-block px-2 py-1 rounded text-xs bg-green-50 text-green-600';
+      }
+
+      // 存储用户ID用于编辑/删除
+      document.getElementById('detailUserId').dataset.userId = user.id;
+
+      // 显示弹窗
+      document.getElementById('modalUserDetail').style.display = 'flex';
+    } else {
+      showToast('获取用户详情失败: ' + result.msg);
+    }
+  } catch (error) {
+    showToast('网络错误: ' + error.message);
+  }
+}
+
+async function editUser(userId) {
+  try {
+    // 先获取用户详情
+    const response = await fetch(`http://localhost:8081/api/admin/users/${userId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const result = await response.json();
+    if (result.code === 200) {
+      const user = result.data.user;
+
+      // 填充编辑表单
+      document.getElementById('userModalTitle').textContent = '编辑用户';
+      document.getElementById('userName').value = user.username;
+      document.getElementById('userEmail').value = user.email || '';
+      document.getElementById('userPassword').value = '';
+      document.getElementById('userType').value = user.role === 'admin' ? 'admin' : (user.role === 'vip' ? 'vip' : 'normal');
+      document.getElementById('userStatus').value = user.is_banned ? 'banned' : 'active';
+      document.getElementById('saveUserBtn').dataset.userId = userId;
+
+      // 显示编辑弹窗
+      document.getElementById('modalUser').style.display = 'flex';
+    } else {
+      showToast('获取用户信息失败: ' + result.msg);
+    }
+  } catch (error) {
+    showToast('网络错误: ' + error.message);
+  }
+}
+
+async function banUser(userId) {
+  document.getElementById('banUserId').value = userId;
+  document.getElementById('banReason').value = '';
+  document.getElementById('modalBanUser').style.display = 'flex';
+}
+
+// 封禁确认
+document.getElementById('confirmBanUserBtn')?.addEventListener('click', async function() {
+  const userId = document.getElementById('banUserId').value;
+  const reason = document.getElementById('banReason').value;
+
+  try {
+    const response = await fetch(`http://localhost:8081/api/admin/users/${userId}/ban`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ reason: reason })
+    });
+
+    const result = await response.json();
+    if (result.code === 200) {
+      showToast('用户封禁成功');
+      document.getElementById('modalBanUser').style.display = 'none';
+      loadUsersFromAPI();
+    } else {
+      showToast('封禁失败: ' + result.msg);
+    }
+  } catch (error) {
+    showToast('网络错误: ' + error.message);
+  }
+});
+
+async function unbanUser(userId) {
+  document.getElementById('unbanUserId').value = userId;
+  document.getElementById('modalUnbanUser').style.display = 'flex';
+}
+
+// 解封确认
+document.getElementById('confirmUnbanUserBtn')?.addEventListener('click', async function() {
+  const userId = document.getElementById('unbanUserId').value;
+
+  try {
+    const response = await fetch(`http://localhost:8081/api/admin/users/${userId}/unban`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const result = await response.json();
+    if (result.code === 200) {
+      showToast('用户解封成功');
+      document.getElementById('modalUnbanUser').style.display = 'none';
+      loadUsersFromAPI();
+    } else {
+      showToast('解封失败: ' + result.msg);
+    }
+  } catch (error) {
+    showToast('网络错误: ' + error.message);
+  }
+});
+
+async function deleteUser(userId) {
+  document.getElementById('deleteUserId').value = userId;
+  document.getElementById('modalDeleteUser').style.display = 'flex';
+}
+
+// 删除确认
+document.getElementById('confirmDeleteUserBtn')?.addEventListener('click', async function() {
+  const userId = document.getElementById('deleteUserId').value;
+
+  try {
+    const response = await fetch(`http://localhost:8081/api/admin/users/${userId}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const result = await response.json();
+    if (result.code === 200) {
+      showToast('用户删除成功');
+      document.getElementById('modalDeleteUser').style.display = 'none';
+      loadUsersFromAPI();
+    } else {
+      showToast('删除失败: ' + result.msg);
+    }
+  } catch (error) {
+    showToast('网络错误: ' + error.message);
+  }
+});
+
+// 详情弹窗中的编辑和删除按钮
+document.addEventListener('click', async function(e) {
+  // 详情弹窗中的编辑按钮
+  if (e.target.closest('.editUserFromDetailBtn')) {
+    const userId = document.getElementById('detailUserId')?.textContent?.replace('U', '');
+    if (userId) {
+      document.getElementById('modalUserDetail').style.display = 'none';
+      editUser(userId);
+    }
+  }
+
+  // 详情弹窗中的删除按钮
+  if (e.target.closest('.deleteUserFromDetailBtn')) {
+    const userId = document.getElementById('detailUserId')?.textContent?.replace('U', '');
+    if (userId) {
+      document.getElementById('modalUserDetail').style.display = 'none';
+      deleteUser(userId);
+    }
+  }
+});
+
+// 修复上传区域相关的addEventListener错误
+document.addEventListener('DOMContentLoaded', function() {
+  // 安全地添加上传区域事件监听器
+  const mainUploadArea = document.getElementById('mainUploadArea');
+  if (mainUploadArea) {
+    mainUploadArea.addEventListener('click', () => {
+      const mainFileInput = document.getElementById('mainFileInput');
+      if (mainFileInput) {
+        mainFileInput.click();
+      }
+    });
+  }
+  
+  const mainFileInput = document.getElementById('mainFileInput');
+  if (mainFileInput) {
+    mainFileInput.addEventListener('change', function() {
+      if (this.files.length > 0) {
+        const mainUploadList = document.getElementById('mainUploadList');
+        if (mainUploadList) {
+          mainUploadList.style.display = 'block';
+          showToast(`已选择 ${this.files.length} 个文件`);
+        }
+      }
+    });
+  }
+});
+
+</script>
+
+</body>
+</html>
+            
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 用户管理 -->
+    <div class="card p-5 hidden" id="userSection">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
+        <h2 class="text-lg font-semibold">用户管理</h2>
+        <div class="flex gap-2">
+          <div class="relative">
+            <input type="text" placeholder="搜索用户名/邮箱/IP" class="pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500" id="userSearchInput">
+            <i class="fa fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+          </div>
+          <button class="btn btn-primary px-3 py-1.5 text-sm" id="addUserBtn">
+            <i class="fa fa-user-plus mr-1"></i> 添加用户
+          </button>
+        </div>
+      </div>
+
+      <!-- 用户筛选工具栏 -->
+      <div class="flex gap-2 mb-4 flex-wrap">
+        <select class="btn btn-light px-3 py-1 text-sm outline-none" id="userStatusFilter">
+          <option value="">全部状态</option>
+          <option value="active">活跃</option>
+          <option value="banned">已封禁</option>
+          <option value="pending">待审核</option>
+        </select>
+        <select class="btn btn-light px-3 py-1 text-sm outline-none" id="userTypeFilter">
+          <option value="">全部类型</option>
+          <option value="normal">普通用户</option>
+          <option value="vip">VIP用户</option>
+          <option value="admin">管理员</option>
+        </select>
+        <button class="btn btn-light px-3 py-1 text-sm" id="refreshUsersBtn">
+          <i class="fa fa-refresh mr-1"></i> 刷新
+        </button>
+        <button class="btn btn-light px-3 py-1 text-sm" id="exportUsersBtn">
+          <i class="fa fa-download mr-1"></i> 导出
+        </button>
+      </div>
+
+      <!-- 用户列表表格 -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm" id="userTable">
+          <thead>
+            <tr class="border-b border-gray-100">
+              <th class="py-3 px-2 text-left font-medium text-gray-500 w-10">
+                <input type="checkbox" class="rounded" id="userHeaderCheckbox">
+              </th>
+              <th class="py-3 px-2 text-left font-medium text-gray-500">用户ID</th>
+              <th class="py-3 px-2 text-left font-medium text-gray-500">用户名</th>
+              <th class="py-3 px-2 text-left font-medium text-gray-500">邮箱</th>
+              <th class="py-3 px-2 text-left font-medium text-gray-500">用户类型</th>
+              <th class="py-3 px-2 text-left font-medium text-gray-500">注册时间</th>
+              <th class="py-3 px-2 text-left font-medium text-gray-500">最后登录</th>
+              <th class="py-3 px-2 text-left font-medium text-gray-500">状态</th>
+              <th class="py-3 px-2 text-left font-medium text-gray-500 w-32">操作</th>
+            </tr>
+          </thead>
+          <tbody id="userTableBody">
+
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 批量操作工具栏 -->
+      <div class="flex gap-2 mt-4 mb-4 flex-wrap">
+        <button class="btn btn-light px-3 py-1 text-sm" id="selectAllUsersBtn">
+          <i class="fa fa-check-square-o mr-1"></i> 全选
+        </button>
+        <button class="btn btn-light px-3 py-1 text-sm" id="selectNoneUsersBtn">
+          <i class="fa fa-square-o mr-1"></i> 取消全选
+        </button>
+        <button class="btn btn-light px-3 py-1 text-sm" id="batchBanBtn">
+          <i class="fa fa-ban mr-1"></i> 批量封禁
+        </button>
+        <button class="btn btn-light px-3 py-1 text-sm" id="batchUnbanBtn">
+          <i class="fa fa-check-circle mr-1"></i> 批量解封
+        </button>
+        <button class="btn btn-danger px-3 py-1 text-sm" id="batchDeleteUsersBtn">
+          <i class="fa fa-trash mr-1"></i> 批量删除
+        </button>
+      </div>
+
+      <!-- 用户分页 -->
+      <div class="flex justify-between items-center mt-4 text-sm">
+        <div class="text-gray-500">显示 1-4 条，共 1,258 条</div>
+        <div class="flex gap-1">
+          <button class="btn btn-light w-8 h-8 flex items-center justify-center p-0">«</button>
+          <button class="btn btn-light w-8 h-8 flex items-center justify-center p-0 bg-blue-50 text-blue-600">1</button>
+          <button class="btn btn-light w-8 h-8 flex items-center justify-center p-0">2</button>
+          <button class="btn btn-light w-8 h-8 flex items-center justify-center p-0">3</button>
+          <button class="btn btn-light w-8 h-8 flex items-center justify-center p-0">»</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 系统设置 -->
+    <div class="card p-5 hidden" id="settingSection">
+      <h2 class="text-lg font-semibold mb-6">系统设置</h2>
+
+      <div class="space-y-6">
+        <!-- 基本设置 -->
+        <div>
+          <h3 class="text-sm font-semibold text-gray-700 mb-3 pb-2 border-b border-gray-100">基本设置</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="text-sm text-gray-700 mb-1 block">站点名称</label>
+              <input type="text" value="随机图API" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
+            </div>
+            <div>
+              <label class="text-sm text-gray-700 mb-1 block">站点域名</label>
+              <input type="text" value="https://api.example.com" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
+            </div>
+            <div>
+              <label class="text-sm text-gray-700 mb-1 block">管理员邮箱</label>
+              <input type="email" value="admin@example.com" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
+            </div>
+            <div>
+              <label class="text-sm text-gray-700 mb-1 block">时区设置</label>
+              <select class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
+                <option selected>Asia/Shanghai (UTC+8)</option>
+                <option>America/New_York (UTC-5)</option>
+                <option>Europe/London (UTC+0)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- API设置 -->
+        <div>
+          <h3 class="text-sm font-semibold text-gray-700 mb-3 pb-2 border-b border-gray-100">API设置</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="text-sm text-gray-700 mb-1 block">随机图接口</label>
+              <input type="text" value="/random" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50" readonly>
+            </div>
+            <div>
+              <label class="text-sm text-gray-700 mb-1 block">按分类获取接口</label>
+              <input type="text" value="/image?category={name}" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50" readonly>
+            </div>
+            <div>
+              <label class="text-sm text-gray-700 mb-1 block">请求频率限制</label>
+              <select class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
+                <option>无限制</option>
+                <option selected>每IP每分钟 60 次</option>
+                <option>每IP每小时 1000 次</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-sm text-gray-700 mb-1 block">返回格式</label>
+              <select class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
+                <option selected>JSON</option>
+                <option>图片直链 (302重定向)</option>
+                <option>HTML嵌入</option>
+              </select>
+            </div>
+          </div>
+          <div class="mt-4 p-3 bg-blue-50 rounded-lg">
+            <div class="text-xs font-medium text-blue-700 mb-1">API使用示例</div>
+            <div class="text-xs text-blue-600 font-mono bg-white p-2 rounded">
+              curl https://api.example.com/random
+            </div>
+          </div>
+        </div>
+
+        <!-- 安全设置 -->
+        <div>
+          <h3 class="text-sm font-semibold text-gray-700 mb-3 pb-2 border-b border-gray-100">安全设置</h3>
+          <div class="space-y-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="text-sm font-medium">启用访问日志</div>
+                <div class="text-xs text-gray-400">记录所有API请求日志</div>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" checked class="sr-only peer">
+                <div class="w-11 h-6 bg-gray-200 peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+              </label>
+            </div>
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="text-sm font-medium">启用路径穿越防护</div>
+                <div class="text-xs text-gray-400">防止恶意请求访问服务器其他目录</div>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" checked class="sr-only peer">
+                <div class="w-11 h-6 bg-gray-200 peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+              </label>
+            </div>
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="text-sm font-medium">启用防盗链</div>
+                <div class="text-xs text-gray-400">仅允许指定域名引用图片</div>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" class="sr-only peer">
+                <div class="w-11 h-6 bg-gray-200 peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+              </label>
+            </div>
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="text-sm font-medium">启用IP黑名单</div>
+                <div class="text-xs text-gray-400">封禁恶意IP访问</div>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" checked class="sr-only peer">
+                <div class="w-11 h-6 bg-gray-200 peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- 存储设置 -->
+        <div>
+          <h3 class="text-sm font-semibold text-gray-700 mb-3 pb-2 border-b border-gray-100">存储设置</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="text-sm text-gray-700 mb-1 block">存储类型</label>
+              <select class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
+                <option selected>本地存储</option>
+                <option>阿里云OSS</option>
+                <option>腾讯云COS</option>
+                <option>七牛云</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-sm text-gray-700 mb-1 block">存储路径</label>
+              <input type="text" value="/var/www/images" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
+            </div>
+            <div>
+              <label class="text-sm text-gray-700 mb-1 block">单文件大小限制</label>
+              <select class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
+                <option>2MB</option>
+                <option selected>5MB</option>
+                <option>10MB</option>
+                <option>20MB</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-sm text-gray-700 mb-1 block">允许的文件格式</label>
+              <input type="text" value="jpg,png,webp,gif" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
+            </div>
+          </div>
+        </div>
+
+        <!-- 缓存设置 -->
+        <div>
+          <h3 class="text-sm font-semibold text-gray-700 mb-3 pb-2 border-b border-gray-100">缓存设置</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="text-sm text-gray-700 mb-1 block">启用CDN加速</label>
+              <select class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
+                <option selected>是</option>
+                <option>否</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-sm text-gray-700 mb-1 block">CDN域名</label>
+              <input type="text" value="https://cdn.example.com" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
+            </div>
+            <div>
+              <label class="text-sm text-gray-700 mb-1 block">缓存过期时间</label>
+              <select class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
+                <option>1小时</option>
+                <option>6小时</option>
+                <option selected>24小时</option>
+                <option>7天</option>
+                <option>30天</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-3 pt-4">
+          <button class="btn btn-light px-4 py-2">重置默认</button>
+          <button class="btn btn-primary px-4 py-2" id="saveSettingsBtn">
+            <i class="fa fa-save mr-1"></i> 保存设置
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 操作日志 -->
+    <div class="card p-5 hidden" id="logSection">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
+        <h2 class="text-lg font-semibold">操作日志</h2>
+        <div class="flex gap-2">
+          <select class="btn btn-light px-3 py-1 text-sm outline-none">
+            <option>全部操作类型</option>
+            <option>上传</option>
+            <option>删除</option>
+            <option>修改</option>
+            <option>系统设置</option>
+          </select>
+          <button class="btn btn-light px-3 py-1 text-sm">
+            <i class="fa fa-download mr-1"></i> 导出日志
+          </button>
+          <button class="btn btn-light px-3 py-1 text-sm">
+            <i class="fa fa-trash mr-1"></i> 清空日志
+          </button>
+        </div>
+      </div>
+
+      <!-- 日志表格 -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-gray-100">
+              <th class="py-3 px-2 text-left font-medium text-gray-500">时间</th>
+              <th class="py-3 px-2 text-left font-medium text-gray-500">操作人</th>
+              <th class="py-3 px-2 text-left font-medium text-gray-500">操作类型</th>
+              <th class="py-3 px-2 text-left font-medium text-gray-500">操作内容</th>
+              <th class="py-3 px-2 text-left font-medium text-gray-500">IP地址</th>
+              <th class="py-3 px-2 text-left font-medium text-gray-500">状态</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="table-row border-b border-gray-50">
+              <td class="py-3 px-2 text-gray-500">2026-02-10 15:32:18</td>
+              <td class="py-3 px-2">admin</td>
+              <td class="py-3 px-2"><span class="px-2 py-0.5 bg-blue-50 text-blue-600 text-xs rounded-full">上传</span></td>
+              <td class="py-3 px-2">上传图片 anime_004.webp 到二次元分类</td>
+              <td class="py-3 px-2 text-gray-500">192.168.1.1</td>
+              <td class="py-3 px-2"><span class="text-green-500">成功</span></td>
+            </tr>
+            <tr class="table-row border-b border-gray-50">
+              <td class="py-3 px-2 text-gray-500">2026-02-10 15:28:45</td>
+              <td class="py-3 px-2">admin</td>
+              <td class="py-3 px-2"><span class="px-2 py-0.5 bg-red-50 text-red-600 text-xs rounded-full">删除</span></td>
+              <td class="py-3 px-2">删除图片 old_img_001.jpg</td>
+              <td class="py-3 px-2 text-gray-500">192.168.1.1</td>
+              <td class="py-3 px-2"><span class="text-green-500">成功</span></td>
+            </tr>
+            <tr class="table-row border-b border-gray-50">
+              <td class="py-3 px-2 text-gray-500">2026-02-10 14:56:22</td>
+              <td class="py-3 px-2">admin</td>
+              <td class="py-3 px-2"><span class="px-2 py-0.5 bg-yellow-50 text-yellow-600 text-xs rounded-full">修改</span></td>
+              <td class="py-3 px-2">重命名图片 nature_129.png 为 nature_129_new.png</td>
+              <td class="py-3 px-2 text-gray-500">192.168.1.1</td>
+              <td class="py-3 px-2"><span class="text-green-500">成功</span></td>
+            </tr>
+            <tr class="table-row border-b border-gray-50">
+              <td class="py-3 px-2 text-gray-500">2026-02-10 14:23:08</td>
+              <td class="py-3 px-2">admin</td>
+              <td class="py-3 px-2"><span class="px-2 py-0.5 bg-green-50 text-green-600 text-xs rounded-full">系统设置</span></td>
+              <td class="py-3 px-2">修改系统设置 - 请求频率限制: 每IP每分钟 60 次</td>
+              <td class="py-3 px-2 text-gray-500">192.168.1.1</td>
+              <td class="py-3 px-2"><span class="text-green-500">成功</span></td>
+            </tr>
+            <tr class="table-row border-b border-gray-50">
+              <td class="py-3 px-2 text-gray-500">2026-02-10 13:45:33</td>
+              <td class="py-3 px-2">admin</td>
+              <td class="py-3 px-2"><span class="px-2 py-0.5 bg-blue-50 text-blue-600 text-xs rounded-full">上传</span></td>
+              <td class="py-3 px-2">批量上传 5 张图片到人物分类</td>
+              <td class="py-3 px-2 text-gray-500">192.168.1.1</td>
+              <td class="py-3 px-2"><span class="text-green-500">成功</span></td>
+            </tr>
+            <tr class="table-row border-b border-gray-50">
+              <td class="py-3 px-2 text-gray-500">2026-02-10 11:20:15</td>
+              <td class="py-3 px-2">admin</td>
+              <td class="py-3 px-2"><span class="px-2 py-0.5 bg-yellow-50 text-yellow-600 text-xs rounded-full">修改</span></td>
+              <td class="py-3 px-2">移动图片 people_023.jpg 到自然风光分类</td>
+              <td class="py-3 px-2 text-gray-500">192.168.1.1</td>
+              <td class="py-3 px-2"><span class="text-green-500">成功</span></td>
+            </tr>
+            <tr class="table-row border-b border-gray-50">
+              <td class="py-3 px-2 text-gray-500">2026-02-10 10:05:47</td>
+              <td class="py-3 px-2">admin</td>
+              <td class="py-3 px-2"><span class="px-2 py-0.5 bg-green-50 text-green-600 text-xs rounded-full">系统设置</span></td>
+              <td class="py-3 px-2">修改系统设置 - 启用防盗链: 是</td>
+              <td class="py-3 px-2 text-gray-500">192.168.1.1</td>
+              <td class="py-3 px-2"><span class="text-green-500">成功</span></td>
+            </tr>
+            <tr class="table-row border-b border-gray-50">
+              <td class="py-3 px-2 text-gray-500">2026-02-09 23:18:56</td>
+              <td class="py-3 px-2">admin</td>
+              <td class="py-3 px-2"><span class="px-2 py-0.5 bg-blue-50 text-blue-600 text-xs rounded-full">上传</span></td>
+              <td class="py-3 px-2">上传图片 wallpaper_022.png 到壁纸分类</td>
+              <td class="py-3 px-2 text-gray-500">192.168.1.1</td>
+              <td class="py-3 px-2"><span class="text-green-500">成功</span></td>
+            </tr>
+            <tr class="table-row border-b border-gray-50">
+              <td class="py-3 px-2 text-gray-500">2026-02-09 18:42:30</td>
+              <td class="py-3 px-2">admin</td>
+              <td class="py-3 px-2"><span class="px-2 py-0.5 bg-purple-50 text-purple-600 text-xs rounded-full">分类管理</span></td>
+              <td class="py-3 px-2">新建分类 "壁纸"</td>
+              <td class="py-3 px-2 text-gray-500">192.168.1.1</td>
+              <td class="py-3 px-2"><span class="text-green-500">成功</span></td>
+            </tr>
+            <tr class="table-row border-b border-gray-50">
+              <td class="py-3 px-2 text-gray-500">2026-02-09 16:30:12</td>
+              <td class="py-3 px-2">admin</td>
+              <td class="py-3 px-2"><span class="px-2 py-0.5 bg-blue-50 text-blue-600 text-xs rounded-full">上传</span></td>
+              <td class="py-3 px-2">批量上传 12 张图片到二次元分类</td>
+              <td class="py-3 px-2 text-gray-500">192.168.1.1</td>
+              <td class="py-3 px-2"><span class="text-red-500">失败</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 日志分页 -->
+      <div class="flex justify-between items-center mt-4 text-sm">
+        <div class="text-gray-500">显示 1-10 条，共 2,456 条</div>
+        <div class="flex gap-1">
+          <button class="btn btn-light w-8 h-8 flex items-center justify-center p-0">«</button>
+          <button class="btn btn-light w-8 h-8 flex items-center justify-center p-0 bg-blue-50 text-blue-600">1</button>
+          <button class="btn btn-light w-8 h-8 flex items-center justify-center p-0">2</button>
+          <button class="btn btn-light w-8 h-8 flex items-center justify-center p-0">3</button>
+          <button class="btn btn-light w-8 h-8 flex items-center justify-center p-0">4</button>
+          <button class="btn btn-light w-8 h-8 flex items-center justify-center p-0">5</button>
+          <button class="btn btn-light w-8 h-8 flex items-center justify-center p-0">»</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 用户反馈 -->
+    <div class="card p-5 hidden" id="feedbackSection">
+      <h2 class="text-lg font-semibold mb-4">用户反馈 & 申诉</h2>
+
+      <!-- 反馈筛选 -->
+      <div class="flex gap-2 mb-4 flex-wrap">
+        <select class="btn btn-light px-3 py-1 text-sm outline-none">
+          <option>全部状态</option>
+          <option>未处理</option>
+          <option>处理中</option>
+          <option>已解决</option>
+          <option>已驳回</option>
+        </select>
+        <select class="btn btn-light px-3 py-1 text-sm outline-none">
+          <option>全部类型</option>
+          <option>申诉</option>
+          <option>建议</option>
+          <option>问题反馈</option>
+        </select>
+        <button class="btn btn-light px-3 py-1 text-sm">
+          <i class="fa fa-refresh mr-1"></i> 刷新
+        </button>
+        <button class="btn btn-light px-3 py-1 text-sm">
+          <i class="fa fa-download mr-1"></i> 导出
+        </button>
+      </div>
+
+      <!-- 反馈列表 -->
+      <div class="space-y-3">
+        <div class="border border-gray-100 rounded-xl p-4 hover:shadow-sm transition-shadow" data-feedback-id="1">
+          <div class="flex justify-between mb-2">
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 bg-red-50 text-red-600 text-xs rounded-full">未处理</span>
+              <span class="px-2 py-0.5 bg-blue-50 text-blue-600 text-xs rounded-full">申诉</span>
+            </div>
+            <span class="text-xs text-gray-400">2026-02-09 14:23</span>
+          </div>
+          <h3 class="text-sm font-medium mb-2">用户反馈访问 /image?path=xxx 被误拦，请求解封</h3>
+          <div class="text-xs text-gray-500 mb-3">
+            <p>用户ID：U20260209001 | IP：192.168.1.100 | 邮箱：user@example.com</p>
+            <p>请求链接：/image?path=二次元/anime_001.webp | 错误码：403</p>
+          </div>
+          <p class="text-sm mb-3">反馈内容：我正常访问二次元分类图片时被系统误判为非法请求，请求管理员核实并解封，谢谢！</p>
+          <div class="flex gap-2 justify-end">
+            <button class="btn btn-light px-3 py-1 text-xs viewFeedbackBtn">查看详情</button>
+            <button class="btn btn-light px-3 py-1 text-xs replyFeedbackBtn">回复用户</button>
+            <button class="btn btn-light px-3 py-1 text-xs processFeedbackBtn">标记处理中</button>
+            <button class="btn btn-success px-3 py-1 text-xs resolveFeedbackBtn">已处理</button>
+            <button class="btn btn-danger px-3 py-1 text-xs rejectFeedbackBtn">驳回</button>
+          </div>
+        </div>
+
+        <div class="border border-gray-100 rounded-xl p-4 hover:shadow-sm transition-shadow" data-feedback-id="2">
+          <div class="flex justify-between mb-2">
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 bg-blue-50 text-blue-600 text-xs rounded-full">处理中</span>
+              <span class="px-2 py-0.5 bg-green-50 text-green-600 text-xs rounded-full">建议</span>
+            </div>
+            <span class="text-xs text-gray-400">2026-02-08 10:15</span>
+          </div>
+          <h3 class="text-sm font-medium mb-2">建议增加更多二次元分类图片</h3>
+          <div class="text-xs text-gray-500 mb-3">
+            <p>用户ID：U20260208002 | IP：10.0.0.50 | 邮箱：suggest@example.com</p>
+          </div>
+          <p class="text-sm mb-3">反馈内容：目前二次元分类的图片数量较少，且分辨率大多偏低，建议增加更多2K/4K分辨率的高质量二次元壁纸。</p>
+          <div class="flex gap-2 justify-end">
+            <button class="btn btn-light px-3 py-1 text-xs viewFeedbackBtn">查看详情</button>
+            <button class="btn btn-light px-3 py-1 text-xs replyFeedbackBtn">回复用户</button>
+            <button class="btn btn-success px-3 py-1 text-xs resolveFeedbackBtn">已解决</button>
+            <button class="btn btn-danger px-3 py-1 text-xs rejectFeedbackBtn">驳回</button>
+          </div>
+        </div>
+
+        <div class="border border-gray-100 rounded-xl p-4 hover:shadow-sm transition-shadow" data-feedback-id="3">
+          <div class="flex justify-between mb-2">
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 bg-green-50 text-green-600 text-xs rounded-full">已解决</span>
+              <span class="px-2 py-0.5 bg-yellow-50 text-yellow-600 text-xs rounded-full">问题反馈</span>
+            </div>
+            <span class="text-xs text-gray-400">2026-02-07 09:08</span>
+          </div>
+          <h3 class="text-sm font-medium mb-2">部分图片加载速度过慢</h3>
+          <div class="text-xs text-gray-500 mb-3">
+            <p>用户ID：U20260207003 | IP：223.104.18.10 | 邮箱：feedback@example.com</p>
+          </div>
+          <p class="text-sm mb-3">反馈内容：访问/random接口获取图片时，部分图片加载时间超过3秒，希望能优化CDN加速。</p>
+          <div class="flex gap-2 justify-end">
+            <button class="btn btn-light px-3 py-1 text-xs viewFeedbackBtn">查看详情</button>
+            <button class="btn btn-light px-3 py-1 text-xs reopenFeedbackBtn">重新处理</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 反馈分页 -->
+      <div class="flex justify-between items-center mt-4 text-sm">
+        <div class="text-gray-500">显示 1-3 条，共 18 条</div>
+        <div class="flex gap-1">
+          <button class="btn btn-light w-8 h-8 flex items-center justify-center p-0">«</button>
+          <button class="btn btn-light w-8 h-8 flex items-center justify-center p-0 bg-blue-50 text-blue-600">1</button>
+          <button class="btn btn-light w-8 h-8 flex items-center justify-center p-0">2</button>
+          <button class="btn btn-light w-8 h-8 flex items-center justify-center p-0">»</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- 上传弹窗 -->
+<div id="modalUpload" class="modal fixed inset-0 bg-black/40 z-50 hidden items-center justify-center">
+  <div class="bg-white rounded-xl w-full max-w-md p-6">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="font-semibold">上传图片</h3>
+      <button class="closeModal text-gray-400 hover:text-gray-700">
+        <i class="fa fa-times"></i>
+      </button>
+    </div>
+    <div class="border-2 border-dashed border-gray-200 rounded-lg p-8 text-center mb-4 upload-area" id="uploadArea">
+      <i class="fa fa-cloud-upload text-3xl text-gray-300 mb-2"></i>
+      <p class="text-sm text-gray-500">点击或拖拽上传</p>
+      <p class="text-xs text-gray-400 mt-1">支持格式：jpg、png、webp | 单文件最大：5MB</p>
+      <input type="file" multiple accept="image/*" class="hidden" id="fileInput">
+    </div>
+    <!-- 上传文件列表 -->
+    <div id="uploadFileList" class="mb-4 hidden">
+      <div class="text-sm font-medium mb-2">待上传文件 (2/10)</div>
+      <div class="space-y-2 max-h-40 overflow-y-auto">
+        <div class="flex items-center justify-between p-2 border border-gray-100 rounded-lg">
+          <div class="flex items-center gap-2">
+            <i class="fa fa-file-image-o text-blue-500"></i>
+            <span class="text-xs">anime_004.webp</span>
+          </div>
+          <span class="text-xs text-gray-500">245KB</span>
+          <button class="text-red-400 hover:text-red-600 removeUploadFile">
+            <i class="fa fa-times"></i>
+          </button>
+        </div>
+        <div class="flex items-center justify-between p-2 border border-gray-100 rounded-lg">
+          <div class="flex items-center gap-2">
+            <i class="fa fa-file-image-o text-blue-500"></i>
+            <span class="text-xs">nature_130.jpg</span>
+          </div>
+          <span class="text-xs text-gray-500">320KB</span>
+          <button class="text-red-400 hover:text-red-600 removeUploadFile">
+            <i class="fa fa-times"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+    <!-- 分类选择 -->
+    <div class="mb-4">
+      <label class="text-sm text-gray-700 mb-1 block">选择分类</label>
+      <select class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
+        <option>二次元</option>
+        <option>人物</option>
+        <option>自然风光</option>
+        <option>壁纸</option>
+        <option>其他</option>
+      </select>
+    </div>
+    <div class="flex justify-end gap-2">
+      <button class="closeModal btn btn-light px-4 py-2">取消</button>
+      <button class="btn btn-primary px-4 py-2" id="startUploadBtn">开始上传</button>
+    </div>
+  </div>
+</div>
+
+<!-- 图片查看弹窗 -->
+<div id="modalViewImg" class="modal fixed inset-0 bg-black/80 z-50 hidden items-center justify-center">
+  <div class="bg-white rounded-xl w-full max-w-2xl p-6">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="font-semibold">图片详情</h3>
+      <button class="closeModal text-gray-400 hover:text-gray-700">
+        <i class="fa fa-times"></i>
+      </button>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div>
+        <img src="https://picsum.photos/800/600?1" class="w-full rounded-lg object-contain" id="viewImgPreview">
+      </div>
+      <div class="space-y-3">
+        <div>
+          <h4 class="text-xs text-gray-500">基本信息</h4>
+          <div class="mt-1 space-y-1 text-sm">
+            <p><span class="text-gray-500">文件名：</span>anime_001.webp</p>
+            <p><span class="text-gray-500">文件大小：</span>128KB</p>
+            <p><span class="text-gray-500">分辨率：</span>1920×1080</p>
+            <p><span class="text-gray-500">格式：</span>WebP</p>
+            <p><span class="text-gray-500">分类：</span>二次元</p>
+            <p><span class="text-gray-500">MD5：</span>8e7f9b8a7d6c5b4a3f2e1d0c9b8a7s6d</p>
+          </div>
+        </div>
+        <div>
+          <h4 class="text-xs text-gray-500">上传信息</h4>
+          <div class="mt-1 space-y-1 text-sm">
+            <p><span class="text-gray-500">上传时间：</span>2026-02-09 10:23</p>
+            <p><span class="text-gray-500">上传者：</span>admin</p>
+            <p><span class="text-gray-500">上传IP：</span>192.168.1.1</p>
+          </div>
+        </div>
+        <div>
+          <h4 class="text-xs text-gray-500">访问统计</h4>
+          <div class="mt-1 space-y-1 text-sm">
+            <p><span class="text-gray-500">总访问量：</span>1258</p>
+            <p><span class="text-gray-500">最后访问：</span>2026-02-10 08:45</p>
+          </div>
+        </div>
+        <div class="flex gap-2 mt-4">
+          <button class="btn btn-primary flex-1 px-3 py-2 text-sm">
+            <i class="fa fa-download mr-1"></i> 下载原图
+          </button>
+          <button class="btn btn-light flex-1 px-3 py-2 text-sm">
+            <i class="fa fa-link mr-1"></i> 复制链接
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 重命名弹窗 -->
+<div id="modalRename" class="modal fixed inset-0 bg-black/40 z-50 hidden items-center justify-center">
+  <div class="bg-white rounded-xl w-full max-w-md p-6">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="font-semibold">重命名图片</h3>
+      <button class="closeModal text-gray-400 hover:text-gray-700">
+        <i class="fa fa-times"></i>
+      </button>
+    </div>
+    <div class="space-y-4">
+      <div>
+        <label class="text-sm text-gray-700 mb-1 block">原文件名</label>
+        <input type="text" value="anime_001.webp" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50" readonly id="originalName">
+      </div>
+      <div>
+        <label class="text-sm text-gray-700 mb-1 block">新文件名</label>
+        <input type="text" value="anime_001_new.webp" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" id="newName">
+        <p class="text-xs text-gray-400 mt-1">提示：请勿修改文件扩展名，否则可能导致图片无法正常显示</p>
+      </div>
+    </div>
+    <div class="flex justify-end gap-2 mt-4">
+      <button class="closeModal btn btn-light px-4 py-2">取消</button>
+      <button class="btn btn-primary px-4 py-2" id="confirmRenameBtn">确认重命名</button>
+    </div>
+  </div>
+</div>
+
+<!-- 移动弹窗 -->
+<div id="modalMove" class="modal fixed inset-0 bg-black/40 z-50 hidden items-center justify-center">
+  <div class="bg-white rounded-xl w-full max-w-md p-6">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="font-semibold">移动图片</h3>
+      <button class="closeModal text-gray-400 hover:text-gray-700">
+        <i class="fa fa-times"></i>
+      </button>
+    </div>
+    <div class="space-y-4">
+      <div>
+        <label class="text-sm text-gray-700 mb-1 block">选中图片</label>
+        <div class="bg-gray-50 p-2 rounded-lg text-sm" id="moveFileList">
+          • anime_001.webp<br>• people_023.jpg
+        </div>
+      </div>
+      <div>
+        <label class="text-sm text-gray-700 mb-1 block">目标分类</label>
+        <select class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" id="targetCategory">
+          <option value="">请选择分类</option>
+          <option value="anime">二次元</option>
+          <option value="people">人物</option>
+          <option value="nature">自然风光</option>
+          <option value="wallpaper">壁纸</option>
+          <option value="other">其他</option>
+          <option value="new">创建新分类</option>
+        </select>
+        <!-- 新建分类输入框 -->
+        <div class="mt-2 hidden" id="newCategoryInput">
+          <input type="text" placeholder="输入新分类名称" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
+        </div>
+      </div>
+    </div>
+    <div class="flex justify-end gap-2 mt-4">
+      <button class="closeModal btn btn-light px-4 py-2">取消</button>
+      <button class="btn btn-primary px-4 py-2" id="confirmMoveBtn">确认移动</button>
+    </div>
+  </div>
+</div>
+
+<!-- 删除确认弹窗 -->
+<div id="modalDelete" class="modal fixed inset-0 bg-black/40 z-50 hidden items-center justify-center">
+  <div class="bg-white rounded-xl w-full max-w-md p-6">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="font-semibold">确认删除</h3>
+      <button class="closeModal text-gray-400 hover:text-gray-700">
+        <i class="fa fa-times"></i>
+      </button>
+    </div>
+    <div class="text-center mb-4">
+      <i class="fa fa-exclamation-triangle text-4xl text-yellow-500 mb-2"></i>
+      <p class="text-sm text-gray-700">你确定要删除选中的图片吗？</p>
+      <p class="text-xs text-red-500 mt-1">删除后将无法恢复，请谨慎操作！</p>
+    </div>
+    <div class="bg-gray-50 p-2 rounded-lg text-sm mb-4" id="deleteFileList">
+      • anime_001.webp<br>• people_023.jpg
+    </div>
+    <div class="flex justify-end gap-2">
+      <button class="closeModal btn btn-light px-4 py-2">取消</button>
+      <button class="btn btn-danger px-4 py-2" id="confirmDeleteBtn">确认删除</button>
+    </div>
+  </div>
+</div>
+
+<!-- 反馈详情弹窗 -->
+<div id="modalFeedbackDetail" class="modal fixed inset-0 bg-black/40 z-50 hidden items-center justify-center">
+  <div class="bg-white rounded-xl w-full max-w-2xl p-6">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="font-semibold">反馈详情</h3>
+      <button class="closeModal text-gray-400 hover:text-gray-700">
+        <i class="fa fa-times"></i>
+      </button>
+    </div>
+    <div class="space-y-4">
+      <div class="flex flex-wrap gap-2">
+        <span class="px-2 py-0.5 bg-red-50 text-red-600 text-xs rounded-full">未处理</span>
+        <span class="px-2 py-0.5 bg-blue-50 text-blue-600 text-xs rounded-full">申诉</span>
+        <span class="px-2 py-0.5 bg-gray-50 text-gray-600 text-xs rounded-full">2026-02-09 14:23</span>
+      </div>
+      <div>
+        <h4 class="text-sm font-medium mb-1">反馈标题</h4>
+        <p class="text-sm">用户反馈访问 /image?path=xxx 被误拦，请求解封</p>
+      </div>
+      <div>
+        <h4 class="text-sm font-medium mb-1">用户信息</h4>
+        <div class="grid grid-cols-2 gap-2 text-sm">
+          <p><span class="text-gray-500">用户ID：</span>U20260209001</p>
+          <p><span class="text-gray-500">IP地址：</span>192.168.1.100</p>
+          <p><span class="text-gray-500">邮箱：</span>user@example.com</p>
+          <p><span class="text-gray-500">设备：</span>Chrome/Windows 10</p>
+        </div>
+      </div>
+      <div>
+        <h4 class="text-sm font-medium mb-1">请求信息</h4>
+        <div class="bg-gray-50 p-3 rounded-lg text-sm">
+          <p>请求链接：/image?path=二次元/anime_001.webp</p>
+          <p>请求方法：GET</p>
+          <p>错误码：403 Forbidden</p>
+          <p>拦截原因：系统检测到疑似路径穿越攻击</p>
+          <p>请求时间：2026-02-09 14:20:15</p>
+        </div>
+      </div>
+      <div>
+        <h4 class="text-sm font-medium mb-1">反馈内容</h4>
+        <div class="bg-gray-50 p-3 rounded-lg text-sm">
+          我正常访问二次元分类图片时被系统误判为非法请求，请求管理员核实并解封，谢谢！这个图片是我常用的壁纸，没有任何违规内容。
+        </div>
+      </div>
+      <div>
+        <h4 class="text-sm font-medium mb-1">回复用户</h4>
+        <textarea class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm h-24" placeholder="输入回复内容..."></textarea>
+      </div>
+    </div>
+    <div class="flex justify-end gap-2 mt-4">
+      <button class="closeModal btn btn-light px-4 py-2">关闭</button>
+      <button class="btn btn-light px-4 py-2">保存草稿</button>
+      <button class="btn btn-primary px-4 py-2">发送回复</button>
+      <button class="btn btn-success px-4 py-2">标记已处理</button>
+    </div>
+  </div>
+</div>
+
+<!-- 新建/编辑分类弹窗 -->
+<div id="modalCategory" class="modal fixed inset-0 bg-black/40 z-50 hidden items-center justify-center">
+  <div class="bg-white rounded-xl w-full max-w-md p-6">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="font-semibold" id="categoryModalTitle">新建分类</h3>
+      <button class="closeModal text-gray-400 hover:text-gray-700">
+        <i class="fa fa-times"></i>
+      </button>
+    </div>
+    <div class="space-y-4">
+      <div>
+        <label class="text-sm text-gray-700 mb-1 block">分类名称</label>
+        <input type="text" placeholder="请输入分类名称" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" id="categoryName">
+      </div>
+      <div>
+        <label class="text-sm text-gray-700 mb-1 block">分类描述</label>
+        <textarea class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm h-20" placeholder="请输入分类描述..." id="categoryDesc"></textarea>
+      </div>
+      <div>
+        <label class="text-sm text-gray-700 mb-1 block">图标颜色</label>
+        <div class="flex gap-2 flex-wrap">
+          <label class="cursor-pointer">
+            <input type="radio" name="categoryColor" value="from-pink-500 to-pink-400" class="hidden peer">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-pink-500 to-pink-400 peer-checked:ring-2 peer-checked:ring-pink-500 peer-checked:ring-offset-2"></div>
+          </label>
+          <label class="cursor-pointer">
+            <input type="radio" name="categoryColor" value="from-blue-500 to-blue-400" class="hidden peer">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-400 peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:ring-offset-2"></div>
+          </label>
+          <label class="cursor-pointer">
+            <input type="radio" name="categoryColor" value="from-green-500 to-green-400" class="hidden peer">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-green-500 to-green-400 peer-checked:ring-2 peer-checked:ring-green-500 peer-checked:ring-offset-2"></div>
+          </label>
+          <label class="cursor-pointer">
+            <input type="radio" name="categoryColor" value="from-purple-500 to-purple-400" class="hidden peer">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-purple-400 peer-checked:ring-2 peer-checked:ring-purple-500 peer-checked:ring-offset-2"></div>
+          </label>
+          <label class="cursor-pointer">
+            <input type="radio" name="categoryColor" value="from-orange-500 to-orange-400" class="hidden peer">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-400 peer-checked:ring-2 peer-checked:ring-orange-500 peer-checked:ring-offset-2"></div>
+          </label>
+          <label class="cursor-pointer">
+            <input type="radio" name="categoryColor" value="from-red-500 to-red-400" class="hidden peer">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-red-500 to-red-400 peer-checked:ring-2 peer-checked:ring-red-500 peer-checked:ring-offset-2"></div>
+          </label>
+          <label class="cursor-pointer">
+            <input type="radio" name="categoryColor" value="from-cyan-500 to-cyan-400" class="hidden peer">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-cyan-400 peer-checked:ring-2 peer-checked:ring-cyan-500 peer-checked:ring-offset-2"></div>
+          </label>
+          <label class="cursor-pointer">
+            <input type="radio" name="categoryColor" value="from-indigo-500 to-indigo-400" class="hidden peer">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-400 peer-checked:ring-2 peer-checked:ring-indigo-500 peer-checked:ring-offset-2"></div>
+          </label>
+        </div>
+      </div>
+      <div>
+        <label class="text-sm text-gray-700 mb-1 block">图标</label>
+        <select class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" id="categoryIcon">
+          <option value="fa-star">⭐ 星星</option>
+          <option value="fa-user">👤 用户</option>
+          <option value="fa-leaf">🍃 叶子</option>
+          <option value="fa-picture-o">🖼️ 图片</option>
+          <option value="fa-heart">❤️ 心形</option>
+          <option value="fa-cloud">☁️ 云朵</option>
+          <option value="fa-sun">☀️ 太阳</option>
+          <option value="fa-moon">🌙 月亮</option>
+        </select>
+      </div>
+      <div class="flex items-center gap-2">
+        <input type="checkbox" id="categoryEnabled" checked class="rounded">
+        <label for="categoryEnabled" class="text-sm text-gray-700">启用该分类</label>
+      </div>
+    </div>
+    <div class="flex justify-end gap-2 mt-4">
+      <button class="closeModal btn btn-light px-4 py-2">取消</button>
+      <button class="btn btn-primary px-4 py-2" id="saveCategoryBtn">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 删除分类确认弹窗 -->
+<div id="modalDeleteCategory" class="modal fixed inset-0 bg-black/40 z-50 hidden items-center justify-center">
+  <div class="bg-white rounded-xl w-full max-w-md p-6">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="font-semibold">确认删除</h3>
+      <button class="closeModal text-gray-400 hover:text-gray-700">
+        <i class="fa fa-times"></i>
+      </button>
+    </div>
+    <div class="text-center mb-4">
+      <i class="fa fa-exclamation-triangle text-4xl text-yellow-500 mb-2"></i>
+      <p class="text-sm text-gray-700">你确定要删除选中的分类吗？</p>
+      <p class="text-xs text-red-500 mt-1">删除后将无法恢复，请谨慎操作！</p>
+    </div>
+    <div class="bg-gray-50 p-2 rounded-lg text-sm mb-4" id="deleteCategoryName"></div>
+    <div class="flex justify-end gap-2">
+      <button class="closeModal btn btn-light px-4 py-2">取消</button>
+      <button class="btn btn-danger px-4 py-2" id="confirmDeleteCategoryBtn">确认删除</button>
+    </div>
+  </div>
+</div>
+
+<!-- 添加/编辑用户弹窗 -->
+<div id="modalUser" class="modal fixed inset-0 bg-black/40 z-50 hidden items-center justify-center">
+  <div class="bg-white rounded-xl w-full max-w-md p-6">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="font-semibold" id="userModalTitle">添加用户</h3>
+      <button class="closeModal text-gray-400 hover:text-gray-700">
+        <i class="fa fa-times"></i>
+      </button>
+    </div>
+    <div class="space-y-4">
+      <div>
+        <label class="text-sm text-gray-700 mb-1 block">用户名 *</label>
+        <input type="text" placeholder="请输入用户名" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" id="userName">
+      </div>
+      <div>
+        <label class="text-sm text-gray-700 mb-1 block">邮箱 *</label>
+        <input type="email" placeholder="请输入邮箱地址" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" id="userEmail">
+      </div>
+      <div>
+        <label class="text-sm text-gray-700 mb-1 block">密码</label>
+        <input type="password" placeholder="留空则生成随机密码" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" id="userPassword">
+      </div>
+      <div>
+        <label class="text-sm text-gray-700 mb-1 block">用户类型</label>
+        <select class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" id="userType">
+          <option value="normal">普通用户</option>
+          <option value="vip">VIP用户</option>
+          <option value="admin">管理员</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-sm text-gray-700 mb-1 block">用户状态</label>
+        <select class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" id="userStatus">
+          <option value="active">活跃</option>
+          <option value="pending">待审核</option>
+          <option value="banned">已封禁</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-sm text-gray-700 mb-1 block">备注</label>
+        <textarea class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm h-20" placeholder="请输入备注信息..." id="userRemark"></textarea>
+      </div>
+    </div>
+    <div class="flex justify-end gap-2 mt-4">
+      <button class="closeModal btn btn-light px-4 py-2">取消</button>
+      <button class="btn btn-primary px-4 py-2" id="saveUserBtn">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 用户详情弹窗 -->
+<div id="modalUserDetail" class="modal fixed inset-0 bg-black/40 z-50 hidden items-center justify-center">
+  <div class="bg-white rounded-xl w-full max-w-md p-6">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="font-semibold">用户详情</h3>
+      <button class="closeModal text-gray-400 hover:text-gray-700">
+        <i class="fa fa-times"></i>
+      </button>
+    </div>
+    <div class="space-y-4">
+      <div class="flex flex-col items-center mb-4">
+        <img src="https://ui-avatars.com/api/?name=张三&background=4169ff&color=fff&size=128" class="w-20 h-20 rounded-full mb-2" id="detailUserAvatar">
+        <h4 class="text-lg font-semibold" id="detailUserName">张三</h4>
+        <p class="text-gray-500 text-sm" id="detailUserEmail">zhangsan@example.com</p>
+      </div>
+      <div>
+        <label class="text-xs text-gray-500 mb-1 block">用户ID</label>
+        <p class="text-sm" id="detailUserId">U20260209001</p>
+      </div>
+      <div>
+        <label class="text-xs text-gray-500 mb-1 block">用户类型</label>
+        <p class="text-sm" id="detailUserType">普通用户</p>
+      </div>
+      <div>
+        <label class="text-xs text-gray-500 mb-1 block">用户状态</label>
+        <span class="inline-block px-2 py-1 rounded text-xs" id="detailUserStatusBadge">活跃</span>
+      </div>
+      <div>
+        <label class="text-xs text-gray-500 mb-1 block">注册时间</label>
+        <p class="text-sm" id="detailRegisterTime">2026-02-09</p>
+      </div>
+      <div>
+        <label class="text-xs text-gray-500 mb-1 block">最后登录IP</label>
+        <p class="text-sm" id="detailLastLoginIP">192.168.1.100</p>
+      </div>
+    </div>
+    <div class="flex gap-2 mt-4">
+      <button class="closeModal btn btn-light flex-1 px-3 py-2 text-sm">
+        <i class="fa fa-times mr-1"></i> 关闭
+      </button>
+      <button class="btn btn-primary flex-1 px-3 py-2 text-sm editUserFromDetailBtn">
+        <i class="fa fa-pencil mr-1"></i> 编辑
+      </button>
+      <button class="btn btn-danger flex-1 px-3 py-2 text-sm deleteUserFromDetailBtn">
+        <i class="fa fa-trash mr-1"></i> 删除
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 确认封禁用户弹窗 -->
+<div id="modalBanUser" class="modal fixed inset-0 bg-black/40 z-50 hidden items-center justify-center">
+  <div class="bg-white rounded-xl w-full max-w-md p-6">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="font-semibold">确认封禁</h3>
+      <button class="closeModal text-gray-400 hover:text-gray-700">
+        <i class="fa fa-times"></i>
+      </button>
+    </div>
+    <div class="text-center mb-4">
+      <i class="fa fa-ban text-4xl text-orange-500 mb-2"></i>
+      <p class="text-sm text-gray-700">你确定要封禁该用户吗？</p>
+      <p class="text-xs text-orange-500 mt-1">封禁后用户将无法登录系统</p>
+    </div>
+    <input type="hidden" id="banUserId">
+    <div>
+      <label class="text-sm text-gray-700 mb-1 block">封禁原因（可选）</label>
+      <textarea class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm h-20" placeholder="请输入封禁原因..." id="banReason"></textarea>
+    </div>
+    <div class="flex justify-end gap-2 mt-4">
+      <button class="closeModal btn btn-light px-4 py-2">取消</button>
+      <button class="btn btn-warning px-4 py-2" id="confirmBanUserBtn">确认封禁</button>
+    </div>
+  </div>
+</div>
+
+<!-- 确认解封用户弹窗 -->
+<div id="modalUnbanUser" class="modal fixed inset-0 bg-black/40 z-50 hidden items-center justify-center">
+  <div class="bg-white rounded-xl w-full max-w-md p-6">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="font-semibold">确认解封</h3>
+      <button class="closeModal text-gray-400 hover:text-gray-700">
+        <i class="fa fa-times"></i>
+      </button>
+    </div>
+    <div class="text-center mb-4">
+      <i class="fa fa-check-circle text-4xl text-green-500 mb-2"></i>
+      <p class="text-sm text-gray-700">你确定要解封该用户吗？</p>
+      <p class="text-xs text-green-500 mt-1">解封后用户可以正常登录</p>
+    </div>
+    <input type="hidden" id="unbanUserId">
+    <div class="flex justify-end gap-2 mt-4">
+      <button class="closeModal btn btn-light px-4 py-2">取消</button>
+      <button class="btn btn-success px-4 py-2" id="confirmUnbanUserBtn">确认解封</button>
+    </div>
+  </div>
+</div>
+
+<!-- 确认删除用户弹窗 -->
+<div id="modalDeleteUser" class="modal fixed inset-0 bg-black/40 z-50 hidden items-center justify-center">
+  <div class="bg-white rounded-xl w-full max-w-md p-6">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="font-semibold">确认删除</h3>
+      <button class="closeModal text-gray-400 hover:text-gray-700">
+        <i class="fa fa-times"></i>
+      </button>
+    </div>
+    <div class="text-center mb-4">
+      <i class="fa fa-exclamation-triangle text-4xl text-red-500 mb-2"></i>
+      <p class="text-sm text-gray-700">你确定要删除该用户吗？</p>
+      <p class="text-xs text-red-500 mt-1">删除后将无法恢复，请谨慎操作！</p>
+    </div>
+    <input type="hidden" id="deleteUserId">
+    <div class="flex justify-end gap-2 mt-4">
+      <button class="closeModal btn btn-light px-4 py-2">取消</button>
+      <button class="btn btn-danger px-4 py-2" id="confirmDeleteUserBtn">确认删除</button>
+    </div>
+  </div>
+</div>
+
+<!-- 批量删除用户确认弹窗 -->
+<div id="modalBatchDeleteUsers" class="modal fixed inset-0 bg-black/40 z-50 hidden items-center justify-center">
+  <div class="bg-white rounded-xl w-full max-w-md p-6">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="font-semibold">确认批量删除</h3>
+      <button class="closeModal text-gray-400 hover:text-gray-700">
+        <i class="fa fa-times"></i>
+      </button>
+    </div>
+    <div class="text-center mb-4">
+      <i class="fa fa-exclamation-triangle text-4xl text-yellow-500 mb-2"></i>
+      <p class="text-sm text-gray-700">你确定要删除选中的 <span class="font-semibold text-red-500" id="batchDeleteCount">0</span> 个用户吗？</p>
+      <p class="text-xs text-red-500 mt-1">删除后将无法恢复，请谨慎操作！</p>
+    </div>
+    <div class="bg-gray-50 p-2 rounded-lg text-sm mb-4 max-h-32 overflow-y-auto" id="batchDeleteUserList">
+      <!-- 用户列表将在这里动态生成 -->
+    </div>
+    <div class="flex justify-end gap-2">
+      <button class="closeModal btn btn-light px-4 py-2">取消</button>
+      <button class="btn btn-danger px-4 py-2" id="confirmBatchDeleteUsersBtn">确认删除</button>
+    </div>
+  </div>
+</div>
+
+<!-- 删除分类确认弹窗 -->
+<div id="modalDeleteCategory" class="modal fixed inset-0 bg-black/40 z-50 hidden items-center justify-center">
+  <div class="bg-white rounded-xl w-full max-w-md p-6">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="font-semibold">确认删除分类</h3>
+      <button class="closeModal text-gray-400 hover:text-gray-700">
+        <i class="fa fa-times"></i>
+      </button>
+    </div>
+    <div class="text-center mb-4">
+      <i class="fa fa-exclamation-triangle text-4xl text-yellow-500 mb-2"></i>
+      <p class="text-sm text-gray-700">确定要删除分类 <span class="font-semibold" id="deleteCategoryNameSpan">二次元</span> 吗？</p>
+      <p class="text-xs text-red-500 mt-1">该分类下的 <span class="font-semibold" id="deleteCategoryCountSpan">1,258</span> 张图片将被移动到"其他"分类</p>
+    </div>
+    <div class="flex justify-end gap-2">
+      <button class="closeModal btn btn-light px-4 py-2">取消</button>
+      <button class="btn btn-danger px-4 py-2" id="confirmDeleteCategoryBtn">确认删除</button>
+    </div>
+  </div>
+</div>
+
+<!-- 提示弹窗 -->
+<div id="toast" class="toast fixed top-20 right-6 bg-green-50 border border-green-200 text-green-700 px-4 py-2 rounded-lg shadow-lg flex items-center z-50 hidden">
+  <i class="fa fa-check-circle mr-2"></i>
+  <span id="toastText">操作成功！</span>
+</div>
+
+<script>
+  // 通用关闭弹窗函数
+  function closeAllModals() {
+    document.querySelectorAll('.modal').forEach(modal => {
+      modal.style.display = 'none';
+    });
+    document.getElementById('toast').style.display = 'none';
+  }
+
+  // 显示提示框
+  function showToast(text) {
+    const toast = document.getElementById('toast');
+    const toastText = document.getElementById('toastText');
+    toastText.textContent = text;
+    toast.style.display = 'flex';
+    setTimeout(() => {
+      toast.style.display = 'none';
+    }, 3000);
+  }
+
+  // 初始化事件监听
+  document.addEventListener('DOMContentLoaded', function() {
+    // 侧边栏菜单激活
+    const sidebarItems = document.querySelectorAll('.sidebar-item');
+    sidebarItems.forEach(item => {
+      item.addEventListener('click', function() {
+        sidebarItems.forEach(i => i.classList.remove('active'));
+        this.classList.add('active');
+
+        // 隐藏所有页面
+        const sections = ['imgManageSection', 'uploadSection', 'categorySection', 'userSection', 'feedbackSection', 'settingSection', 'logSection'];
+        sections.forEach(section => {
+          const element = document.getElementById(section);
+          if (element) {
+            element.style.display = 'none';
+          }
+        });
+
+        // 根据菜单显示对应页面
+        switch(this.id) {
+          case 'menuImgManage':
+            document.getElementById('imgManageSection').style.display = 'block';
+            break;
+          case 'menuUpload':
+            document.getElementById('uploadSection').style.display = 'block';
+            break;
+          case 'menuCategory':
+            document.getElementById('categorySection').style.display = 'block';
+            break;
+          case 'menuUser':
+            document.getElementById('userSection').style.display = 'block';
+            loadUsersFromAPI(); // 从后端API加载用户数据
+            break;
+          case 'menuFeedback':
+            document.getElementById('feedbackSection').style.display = 'block';
+            break;
+          case 'menuSetting':
+            document.getElementById('settingSection').style.display = 'block';
+            break;
+          case 'menuLog':
+            document.getElementById('logSection').style.display = 'block';
+            break;
+        }
+
+        showToast(`已切换到${this.textContent.trim()}页面`);
+      });
+    });
+
+    // 关闭弹窗按钮
+    document.querySelectorAll('.closeModal').forEach(btn => {
+      btn.addEventListener('click', closeAllModals);
+    });
+
+    // 点击空白处关闭弹窗
+    document.querySelectorAll('.modal').forEach(modal => {
+      modal.addEventListener('click', function(e) {
+        if (e.target === this) closeAllModals();
+      });
+    });
+
+    // ==================== 上传页面功能 ====================
+    // 主上传区域
+    const mainUploadArea = document.getElementById('mainUploadArea');
+    document.getElementById('mainUploadArea').addEventListener('click', () => {
+      document.getElementById('mainFileInput').click();
+    });
+
+    // 主文件选择
+    document.getElementById('mainFileInput').addEventListener('change', function() {
+      if (this.files.length > 0) {
+        document.getElementById('mainUploadList').style.display = 'block';
+        showToast(`已选择 ${this.files.length} 个文件`);
+      }
+    });
+
+    // 移除上传文件
+    document.querySelectorAll('.removeMainUploadFile').forEach(btn => {
+      btn.addEventListener('click', function() {
+        this.closest('.border-gray-100').remove();
+        showToast('已移除该文件');
+      });
+    });
+
+    // 清空上传列表
+    document.getElementById('clearUploadListBtn').addEventListener('click', function() {
+      document.getElementById('uploadFileListContainer').innerHTML = '';
+      document.getElementById('mainUploadList').style.display = 'none';
+      showToast('已清空上传列表');
+    });
+
+    // 取消上传
+    document.getElementById('cancelUploadBtn').addEventListener('click', function() {
+      document.getElementById('mainUploadList').style.display = 'none';
+      showToast('已取消上传');
+    });
+
+    // 开始主上传
+    document.getElementById('startMainUploadBtn').addEventListener('click', function() {
+      const progressArea = document.getElementById('uploadProgressArea');
+      const progressBar = document.getElementById('uploadProgressBar');
+      const progressText = document.getElementById('uploadProgressText');
+
+      progressArea.style.display = 'block';
+      let progress = 0;
+      const interval = setInterval(() => {
+        progress += 10;
+        progressBar.style.width = progress + '%';
+        progressText.textContent = progress + '%';
+        if (progress >= 100) {
+          clearInterval(interval);
+          setTimeout(() => {
+            showToast('上传成功！已新增3张图片');
+            progressArea.style.display = 'none';
+            progressBar.style.width = '0%';
+            document.getElementById('mainUploadList').style.display = 'none';
+            document.getElementById('uploadFileListContainer').innerHTML = '';
+          }, 500);
+        }
+      }, 200);
+    });
+
+    // ==================== 分类管理功能 ====================
+    // 新建分类
+    document.getElementById('addCategoryBtn').addEventListener('click', function() {
+      document.getElementById('categoryModalTitle').textContent = '新建分类';
+      document.getElementById('categoryName').value = '';
+      document.getElementById('categoryDesc').value = '';
+      document.getElementById('modalCategory').style.display = 'flex';
+    });
+
+    // 编辑分类
+    document.querySelectorAll('.editCategoryBtn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const card = this.closest('.border-gray-100');
+        const name = card.querySelector('h3').textContent;
+        document.getElementById('categoryModalTitle').textContent = '编辑分类';
+        document.getElementById('categoryName').value = name;
+        document.getElementById('modalCategory').style.display = 'flex';
+      });
+    });
+
+    // 保存分类
+    document.getElementById('saveCategoryBtn').addEventListener('click', function() {
+      const name = document.getElementById('categoryName').value;
+      if (!name) {
+        showToast('请输入分类名称');
+        return;
+      }
+      closeAllModals();
+      showToast(`分类"${name}"保存成功！`);
+    });
+
+    // 删除分类
+    document.querySelectorAll('.deleteCategoryBtn').forEach(btn => {
+      btn.addEventListener('click', function(event) {
+        event.stopPropagation(); // 阻止事件冒泡
+        const card = this.closest('.border-gray-100');
+        const name = card.querySelector('h3').textContent;
+        const count = card.querySelector('p.text-gray-400').textContent;
+        document.getElementById('deleteCategoryNameSpan').textContent = name;
+        document.getElementById('deleteCategoryCountSpan').textContent = count;
+        document.getElementById('modalDeleteCategory').style.display = 'flex';
+      });
+    });
+
+    // 确认删除分类
+    document.getElementById('confirmDeleteCategoryBtn').addEventListener('click', function() {
+      closeAllModals();
+      showToast('分类删除成功！');
+    });
+
+    // ==================== 系统设置功能 ====================
+    // 保存设置
+    document.getElementById('saveSettingsBtn').addEventListener('click', function() {
+      showToast('系统设置保存成功！');
+    });
+
+    // ==================== 图片上传弹窗 (原有功能) ====================
+    const modalUpload = document.getElementById('modalUpload');
+    document.getElementById('btnUploadMain').addEventListener('click', () => {
+      modalUpload.style.display = 'flex';
+    });
+
+    // 上传区域点击触发文件选择
+    document.getElementById('uploadArea').addEventListener('click', () => {
+      document.getElementById('fileInput').click();
+    });
+
+    // 文件选择后显示文件列表
+    document.getElementById('fileInput').addEventListener('change', function() {
+      if (this.files.length > 0) {
+        document.getElementById('uploadFileList').style.display = 'block';
+        showToast(`已选择 ${this.files.length} 个文件`);
+      }
+    });
+
+    // 移除上传文件
+    document.querySelectorAll('.removeUploadFile').forEach(btn => {
+      btn.addEventListener('click', function() {
+        this.closest('div').remove();
+        showToast('已移除该文件');
+      });
+    });
+
+    // 开始上传
+    document.getElementById('startUploadBtn').addEventListener('click', function() {
+      closeAllModals();
+      showToast('开始上传，预计耗时3秒...');
+      setTimeout(() => {
+        showToast('上传成功！已新增2张图片');
+      }, 1000);
+    });
+
+    // 全选/取消全选
+    document.getElementById('headerCheckbox').addEventListener('change', function() {
+      const isChecked = this.checked;
+      document.querySelectorAll('.imgCheckbox').forEach(checkbox => {
+        checkbox.checked = isChecked;
+      });
+      showToast(isChecked ? '已全选所有图片' : '已取消全选');
+    });
+    document.getElementById('selectAllBtn').addEventListener('click', function() {
+      document.querySelectorAll('.imgCheckbox').forEach(checkbox => {
+        checkbox.checked = true;
+      });
+      document.getElementById('headerCheckbox').checked = true;
+      showToast('已全选所有图片');
+    });
+    document.getElementById('selectNoneBtn').addEventListener('click', function() {
+      document.querySelectorAll('.imgCheckbox').forEach(checkbox => {
+        checkbox.checked = false;
+      });
+      document.getElementById('headerCheckbox').checked = false;
+      showToast('已取消全选');
+    });
+
+    // 查看图片详情
+    document.querySelectorAll('.viewImgBtn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.getElementById('modalViewImg').style.display = 'flex';
+        // 模拟加载图片信息
+        const imgSrc = this.closest('tr').querySelector('.imgPreview').src;
+        document.getElementById('viewImgPreview').src = imgSrc.replace('64/64', '800/600');
+      });
+    });
+
+    // 重命名图片
+    document.querySelectorAll('.renameImgBtn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.getElementById('modalRename').style.display = 'flex';
+        const fileName = this.closest('tr').querySelector('td:nth-child(4)').textContent;
+        document.getElementById('originalName').value = fileName;
+        document.getElementById('newName').value = fileName.replace('.', '_new.');
+      });
+    });
+    document.getElementById('confirmRenameBtn').addEventListener('click', function() {
+      closeAllModals();
+      showToast('图片重命名成功！');
+    });
+    document.getElementById('renameSelectedBtn').addEventListener('click', function() {
+      document.getElementById('modalRename').style.display = 'flex';
+    });
+
+    // 移动图片
+    document.querySelectorAll('.moveImgBtn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.getElementById('modalMove').style.display = 'flex';
+      });
+    });
+    document.getElementById('moveSelectedBtn').addEventListener('click', function() {
+      document.getElementById('modalMove').style.display = 'flex';
+    });
+    // 新建分类显示输入框
+    document.getElementById('targetCategory').addEventListener('change', function() {
+      if (this.value === 'new') {
+        document.getElementById('newCategoryInput').style.display = 'block';
+      } else {
+        document.getElementById('newCategoryInput').style.display = 'none';
+      }
+    });
+    document.getElementById('confirmMoveBtn').addEventListener('click', function() {
+      closeAllModals();
+      showToast('图片移动成功！');
+    });
+
+    // 删除图片
+    document.querySelectorAll('.deleteImgBtn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.getElementById('modalDelete').style.display = 'flex';
+        const fileName = this.closest('tr').querySelector('td:nth-child(4)').textContent;
+        document.getElementById('deleteFileList').innerHTML = `• ${fileName}`;
+      });
+    });
+    document.getElementById('deleteSelectedBtn').addEventListener('click', function() {
+      document.getElementById('modalDelete').style.display = 'flex';
+    });
+    document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
+      closeAllModals();
+      showToast('图片删除成功！');
+      // 模拟删除行
+      document.querySelectorAll('.imgCheckbox:checked').forEach(checkbox => {
+        checkbox.closest('tr').remove();
+      });
+    });
+
+    // 下载图片
+    document.querySelectorAll('.downloadImgBtn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        showToast('开始下载图片...');
+      });
+    });
+    document.getElementById('downloadSelectedBtn').addEventListener('click', function() {
+      showToast('开始批量下载选中的图片...');
+    });
+
+    // 反馈相关
+    document.querySelectorAll('.viewFeedbackBtn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.getElementById('modalFeedbackDetail').style.display = 'flex';
+      });
+    });
+    document.querySelectorAll('.resolveFeedbackBtn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        showToast('反馈已标记为已处理！');
+        this.closest('.border').querySelector('.bg-red-50')?.classList.replace('bg-red-50', 'bg-green-50');
+        this.closest('.border').querySelector('.text-red-600')?.classList.replace('text-red-600', 'text-green-600');
+        this.closest('.border').querySelector('.rounded-full').textContent = '已解决';
+      });
+    });
+    document.querySelectorAll('.rejectFeedbackBtn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        if (confirm('确定要驳回该反馈吗？')) {
+          showToast('反馈已驳回！');
+          this.closest('.border').querySelector('.bg-red-50')?.classList.replace('bg-red-50', 'bg-gray-50');
+          this.closest('.border').querySelector('.text-red-600')?.classList.replace('text-red-600', 'text-gray-600');
+          this.closest('.border').querySelector('.rounded-full').textContent = '已驳回';
+        }
+      });
+    });
+    document.querySelectorAll('.replyFeedbackBtn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.getElementById('modalFeedbackDetail').style.display = 'flex';
+        showToast('正在打开回复界面...');
+      });
+    });
+
+    // 退出登录
+    document.getElementById('logoutBtn').addEventListener('click', function() {
+      if (confirm('确定要退出登录吗？')) {
+        showToast('已成功退出登录！');
+        setTimeout(() => {
+          window.location.href = 'login.html';
+        }, 1000);
+      }
+    });
+
+    // 所有按钮添加点击反馈
+    document.querySelectorAll('.btn').forEach(btn => {
+      btn.addEventListener('click', function(e) {
+        // 避免重复触发
+        if (this.classList.contains('closeModal')) return;
+        this.classList.add('opacity-80');
+        setTimeout(() => {
+          this.classList.remove('opacity-80');
+        }, 150);
+      });
+    });
+
+    // ==================== 主题切换功能 ====================
+    // 检查本地存储的主题设置
+    const savedTheme = localStorage.getItem('theme');
+    const themeIcon = document.getElementById('themeIcon');
+
+    // 应用主题
+    function applyTheme(theme) {
+      if (theme === 'dark') {
+        document.body.classList.add('dark-mode');
+        themeIcon.classList.remove('fa-sun-o');
+        themeIcon.classList.add('fa-moon-o');
+        themeIcon.classList.replace('text-gray-600', 'text-yellow-400');
+      } else {
+        document.body.classList.remove('dark-mode');
+        themeIcon.classList.remove('fa-moon-o');
+        themeIcon.classList.add('fa-sun-o');
+        themeIcon.classList.replace('text-yellow-400', 'text-gray-600');
+      }
+    }
+
+    // 初始化主题
+    if (savedTheme) {
+      applyTheme(savedTheme);
+    } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      // 如果没有保存的设置,但系统偏好是暗色模式
+      applyTheme('dark');
+    }
+
+    // 主题切换按钮点击事件
+    document.getElementById('themeToggleBtn').addEventListener('click', function() {
+      const isDarkMode = document.body.classList.contains('dark-mode');
+
+      if (isDarkMode) {
+        // 切换到亮色模式
+        applyTheme('light');
+        localStorage.setItem('theme', 'light');
+        showToast('已切换到日间模式');
+      } else {
+        // 切换到暗色模式
+        applyTheme('dark');
+        localStorage.setItem('theme', 'dark');
+        showToast('已切换到夜间模式');
+      }
+    });
+
+    // 初始化默认激活第一个菜单
+    document.getElementById('menuImgManage').classList.add('active');
+    // 默认显示图片管理页面
+    document.getElementById('imgManageSection').style.display = 'block';
+  });
+</script>
+
+</body>
+</html>

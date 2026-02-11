@@ -1,0 +1,2419 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>随机图片API - 全功能平台</title>
+    <!-- 引入Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入Font Awesome图标 - 多CDN竞争加载 -->
+    <script>
+    (function() {
+        var cdnList = [
+            'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css',
+            'https://cdn.bootcdn.net/ajax/libs/font-awesome/6.5.1/css/all.min.css',
+            'https://lib.baomitu.com/font-awesome/6.5.1/css/all.min.css'
+        ];
+        
+        var loaded = false;
+        var links = [];
+        
+        // 同时加载所有CDN
+        cdnList.forEach(function(cdn) {
+            var link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = cdn;
+            
+            link.onload = function() {
+                if (!loaded) {  // 第一个加载成功的
+                    loaded = true;
+                    console.log('✅ Font Awesome CDN加载成功:', cdn);
+                    // 移除其他未完成的链接
+                    links.forEach(function(l) {
+                        if (l !== link && l.parentNode) {
+                            l.parentNode.removeChild(l);
+                        }
+                    });
+                }
+            };
+            
+            links.push(link);
+            document.head.appendChild(link);
+        });
+    })();
+    </script>
+    <!-- 引入Chart.js用于统计展示 - 多CDN竞争加载 -->
+    <script>
+    (function() {
+        var cdnList = [
+            'https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js',
+            'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.8/chart.umd.min.js',
+            'https://unpkg.com/chart.js@4.4.8/dist/chart.umd.min.js'
+        ];
+        
+        var loaded = false;
+        var scripts = [];
+        
+        // 同时加载所有CDN
+        cdnList.forEach(function(cdn) {
+            var script = document.createElement('script');
+            script.src = cdn;
+            
+            script.onload = function() {
+                if (!loaded) {  // 第一个加载成功的
+                    loaded = true;
+                    console.log('✅ Chart.js CDN加载成功:', cdn);
+                    // 移除其他未完成的脚本
+                    scripts.forEach(function(s) {
+                        if (s !== script && s.parentNode) {
+                            s.parentNode.removeChild(s);
+                        }
+                    });
+                }
+            };
+            
+            scripts.push(script);
+            document.head.appendChild(script);
+        });
+    })();
+    </script>
+    <!-- 引入i18next用于多语言 - 多CDN竞争加载 -->
+    <script>
+    (function() {
+        var cdnList = [
+            'https://cdn.jsdelivr.net/npm/i18next@23.7.6/dist/umd/i18next.min.js',
+            'https://cdnjs.cloudflare.com/ajax/libs/i18next/23.7.6/i18next.min.js',
+            'https://unpkg.com/i18next@23.7.6/dist/umd/i18next.min.js'
+        ];
+        
+        var loaded = false;
+        var scripts = [];
+        
+        // 同时加载所有CDN
+        cdnList.forEach(function(cdn) {
+            var script = document.createElement('script');
+            script.src = cdn;
+            
+            script.onload = function() {
+                if (!loaded) {  // 第一个加载成功的
+                    loaded = true;
+                    console.log('✅ i18next CDN加载成功:', cdn);
+                    // 移除其他未完成的脚本
+                    scripts.forEach(function(s) {
+                        if (s !== script && s.parentNode) {
+                            s.parentNode.removeChild(s);
+                        }
+                    });
+                }
+            };
+            
+            scripts.push(script);
+            document.head.appendChild(script);
+        });
+    })();
+    </script>
+    <script>
+    (function() {
+        var cdnList = [
+            'https://cdn.jsdelivr.net/npm/i18next-browser-languagedetector@7.2.0/dist/umd/i18nextBrowserLanguageDetector.min.js',
+            'https://cdnjs.cloudflare.com/ajax/libs/i18next-browser-languagedetector/7.2.0/i18nextBrowserLanguageDetector.min.js',
+            'https://unpkg.com/i18next-browser-languagedetector@7.2.0/dist/umd/i18nextBrowserLanguageDetector.min.js'
+        ];
+        
+        var loaded = false;
+        var scripts = [];
+        
+        // 同时加载所有CDN
+        cdnList.forEach(function(cdn) {
+            var script = document.createElement('script');
+            script.src = cdn;
+            
+            script.onload = function() {
+                if (!loaded) {  // 第一个加载成功的
+                    loaded = true;
+                    console.log('✅ i18next Browser Language Detector CDN加载成功:', cdn);
+                    // 移除其他未完成的脚本
+                    scripts.forEach(function(s) {
+                        if (s !== script && s.parentNode) {
+                            s.parentNode.removeChild(s);
+                        }
+                    });
+                }
+            };
+            
+            scripts.push(script);
+            document.head.appendChild(script);
+        });
+    })();
+    </script>
+
+    <!-- 自定义Tailwind配置 -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#6366f1', // 靛蓝色主调
+                        secondary: '#10b981', // 翠绿色辅助色
+                        accent: '#f59e0b', // 琥珀色强调色
+                        dark: {
+                            100: '#1f2937',
+                            200: '#111827',
+                            300: '#030712'
+                        },
+                        light: {
+                            100: '#f9fafb',
+                            200: '#f3f4f6',
+                            300: '#e5e7eb'
+                        },
+                        muted: {
+                            dark: '#6b7280',
+                            light: '#9ca3af'
+                        }
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'SF Pro Display', 'system-ui', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        'glow': '0 0 20px rgba(99, 102, 241, 0.4)',
+                        'card': '0 8px 30px rgba(0, 0, 0, 0.12)',
+                        'card-dark': '0 8px 30px rgba(0, 0, 0, 0.3)'
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'fade-in': 'fadeIn 0.5s ease-in-out',
+                        'slide-up': 'slideUp 0.3s ease-out'
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' }
+                        },
+                        slideUp: {
+                            '0%': { transform: 'translateY(20px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' }
+                        }
+                    },
+                    screens: {
+                        '2xl': '1664px'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            /* 通用工具类 */
+            .text-gradient {
+                @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary;
+            }
+            .bg-gradient-main {
+                @apply bg-gradient-to-br from-primary/10 to-secondary/10 dark:from-primary/5 dark:to-secondary/5;
+            }
+            .bg-card {
+                @apply bg-white dark:bg-dark-100 rounded-xl shadow-card dark:shadow-card-dark transition-all duration-300;
+            }
+            .btn-primary {
+                @apply bg-primary text-white px-5 py-2.5 rounded-lg hover:bg-primary/90 active:bg-primary/80 transition-all duration-200 shadow-lg hover:shadow-glow focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50 disabled:cursor-not-allowed;
+            }
+            .btn-secondary {
+                @apply bg-secondary text-white px-5 py-2.5 rounded-lg hover:bg-secondary/90 active:bg-secondary/80 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-secondary/50 disabled:opacity-50 disabled:cursor-not-allowed;
+            }
+            .btn-outline {
+                @apply border border-primary/50 text-primary dark:text-primary px-5 py-2.5 rounded-lg hover:bg-primary/10 active:bg-primary/20 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/30;
+            }
+            .btn-text {
+                @apply text-muted-dark dark:text-muted-light hover:text-primary dark:hover:text-primary px-5 py-2.5 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/30;
+            }
+            .input-style {
+                @apply bg-light-200 dark:bg-dark-200 border border-light-300 dark:border-dark-300 rounded-lg px-4 py-2.5 text-dark-200 dark:text-light-100 focus:border-primary focus:ring-2 focus:ring-primary/30 outline-none transition-all;
+            }
+            .badge {
+                @apply px-2.5 py-0.5 rounded-full text-xs font-medium;
+            }
+            .badge-primary {
+                @apply bg-primary/10 text-primary dark:bg-primary/20;
+            }
+            .badge-secondary {
+                @apply bg-secondary/10 text-secondary dark:bg-secondary/20;
+            }
+            .badge-accent {
+                @apply bg-accent/10 text-accent dark:bg-accent/20;
+            }
+            .badge-green {
+                @apply bg-green-500/10 text-green-600 dark:bg-green-500/20 dark:text-green-400;
+            }
+            /* 滚动条美化 */
+            .custom-scrollbar::-webkit-scrollbar {
+                width: 6px;
+                height: 6px;
+            }
+            .custom-scrollbar::-webkit-scrollbar-track {
+                @apply bg-light-200 dark:bg-dark-200 rounded-full;
+            }
+            .custom-scrollbar::-webkit-scrollbar-thumb {
+                @apply bg-muted-light dark:bg-muted-dark rounded-full hover:bg-primary/50 transition-colors;
+            }
+            /* 模块隐藏类 */
+            .module-hidden {
+                @apply hidden;
+            }
+        }
+    </style>
+    <!-- 引入分类信息动态加载模块 -->
+    <script src="/static/category-loader.js"></script>
+</head>
+<body class="min-h-screen flex flex-col bg-white dark:bg-dark-200 text-dark-200 dark:text-light-100 transition-colors duration-300">
+    <!-- 背景装饰 -->
+    <div class="fixed inset-0 bg-gradient-main -z-10"></div>
+
+    <!-- 添加全局变量 -->
+    <script>
+        let changelogErrorFromButton = false;
+    </script>
+    
+    <!-- 顶部通知栏 -->
+    <div class="bg-accent/10 border-b border-accent/20 py-2 px-4 text-center text-sm text-accent">
+        <div class="flex items-center justify-center">
+            <i class="fa-solid fa-bell mr-2"></i>
+            <div id="announcement-text" class="max-w-4xl overflow-hidden">
+                <p>加载中...</p>
+            </div>
+            <a href="javascript:void(0)" onclick="handleChangelogClick()" class="ml-3 underline hover:text-primary transition-colors shrink-0">查看更新日志</a>
+        </div>
+    </div>
+
+    <!-- 导航栏 -->
+    <header class="sticky top-0 z-50 bg-white/80 dark:bg-dark-100/80 backdrop-blur-md border-b border-light-300 dark:border-dark-200 transition-all duration-300">
+        <div class="container mx-auto px-4 py-3 md:py-4 flex justify-between items-center">
+            <!-- Logo区域 -->
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-r from-primary to-secondary flex items-center justify-center shadow-lg">
+                    <i class="fa-solid fa-images text-white text-xl"></i>
+                </div>
+                <a href="/" class="text-xl md:text-2xl font-bold text-gradient no-underline hover:opacity-80 transition-opacity">随机图片API</a>
+            </div>
+
+            <!-- 桌面端导航 -->
+            <nav class="hidden md:flex items-center gap-8">
+                <a href="javascript:void(0)" onclick="showModule('hero')" class="text-muted-dark dark:text-muted-light hover:text-primary dark:hover:text-primary transition-colors relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-primary after:transition-all hover:after:w-full">
+                    <i class="fa-solid fa-home mr-1"></i>首页
+                </a>
+                <a href="javascript:void(0)" onclick="showModule('demo')" class="text-muted-dark dark:text-muted-light hover:text-primary dark:hover:text-primary transition-colors relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-primary after:transition-all hover:after:w-full">
+                    <i class="fa-solid fa-rocket mr-1"></i>演示
+                </a>
+                <a href="javascript:void(0)" onclick="showModule('docs')" class="text-muted-dark dark:text-muted-light hover:text-primary dark:hover:text-primary transition-colors relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-primary after:transition-all hover:after:w-full">
+                    <i class="fa-solid fa-book mr-1"></i>文档
+                </a>
+                <a href="javascript:void(0)" onclick="showModule('categories')" class="text-muted-dark dark:text-muted-light hover:text-primary dark:hover:text-primary transition-colors relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-primary after:transition-all hover:after:w-full">
+                    <i class="fa-solid fa-th mr-1"></i>分类
+                </a>
+                <a href="javascript:void(0)" onclick="showModule('stats')" class="text-muted-dark dark:text-muted-light hover:text-primary dark:hover:text-primary transition-colors relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-primary after:transition-all hover:after:w-full">
+                    <i class="fa-solid fa-chart-simple mr-1"></i>统计
+                </a>
+                <a href="javascript:void(0)" onclick="showModule('feedback')" class="text-muted-dark dark:text-muted-light hover:text-primary dark:hover:text-primary transition-colors relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-primary after:transition-all hover:after:w-full">
+                    <i class="fa-solid fa-comment-dots mr-1"></i>反馈
+                </a>
+            </nav>
+
+            <!-- 功能按钮区 -->
+            <div class="flex items-center gap-4">
+                <!-- 主题切换 -->
+                <button id="theme-toggle" class="w-9 h-9 rounded-full flex items-center justify-center text-muted-dark dark:text-muted-light hover:bg-light-200 dark:hover:bg-dark-200 transition-colors">
+                    <i class="fa-solid fa-moon dark:hidden text-lg"></i>
+                    <i class="fa-solid fa-sun hidden dark:block text-lg"></i>
+                </button>
+
+                <!-- 语言切换 -->
+                <div class="relative">
+                    <button id="lang-toggle" class="w-9 h-9 rounded-full flex items-center justify-center text-muted-dark dark:text-muted-light hover:bg-light-200 dark:hover:bg-dark-200 transition-colors">
+                        <i class="fa-solid fa-globe text-lg"></i>
+                    </button>
+                    <div id="lang-dropdown" class="absolute right-0 mt-2 w-36 bg-white dark:bg-dark-100 rounded-lg shadow-lg border border-light-300 dark:border-dark-200 hidden z-10 animate-fade-in">
+                        <ul class="py-1">
+                            <li><button class="lang-option w-full text-left px-4 py-2 text-sm hover:bg-light-200 dark:hover:bg-dark-200 transition-colors" data-lang="zh-CN">🇨🇳 简体中文</button></li>
+                            <li><button class="lang-option w-full text-left px-4 py-2 text-sm hover:bg-light-200 dark:hover:bg-dark-200 transition-colors" data-lang="en-US">🇺🇸 English</button></li>
+                            <li><button class="lang-option w-full text-left px-4 py-2 text-sm hover:bg-light-200 dark:hover:bg-dark-200 transition-colors" data-lang="ja-JP">🇯🇵 日本語</button></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- 登录/注册按钮 -->
+                <a id="auth-btn" href="/login" class="hidden md:flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-primary to-secondary text-white text-sm font-medium hover:shadow-lg hover:scale-105 transition-all">
+                    <i class="fa-solid fa-user"></i>
+                    <span id="auth-text">登录</span>
+                </a>
+
+                <!-- 移动端菜单按钮 -->
+                <button id="mobile-menu-btn" class="md:hidden w-9 h-9 rounded-full flex items-center justify-center text-muted-dark dark:text-muted-light hover:bg-light-200 dark:hover:bg-dark-200 transition-colors">
+                    <i class="fa-solid fa-bars text-lg"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- 移动端导航菜单 -->
+        <div id="mobile-menu" class="md:hidden hidden bg-white dark:bg-dark-100 border-b border-light-300 dark:border-dark-200 animate-slide-up">
+            <div class="container mx-auto px-4 py-3 flex flex-col gap-3">
+                <a href="javascript:void(0)" onclick="showModule('hero')" class="py-2 px-3 rounded-lg hover:bg-light-200 dark:hover:bg-dark-200 transition-colors">
+                    <i class="fa-solid fa-home mr-2"></i>首页
+                </a>
+                <a href="javascript:void(0)" onclick="showModule('demo')" class="py-2 px-3 rounded-lg hover:bg-light-200 dark:hover:bg-dark-200 transition-colors">
+                    <i class="fa-solid fa-rocket mr-2"></i>演示
+                </a>
+                <a href="javascript:void(0)" onclick="showModule('docs')" class="py-2 px-3 rounded-lg hover:bg-light-200 dark:hover:bg-dark-200 transition-colors">
+                    <i class="fa-solid fa-book mr-2"></i>文档
+                </a>
+                <a href="javascript:void(0)" onclick="showModule('categories')" class="py-2 px-3 rounded-lg hover:bg-light-200 dark:hover:bg-dark-200 transition-colors">
+                    <i class="fa-solid fa-th mr-2"></i>分类
+                </a>
+                <a href="javascript:void(0)" onclick="showModule('stats')" class="py-2 px-3 rounded-lg hover:bg-light-200 dark:hover:bg-dark-200 transition-colors">
+                    <i class="fa-solid fa-chart-simple mr-2"></i>统计
+                </a>
+                <a href="javascript:void(0)" onclick="showModule('feedback')" class="py-2 px-3 rounded-lg hover:bg-light-200 dark:hover:bg-dark-200 transition-colors">
+                    <i class="fa-solid fa-comment-dots mr-2"></i>反馈
+                </a>
+                <div class="border-t border-light-200 dark:border-dark-200 my-2"></div>
+                <a id="mobile-auth-btn" href="/login" class="py-2 px-3 rounded-lg hover:bg-light-200 dark:hover:bg-dark-200 transition-colors text-primary font-medium">
+                    <i class="fa-solid fa-user mr-2"></i>
+                    <span id="mobile-auth-text">登录/注册</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="flex-grow flex flex-col container mx-auto px-4 py-8 md:py-12">
+        <!-- 英雄区 - 默认显示 -->
+        <section id="hero" class="text-center mb-2 md:mb-4 animate-fade-in">
+            <div class="inline-block mb-6 px-4 py-1 badge badge-primary">
+                <i class="fa-solid fa-star mr-1"></i> 稳定运行 2000+ 天
+            </div>
+            <h2 class="text-[clamp(2.5rem,8vw,4rem)] font-bold mb-6 text-gradient leading-tight">
+                随机图片直链API<br class="md:hidden">
+                <span class="text-dark-200 dark:text-light-100">极简接入 · 毫秒响应</span>
+            </h2>
+            <p class="text-muted-dark dark:text-muted-light text-lg md:text-xl max-w-3xl mx-auto mb-10 leading-relaxed">
+                提供高质量、多分类、多格式的随机图片直链服务，无需解析JSON，一行代码即可集成到你的应用、网站或小程序中
+            </p>
+            <div class="flex flex-wrap justify-center gap-5 mb-12">
+                <a href="javascript:void(0)" onclick="showModule('demo')" class="btn-primary text-lg">
+                    <i class="fa-solid fa-play-circle mr-2"></i>立即体验
+                </a>
+                <a href="javascript:void(0)" onclick="showModule('docs'); switchToBasicTab();" class="btn-outline text-lg">
+                    <i class="fa-solid fa-code mr-2"></i>开发文档
+                </a>
+            </div>
+
+            <!-- 特性展示 -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+                <div class="bg-card p-6 hover:translate-y-[-5px] transition-transform">
+                    <div class="w-12 h-12 rounded-lg bg-primary/10 dark:bg-primary/20 flex items-center justify-center mb-4">
+                        <i class="fa-solid fa-bolt text-primary text-xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-2 text-dark-200 dark:text-light-100">极速响应</h3>
+                    <p class="text-muted-dark dark:text-muted-light">平均响应时间 < 100ms，CDN加速分发，全球快速访问</p>
+                </div>
+                <div class="bg-card p-6 hover:translate-y-[-5px] transition-transform">
+                    <div class="w-12 h-12 rounded-lg bg-secondary/10 dark:bg-secondary/20 flex items-center justify-center mb-4">
+                        <i class="fa-solid fa-layer-group text-secondary text-xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-2 text-dark-200 dark:text-light-100">丰富分类</h3>
+                    <p id="category-info" class="text-muted-dark dark:text-muted-light">10+ 图片分类，覆盖自然、城市、动物、艺术等多种场景</p>
+                </div>
+                <div class="bg-card p-6 hover:translate-y-[-5px] transition-transform">
+                    <div class="w-12 h-12 rounded-lg bg-accent/10 dark:bg-accent/20 flex items-center justify-center mb-4">
+                        <i class="fa-solid fa-shield-halved text-accent text-xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-2 text-dark-200 dark:text-light-100">稳定可靠</h3>
+                    <p class="text-muted-dark dark:text-muted-light">99.9% 可用性保障，自动容灾备份，支持高并发访问</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 演示区域 - 默认隐藏 -->
+        <section id="demo" class="mb-2 md:mb-4 module-hidden">
+            <div class="bg-card p-6 md:p-8 max-w-5xl mx-auto">
+                <div class="flex items-center justify-between mb-8">
+                    <h3 class="text-2xl md:text-3xl font-bold flex items-center text-dark-200 dark:text-light-100">
+                        <div class="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center mr-3">
+                            <i class="fa-solid fa-terminal text-primary text-xl"></i>
+                        </div>
+                        API实时演示
+                    </h3>
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm text-muted-dark dark:text-muted-light">当前版本：</span>
+                        <span id="current-version" class="badge badge-accent">加载中...</span>
+                    </div>
+                </div>
+
+                <!-- 高级筛选区 -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-5 mb-8">
+                    <div>
+                        <label class="block text-sm font-medium text-muted-dark dark:text-muted-light mb-2">图片分类</label>
+                        <select id="category-select" class="input-style w-full">
+                            <option value="default">默认分类</option>
+                            <!-- 其他分类将由JavaScript动态加载 -->
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-muted-dark dark:text-muted-light mb-2">图片格式 <span class="badge badge-accent ml-1">待实现</span></label>
+                        <select id="format-select" class="input-style w-full">
+                            <option value="">全部格式</option>
+                            <option value="jpg">JPG</option>
+                            <option value="png">PNG</option>
+                            <option value="gif">GIF (动图)</option>
+                            <option value="webp">WEBP (高清)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-muted-dark dark:text-muted-light mb-2">图片尺寸 <span class="badge badge-accent ml-1">待实现</span></label>
+                        <select id="size-select" class="input-style w-full">
+                            <option value="">默认尺寸</option>
+                            <option value="small">小尺寸 (400x300)</option>
+                            <option value="medium">中尺寸 (800x600)</option>
+                            <option value="large">大尺寸 (1920x1080)</option>
+                            <option value="original">原始尺寸</option>
+                        </select>
+                    </div>
+                    <div class="flex items-end">
+                        <button id="refresh-btn" class="btn-primary w-full">
+                            <i class="fa-solid fa-shuffle mr-2"></i>获取随机图片
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 图片操作工具栏 -->
+                <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
+                    <div class="text-sm text-muted-dark dark:text-muted-light" id="image-info">
+                        未选择图片
+                    </div>
+                </div>
+
+                <!-- 图片展示区 -->
+                <div class="relative bg-light-200 dark:bg-dark-200 rounded-xl overflow-hidden mb-8 border border-light-300 dark:border-dark-300">
+                    <div id="loading" class="text-center text-muted-dark dark:text-muted-light py-20">
+                        <div class="inline-block w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4"></div>
+                        <p class="text-lg">点击按钮获取随机图片</p>
+                    </div>
+                    <img id="random-image" class="w-full hidden block" src="" alt="随机图片">
+                    <div id="error" class="text-center text-red-500 dark:text-red-400 py-20 hidden">
+                        <i class="fa-solid fa-circle-exclamation text-4xl mb-4"></i>
+                        <p id="error-message" class="text-lg">加载图片失败，请重试</p>
+                    </div>
+                    <!-- 图片加载完成后的操作浮层 -->
+                    <div id="image-overlay" class="absolute top-4 right-4 hidden">
+                        <button class="w-9 h-9 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition-colors">
+                            <i class="fa-solid fa-expand"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- API链接展示与操作 -->
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+                    <div class="md:col-span-9 relative">
+                        <label class="block text-sm font-medium text-muted-dark dark:text-muted-light mb-2">API直链</label>
+                        <div class="relative">
+                            <input id="api-url" type="text" class="input-style w-full pr-12" readonly value="" placeholder="获取随机图片后显示API链接">
+                            <button id="copy-btn" class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-dark dark:text-muted-light hover:text-primary transition-colors">
+                                <i class="fa-solid fa-copy text-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="md:col-span-3 flex gap-2">
+                        <button id="open-btn" class="btn-outline flex-1 !py-1.5 text-sm">
+                            <i class="fa-solid fa-up-right-from-square mr-0.5"></i>新窗口
+                        </button>
+                        <button id="embed-btn" class="btn-secondary flex-1 !py-1.5 text-sm">
+                            <i class="fa-solid fa-code mr-0.5"></i>嵌入
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 嵌入代码弹窗 -->
+                <div id="embed-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+                    <div class="bg-white dark:bg-dark-100 rounded-xl p-6 w-full max-w-lg animate-fade-in">
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 class="text-xl font-semibold">嵌入代码</h4>
+                            <button id="close-embed-modal" class="w-8 h-8 rounded-full flex items-center justify-center text-muted-dark dark:text-muted-light hover:bg-light-200 dark:hover:bg-dark-200 transition-colors">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-muted-dark dark:text-muted-light mb-2">HTML代码</label>
+                                <div class="bg-light-200 dark:bg-dark-200 rounded-lg p-3 font-mono text-sm overflow-x-auto">
+                                    <code id="html-code">&lt;img src="${BASE_URL}/random" alt="随机图片"&gt;</code>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-muted-dark dark:text-muted-light mb-2">Markdown代码</label>
+                                <div class="bg-light-200 dark:bg-dark-200 rounded-lg p-3 font-mono text-sm overflow-x-auto">
+                                    <code id="markdown-code">![随机图片](${BASE_URL}/random)</code>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-muted-dark dark:text-muted-light mb-2">URL直链</label>
+                                <div class="bg-light-200 dark:bg-dark-200 rounded-lg p-3 font-mono text-sm overflow-x-auto">
+                                    <code id="url-code">${BASE_URL}/random</code>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-6 flex justify-end">
+                            <button id="copy-embed-code" class="btn-primary">
+                                <i class="fa-solid fa-copy mr-2"></i>复制全部代码
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 文档区域 - 默认隐藏 -->
+        <section id="docs" class="mb-2 md:mb-4 module-hidden">
+            <div class="bg-card p-6 md:p-8 max-w-5xl mx-auto">
+                <h3 class="text-2xl md:text-3xl font-bold mb-8 flex items-center text-dark-200 dark:text-light-100">
+                    <div class="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center mr-3">
+                        <i class="fa-solid fa-code text-primary text-xl"></i>
+                    </div>
+                    开发者文档
+                </h3>
+
+                <!-- 文档标签页 -->
+                <div class="border-b border-light-300 dark:border-dark-200 mb-6">
+                    <div class="flex flex-wrap gap-1">
+                        <button class="doc-tab py-2 px-4 text-primary border-b-2 border-primary font-medium" data-tab="basic">基础用法</button>
+                        <button class="doc-tab py-2 px-4 text-muted-dark dark:text-muted-light hover:text-primary transition-colors" data-tab="advanced">高级参数</button>
+                        <button class="doc-tab py-2 px-4 text-muted-dark dark:text-muted-light hover:text-primary transition-colors" data-tab="response">响应说明</button>
+                        <button class="doc-tab py-2 px-4 text-muted-dark dark:text-muted-light hover:text-primary transition-colors" data-tab="examples">使用示例</button>
+                        <button class="doc-tab py-2 px-4 text-muted-dark dark:text-muted-light hover:text-primary transition-colors" data-tab="changelog">更新日志</button>
+                    </div>
+                </div>
+
+                <!-- 文档内容区 -->
+                <div class="doc-content" id="basic-tab">
+                    <div class="space-y-8">
+                        <!-- 基础用法 -->
+                        <div class="space-y-3">
+                            <h4 class="text-xl font-semibold flex items-center">
+                                <i class="fa-solid fa-circle-nodes text-primary mr-2"></i>基础用法
+                            </h4>
+                            <p class="text-muted-dark dark:text-muted-light">直接访问以下URL即可获取随机图片（直链返回二进制数据）：</p>
+                            <div class="bg-light-200 dark:bg-dark-200 rounded-lg p-4 font-mono text-sm border border-light-300 dark:border-dark-300 text-secondary overflow-x-auto" id="doc-base-url" data-replace-base-url>
+                                ${BASE_URL}/random
+                            </div>
+                        </div>
+
+                        <!-- 分类筛选 -->
+                        <div class="space-y-3">
+                            <h4 class="text-xl font-semibold flex items-center">
+                                <i class="fa-solid fa-layer-group text-primary mr-2"></i>按分类筛选
+                            </h4>
+                            <p class="text-muted-dark dark:text-muted-light">通过type参数指定分类：</p>
+                            <div class="bg-light-200 dark:bg-dark-200 rounded-lg p-4 font-mono text-sm border border-light-300 dark:border-dark-300 text-secondary mb-3 overflow-x-auto" id="doc-category-url" data-replace-base-url>
+                                ${BASE_URL}/random?type=nature
+                            </div>
+                            <div class="bg-light-200/50 dark:bg-dark-200/50 rounded-lg p-3 border border-light-300 dark:border-dark-300 text-muted-dark dark:text-muted-light text-sm">
+                                <p class="font-medium mb-1">支持的分类：</p>
+                                <ul class="grid grid-cols-2 md:grid-cols-3 gap-1" id="doc-category-list">
+                                    <li>加载中...</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- 格式筛选 -->
+                        <div class="space-y-3">
+                            <h4 class="text-xl font-semibold flex items-center">
+                                <i class="fa-solid fa-file-image text-primary mr-2"></i>按格式筛选
+                                <span class="badge badge-accent ml-2">待实现</span>
+                            </h4>
+                            <p class="text-muted-dark dark:text-muted-light">通过URL参数指定图片格式：</p>
+                            <div class="bg-light-200 dark:bg-dark-200 rounded-lg p-4 font-mono text-sm border border-light-300 dark:border-dark-300 text-secondary overflow-x-auto" id="doc-format-url" data-replace-base-url>
+                                ${BASE_URL}/random?format=png
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="doc-content hidden" id="advanced-tab">
+                    <div class="space-y-8">
+                        <h4 class="text-xl font-semibold mb-4">高级参数说明</h4>
+                        <div class="overflow-x-auto">
+                            <table class="w-full border-collapse">
+                                <thead>
+                                    <tr class="bg-light-200 dark:bg-dark-200">
+                                        <th class="border border-light-300 dark:border-dark-300 px-5 py-3 text-left">参数名</th>
+                                        <th class="border border-light-300 dark:border-dark-300 px-5 py-3 text-left">类型</th>
+                                        <th class="border border-light-300 dark:border-dark-300 px-5 py-3 text-left">默认值</th>
+                                        <th class="border border-light-300 dark:border-dark-300 px-5 py-3 text-left">状态</th>
+                                        <th class="border border-light-300 dark:border-dark-300 px-5 py-3 text-left">说明</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="hover:bg-light-200/50 dark:hover:bg-dark-200/50 transition-colors">
+                                        <td class="border border-light-300 dark:border-dark-300 px-5 py-3 font-medium">format</td>
+                                        <td class="border border-light-300 dark:border-dark-300 px-5 py-3">string</td>
+                                        <td class="border border-light-300 dark:border-dark-300 px-5 py-3">无</td>
+                                        <td class="border border-light-300 dark:border-dark-300 px-5 py-3"><span class="badge badge-accent">待实现</span></td>
+                                        <td class="border border-light-300 dark:border-dark-300 px-5 py-3">图片格式：jpg/png/gif/webp</td>
+                                    </tr>
+                                    <tr class="hover:bg-light-200/50 dark:hover:bg-dark-200/50 transition-colors bg-light-200/20 dark:bg-dark-200/20">
+                                        <td class="border border-light-300 dark:border-dark-300 px-5 py-3 font-medium">size</td>
+                                        <td class="border border-light-300 dark:border-dark-300 px-5 py-3">string</td>
+                                        <td class="border border-light-300 dark:border-dark-300 px-5 py-3">original</td>
+                                        <td class="border border-light-300 dark:border-dark-300 px-5 py-3"><span class="badge badge-accent">待实现</span></td>
+                                        <td class="border border-light-300 dark:border-dark-300 px-5 py-3">图片尺寸：small/medium/large/original</td>
+                                    </tr>
+                                    <tr class="hover:bg-light-200/50 dark:hover:bg-dark-200/50 transition-colors">
+                                        <td class="border border-light-300 dark:border-dark-300 px-5 py-3 font-medium">exclude</td>
+                                        <td class="border border-light-300 dark:border-dark-300 px-5 py-3">string</td>
+                                        <td class="border border-light-300 dark:border-dark-300 px-5 py-3">无</td>
+                                        <td class="border border-light-300 dark:border-dark-300 px-5 py-3"><span class="badge badge-accent">待实现</span></td>
+                                        <td class="border border-light-300 dark:border-dark-300 px-5 py-3">排除指定图片ID，多个用逗号分隔</td>
+                                    </tr>
+                                    <tr class="hover:bg-light-200/50 dark:hover:bg-dark-200/50 transition-colors bg-light-200/20 dark:bg-dark-200/20">
+                                        <td class="border border-light-300 dark:border-dark-300 px-5 py-3 font-medium">refresh</td>
+                                        <td class="border border-light-300 dark:border-dark-300 px-5 py-3">boolean</td>
+                                        <td class="border border-light-300 dark:border-dark-300 px-5 py-3">false</td>
+                                        <td class="border border-light-300 dark:border-dark-300 px-5 py-3"><span class="badge badge-accent">待实现</span></td>
+                                        <td class="border border-light-300 dark:border-dark-300 px-5 py-3">是否强制刷新缓存：true/false</td>
+                                    </tr>
+                                    <tr class="hover:bg-light-200/50 dark:hover:bg-dark-200/50 transition-colors">
+                                        <td class="border border-light-300 dark:border-dark-300 px-5 py-3 font-medium">type</td>
+                                        <td class="border border-light-300 dark:border-dark-300 px-5 py-3">string</td>
+                                        <td class="border border-light-300 dark:border-dark-300 px-5 py-3">无</td>
+                                        <td class="border border-light-300 dark:border-dark-300 px-5 py-3"><span class="badge badge-secondary">已实现</span></td>
+                                        <td class="border border-light-300 dark:border-dark-300 px-5 py-3">按分类筛选图片，未传输则从所有分类里随机挑选图片返回</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="space-y-3">
+                            <h4 class="text-xl font-semibold flex items-center">
+                                <i class="fa-solid fa-code-compare text-primary mr-2"></i>组合使用示例
+                            </h4>
+                            <div class="bg-light-200 dark:bg-dark-200 rounded-lg p-4 font-mono text-sm border border-light-300 dark:border-dark-300 text-secondary overflow-x-auto" id="doc-combo-url" data-replace-base-url>
+                                ${BASE_URL}/random?type=nature&format=jpg&size=medium
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="doc-content hidden" id="response-tab">
+                    <div class="space-y-8">
+                        <h4 class="text-xl font-semibold mb-4">响应说明</h4>
+                        <div class="overflow-x-auto">
+                            <table class="w-full border-collapse">
+                                <thead>
+                                    <tr class="bg-light-200 dark:bg-dark-200">
+                                        <th class="border border-light-300 dark:border-dark-300 px-5 py-3 text-left text-dark-200 dark:text-light-100">状态码</th>
+                                        <th class="border border-light-300 dark:border-dark-300 px-5 py-3 text-left text-dark-200 dark:text-light-100">说明</th>
+                                        <th class="border border-light-300 dark:border-dark-300 px-5 py-3 text-left text-dark-200 dark:text-light-100">响应类型</th>
+                                        <th class="border border-light-300 dark:border-dark-300 px-5 py-3 text-left text-dark-200 dark:text-light-100">响应示例</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="hover:bg-light-200/50 dark:hover:bg-dark-200/50 transition-colors">
+                                        <td class="border border-light-300 dark:border-dark-300 px-5 py-3 text-primary font-medium">200</td>
+                                        <td class="border border-light-300 dark:border-dark-300 px-5 py-3 text-muted-dark dark:text-muted-light">成功返回图片</td>
+                                        <td class="border border-light-300 dark:border-dark-300 px-5 py-3 text-muted-dark dark:text-muted-light">图片二进制数据</td>
+                                        <td class="border border-light-300 dark:border-dark-300 px-5 py-3 text-muted-dark dark:text-muted-light">-</td>
+                                    </tr>
+                                    <tr class="hover:bg-light-200/50 dark:hover:bg-dark-200/50 transition-colors bg-light-200/20 dark:bg-dark-200/20">
+                                        <td class="border border-light-300 dark:border-dark-300 px-5 py-3 text-yellow-500 dark:text-yellow-400 font-medium">404</td>
+                                        <td class="border border-light-300 dark:border-dark-300 px-5 py-3 text-muted-dark dark:text-muted-light">分类不存在/无图片</td>
+                                        <td class="border border-light-300 dark:border-dark-300 px-5 py-3 text-muted-dark dark:text-muted-light">JSON</td>
+                                        <td class="border border-light-300 dark:border-dark-300 px-5 py-3 font-mono text-xs">{"code":404,"msg":"分类不存在","data":{"error_id":"2026021012345-abc1","error_time":"2026-02-10 12:34:56","category":"xxx"}}</td>
+                                    </tr>
+                                    <tr class="hover:bg-light-200/50 dark:hover:bg-dark-200/50 transition-colors">
+                                        <td class="border border-light-300 dark:border-dark-300 px-5 py-3 text-red-500 dark:text-red-400 font-medium">500</td>
+                                        <td class="border border-light-300 dark:border-dark-300 px-5 py-3 text-muted-dark dark:text-muted-light">服务器内部错误</td>
+                                        <td class="border border-light-300 dark:border-dark-300 px-5 py-3 text-muted-dark dark:text-muted-light">JSON</td>
+                                        <td class="border border-light-300 dark:border-dark-300 px-5 py-3 font-mono text-xs">{"code":500,"msg":"服务器内部错误","data":{"error_id":"2026021012345-abc2","error_time":"2026-02-10 12:34:56"}}</td>
+                                    </tr>
+                                    <tr class="hover:bg-light-200/50 dark:hover:bg-dark-200/50 transition-colors bg-light-200/20 dark:bg-dark-200/20">
+                                        <td class="border border-light-300 dark:border-dark-300 px-5 py-3 text-orange-500 dark:text-orange-400 font-medium">400</td>
+                                        <td class="border border-light-300 dark:border-dark-300 px-5 py-3 text-muted-dark dark:text-muted-light">请求参数非法</td>
+                                        <td class="border border-light-300 dark:border-dark-300 px-5 py-3 text-muted-dark dark:text-muted-light">JSON</td>
+                                        <td class="border border-light-300 dark:border-dark-300 px-5 py-3 font-mono text-xs">{"code":422,"msg":"非法请求","data":{"request_id":"2026021012345-abc3","error_time":"2026-02-10 12:34:56","reason":"xxx"}}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="space-y-3">
+                            <h4 class="text-xl font-semibold flex items-center">
+                                <i class="fa-solid fa-server text-primary mr-2"></i>响应头说明
+                            </h4>
+                            <div class="bg-light-200/50 dark:bg-dark-200/50 rounded-lg p-4 text-muted-dark dark:text-muted-light">
+                                <ul class="space-y-2">
+                                    <li><strong>Content-Type</strong>：图片MIME类型（image/jpeg、image/png、image/gif、image/webp等）</li>
+                                    <li><strong>Content-Length</strong>：图片文件大小（字节）</li>
+                                    <li><strong>Cache-Control</strong>：no-cache, max-age=0（不缓存，确保每次请求都返回随机图片）</li>
+                                    <li><strong>Access-Control-Allow-Origin</strong>：*（支持跨域访问）</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="doc-content hidden" id="examples-tab">
+                    <div class="space-y-8">
+                        <h4 class="text-xl font-semibold mb-4">多语言使用示例</h4>
+
+                        <div class="space-y-4">
+                            <h5 class="text-lg font-medium text-primary">HTML</h5>
+                            <div class="bg-light-200 dark:bg-dark-200 rounded-lg p-4 font-mono text-sm border border-light-300 dark:border-dark-300 overflow-x-auto" id="example-html" data-replace-base-url>
+                                &lt;!-- 基础使用 --&gt;<br>
+                                &lt;img src="${BASE_URL}/random?type=nature&format=jpg" alt="自然风光"&gt;<br><br>
+                                &lt;!-- 带尺寸控制 --&gt;<br>
+                                &lt;img src="${BASE_URL}/random?type=city&size=medium" alt="城市建筑" width="800" height="600"&gt;
+                            </div>
+                        </div>
+
+                        <div class="space-y-4">
+                            <h5 class="text-lg font-medium text-primary">JavaScript</h5>
+                            <div class="bg-light-200 dark:bg-dark-200 rounded-lg p-4 font-mono text-sm border border-light-300 dark:border-dark-300 overflow-x-auto" id="example-js" data-replace-base-url>
+                                // 动态加载随机图片<br>
+                                function loadRandomImage() {<br>
+                                &nbsp;&nbsp;const img = document.createElement('img');<br>
+                                &nbsp;&nbsp;img.src = '${BASE_URL}/random?type=animal&format=png';<br>
+                                &nbsp;&nbsp;img.alt = '随机动物图片';<br>
+                                &nbsp;&nbsp;img.className = 'random-img';<br>
+                                &nbsp;&nbsp;document.getElementById('image-container').appendChild(img);<br>
+                                }<br><br>
+                                // 调用函数<br>
+                                loadRandomImage();
+                            </div>
+                        </div>
+
+                        <div class="space-y-4">
+                            <h5 class="text-lg font-medium text-primary">Python</h5>
+                            <div class="bg-light-200 dark:bg-dark-200 rounded-lg p-4 font-mono text-sm border border-light-300 dark:border-dark-300 overflow-x-auto" id="example-python" data-replace-base-url>
+                                import requests<br><br>
+                                # 获取随机图片并保存<br>
+                                def save_random_image():<br>
+                                &nbsp;&nbsp;url = '${BASE_URL}/random?type=art&format=webp'<br>
+                                &nbsp;&nbsp;response = requests.get(url)<br>
+                                &nbsp;&nbsp;if response.status_code == 200:<br>
+                                &nbsp;&nbsp;&nbsp;&nbsp;with open('random_art.webp', 'wb') as f:<br>
+                                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;f.write(response.content)<br>
+                                &nbsp;&nbsp;&nbsp;&nbsp;print('图片保存成功')<br>
+                                &nbsp;&nbsp;else:<br>
+                                &nbsp;&nbsp;&nbsp;&nbsp;print(f'请求失败：{response.status_code}')<br><br>
+                                save_random_image()
+                            </div>
+                        </div>
+
+                        <div class="space-y-4">
+                            <h5 class="text-lg font-medium text-primary">PHP</h5>
+                            <div class="bg-light-200 dark:bg-dark-200 rounded-lg p-4 font-mono text-sm border border-light-300 dark:border-dark-300 overflow-x-auto" id="example-php" data-replace-base-url>
+                                &lt;?php<br>
+                                // 获取随机图片URL<br>
+                                $category = 'food';<br>
+                                $format = 'jpg';<br>
+                                $url = "${BASE_URL}/random?type={$category}&format={$format}";<br><br>
+                                // 输出图片标签<br>
+                                echo "&lt;img src='{$url}' alt='随机美食图片'&gt;";<br>
+                                ?&gt;
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="doc-content hidden" id="changelog-tab">
+                    <div class="space-y-8" id="changelog-content">
+                        <h4 class="text-2xl font-bold mb-6">更新日志</h4>
+                        <!-- 更新日志将由 JavaScript 动态加载 -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 分类预览区 - 默认隐藏 -->
+        <section id="categories" class="mb-2 md:mb-4 module-hidden">
+            <h3 class="text-2xl md:text-3xl font-bold mb-10 text-center flex items-center justify-center text-dark-200 dark:text-light-100">
+                <div class="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center mr-3">
+                    <i class="fa-solid fa-th text-primary text-xl"></i>
+                </div>
+                图片分类预览
+            </h3>
+
+            <div class="max-w-[1400px] mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6" id="categories-grid">
+                <!-- 分类卡片将由JavaScript动态生成 -->
+            </div>
+
+            <!-- 分页控件 -->
+            <div class="max-w-[1400px] mx-auto mt-8 flex items-center justify-center gap-4">
+                <button id="prev-page" class="px-4 py-2 rounded-lg bg-card border border-light-300 dark:border-dark-300 hover:bg-light-200 dark:hover:bg-dark-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                    <i class="fa-solid fa-chevron-left mr-2"></i>上一页
+                </button>
+                <span id="page-info" class="text-muted-dark dark:text-muted-light">第 1 / 1 页</span>
+                <button id="next-page" class="px-4 py-2 rounded-lg bg-card border border-light-300 dark:border-dark-300 hover:bg-light-200 dark:hover:bg-dark-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                    下一页<i class="fa-solid fa-chevron-right ml-2"></i>
+                </button>
+            </div>
+        </section>
+
+        <!-- 分类图片列表视图 - 默认隐藏 -->
+        <section id="category-images" class="mb-2 md:mb-4 module-hidden">
+            <div class="max-w-[1400px] mx-auto">
+                <div class="flex items-center justify-between mb-8">
+                    <h3 class="text-2xl md:text-3xl font-bold flex items-center text-dark-200 dark:text-light-100">
+                        <div class="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center mr-3">
+                            <i class="fa-solid fa-images text-primary text-xl"></i>
+                        </div>
+                        <span id="category-title">分类图片列表</span>
+                    </h3>
+                    <button onclick="backToCategories()" class="btn-outline">
+                        <i class="fa-solid fa-arrow-left mr-2"></i>返回分类列表
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6" id="category-images-grid">
+                    <!-- 图片将由JavaScript动态生成 -->
+                </div>
+
+                <!-- 分页控件 -->
+                <div class="mt-8 flex items-center justify-center gap-4">
+                    <button id="category-images-prev" class="px-4 py-2 rounded-lg bg-card border border-light-300 dark:border-dark-300 hover:bg-light-200 dark:hover:bg-dark-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                        <i class="fa-solid fa-chevron-left mr-2"></i>上一页
+                    </button>
+                    <span id="category-images-page-info" class="text-muted-dark dark:text-muted-light">第 1 / 1 页</span>
+                    <button id="category-images-next" class="px-4 py-2 rounded-lg bg-card border border-light-300 dark:border-dark-300 hover:bg-light-200 dark:hover:bg-dark-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                        下一页<i class="fa-solid fa-chevron-right ml-2"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 统计区域 - 默认隐藏 -->
+        <section id="stats" class="mb-2 md:mb-4 module-hidden">
+            <div class="bg-card p-6 md:p-8 max-w-5xl mx-auto">
+                <h3 class="text-2xl md:text-3xl font-bold mb-8 flex items-center text-dark-200 dark:text-light-100">
+                    <div class="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center mr-3">
+                        <i class="fa-solid fa-chart-simple text-primary text-xl"></i>
+                    </div>
+                    API使用统计 <span class="badge badge-accent text-sm ml-2">待实现</span>
+                </h3>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-light-200/50 dark:bg-dark-200/50 rounded-xl p-6 border border-light-300 dark:border-dark-300">
+                        <div class="text-muted-dark dark:text-muted-light text-sm mb-2">总请求次数</div>
+                        <div class="text-3xl md:text-4xl font-bold text-primary mb-2">12,589,478</div>
+                        <div class="text-sm text-secondary flex items-center">
+                            <i class="fa-solid fa-arrow-trend-up mr-1"></i> 较上月增长 18.5%
+                        </div>
+                    </div>
+                    <div class="bg-light-200/50 dark:bg-dark-200/50 rounded-xl p-6 border border-light-300 dark:border-dark-300">
+                        <div class="text-muted-dark dark:text-muted-light text-sm mb-2">图片总数</div>
+                        <div class="text-3xl md:text-4xl font-bold text-primary mb-2">8,742</div>
+                        <div class="text-sm text-secondary flex items-center">
+                            <i class="fa-solid fa-plus mr-1"></i> 本周新增 128 张
+                        </div>
+                    </div>
+                    <div class="bg-light-200/50 dark:bg-dark-200/50 rounded-xl p-6 border border-light-300 dark:border-dark-300">
+                        <div class="text-muted-dark dark:text-muted-light text-sm mb-2">活跃用户</div>
+                        <div class="text-3xl md:text-4xl font-bold text-primary mb-2">24,856</div>
+                        <div class="text-sm text-secondary flex items-center">
+                            <i class="fa-solid fa-users mr-1"></i> 昨日新增 328 人
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- 分类访问统计图表 -->
+                    <div class="bg-light-200/50 dark:bg-dark-200/50 rounded-xl p-6 border border-light-300 dark:border-dark-300">
+                        <h4 class="text-lg font-semibold mb-4">分类访问量统计</h4>
+                        <div class="h-80">
+                            <canvas id="categoryChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- 月度访问趋势图表 -->
+                    <div class="bg-light-200/50 dark:bg-dark-200/50 rounded-xl p-6 border border-light-300 dark:border-dark-300">
+                        <h4 class="text-lg font-semibold mb-4">月度访问趋势</h4>
+                        <div class="h-80">
+                            <canvas id="trendChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 反馈区域 - 默认隐藏 -->
+        <section id="feedback" class="mb-2 md:mb-4 module-hidden">
+            <div class="bg-card p-6 md:p-8 max-w-5xl mx-auto">
+                <h3 class="text-2xl md:text-3xl font-bold mb-8 flex items-center text-dark-200 dark:text-light-100">
+                    <div class="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center mr-3">
+                        <i class="fa-solid fa-comment-dots text-primary text-xl"></i>
+                    </div>
+                    用户反馈
+                </h3>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <!-- 反馈表单 -->
+                    <div>
+                        <h4 class="text-xl font-semibold mb-6">提交反馈</h4>
+                        <form id="feedback-form" class="space-y-5">
+                            <div>
+                                <label class="block text-sm font-medium text-muted-dark dark:text-muted-light mb-2">您的邮箱</label>
+                                <input type="email" class="input-style w-full" placeholder="your@email.com" required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-muted-dark dark:text-muted-light mb-2">反馈类型</label>
+                                <select class="input-style w-full">
+                                    <option>功能建议</option>
+                                    <option>问题反馈</option>
+                                    <option>合作咨询</option>
+                                    <option>其他</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-muted-dark dark:text-muted-light mb-2">反馈内容</label>
+                                <textarea class="input-style w-full h-32" placeholder="请详细描述您的建议或问题..." required></textarea>
+                            </div>
+                            <button type="submit" class="btn-primary w-full">
+                                <i class="fa-solid fa-paper-plane mr-2"></i>提交反馈
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- 常见问题 -->
+                    <div>
+                        <h4 class="text-xl font-semibold mb-6">常见问题</h4>
+                        <div class="space-y-4">
+                        <div class="bg-light-200/50 dark:bg-dark-200/50 rounded-lg p-4 border border-light-300 dark:border-dark-300">
+                            <h5 class="font-medium mb-2">API如何使用？</h5>
+                            <p class="text-sm text-muted-dark dark:text-muted-light" id="faq-api-usage">直接访问 ${BASE_URL}/random 即可获取随机图片，支持分类筛选和格式过滤。</p>
+                        </div>
+                            <div class="bg-light-200/50 dark:bg-dark-200/50 rounded-lg p-4 border border-light-300 dark:border-dark-300">
+                                <h5 class="font-medium mb-2">图片可以商用吗？</h5>
+                                <p class="text-sm text-muted-dark dark:text-muted-light">所有图片均为用户上传图片，不可用于任何商业项目中。</p>
+                            </div>
+                            <div class="bg-light-200/50 dark:bg-dark-200/50 rounded-lg p-4 border border-light-300 dark:border-dark-300">
+                                <h5 class="font-medium mb-2">有访问频率限制吗？</h5>
+                                <p class="text-sm text-muted-dark dark:text-muted-light">为防止滥用，每个IP每分钟最多可请求60次，超出限制将返回429错误。</p>
+                            </div>
+                            <div class="bg-light-200/50 dark:bg-dark-200/50 rounded-lg p-4 border border-light-300 dark:border-dark-300">
+                                <h5 class="font-medium mb-2">如何获得更快的响应速度？</h5>
+                                <p class="text-sm text-muted-dark dark:text-muted-light">API已在全球部署CDN节点，自动选择最近节点，确保毫秒级响应。</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="bg-white dark:bg-dark-100 border-t border-light-300 dark:border-dark-200 py-5">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col items-center gap-2">
+                <!-- 版权声明（居中） -->
+                <div class="text-muted-dark dark:text-muted-light text-sm">
+                    © 2026 Random Image API. All rights reserved.
+                </div>
+
+                <!-- 备案号和社交图标（居中，备案号默认隐藏） -->
+                <div id="footer-bottom" class="flex items-center gap-8 text-muted-dark dark:text-muted-light text-sm">
+                    <div id="beian-info" class="hidden">
+                        <a href="https://beian.miit.gov.cn" target="_blank" class="hover:text-primary transition-colors">
+                        </a>
+                    </div>
+                    <div class="flex gap-4">
+                        <a id="github-footer-link" href="https://github.com/YunJian101/Random-Pictures" data-github-url="{{NAV_GITHUB_URL}}" target="_blank" class="hover:text-primary transition-colors">
+                            <i class="fa-brands fa-github text-xl"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript 代码 -->
+    <script>
+        // 获取当前页面的基础URL
+        const BASE_URL = window.location.protocol + '//' + window.location.host;
+
+        // 全局变量：存储从后端获取的分类数据
+        let categoriesData = [];
+
+        // 等待DOM加载完成
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM已加载完成');
+            console.log('基础URL:', BASE_URL);
+
+            // 检查是否有需要打开的模块
+            const openModule = localStorage.getItem('openModule');
+            if (openModule) {
+                localStorage.removeItem('openModule');
+                setTimeout(() => {
+                    showModule(openModule);
+                }, 100);
+            }
+
+            // 从后端加载配置信息（包含版本号和备案号）
+            loadConfig();
+
+            // 从后端加载分类数据
+            loadCategoriesFromBackend();
+
+            // 从 GitHub 加载更新日志
+            loadGitHubReleases();
+
+            // 检查用户登录状态
+            checkAuthStatus();
+        });
+
+        // 检查用户登录状态
+        async function checkAuthStatus() {
+            try {
+                const response = await fetch(`${BASE_URL}/api/auth/verify`);
+                const data = await response.json();
+
+                const authBtn = document.getElementById('auth-btn');
+                const mobileAuthBtn = document.getElementById('mobile-auth-btn');
+                const authText = document.getElementById('auth-text');
+                const mobileAuthText = document.getElementById('mobile-auth-text');
+
+                if (data.code === 200) {
+                    // 已登录
+                    const username = data.data.user.username;
+                    const role = data.data.user.role;
+
+                    if (role === 'admin') {
+                        authText.textContent = `${username} (管理员)`;
+                        mobileAuthText.textContent = `欢迎, ${username} (管理员)`;
+                        // 管理员跳转到管理后台
+                        authBtn.href = '/admin-panel';
+                        mobileAuthBtn.href = '/admin-panel';
+                    } else {
+                        authText.textContent = username;
+                        mobileAuthText.textContent = `欢迎, ${username}`;
+                        // 普通用户跳转到用户后台
+                        authBtn.href = '/user-panel';
+                        mobileAuthBtn.href = '/user-panel';
+                    }
+                } else {
+                    // 未登录
+                    authText.textContent = '登录';
+                    mobileAuthText.textContent = '登录/注册';
+                    authBtn.href = '/login';
+                    mobileAuthBtn.href = '/login';
+                }
+            } catch (error) {
+                console.log('检查登录状态失败:', error);
+                // 网络错误时显示登录按钮
+                const authText = document.getElementById('auth-text');
+                const mobileAuthText = document.getElementById('mobile-auth-text');
+                if (authText) authText.textContent = '登录';
+                if (mobileAuthText) mobileAuthText.textContent = '登录/注册';
+            }
+        }
+
+        // 全局变量：当前页码、总页数、总分类数
+        let currentPage = 1;
+        let totalPages = 1;
+        let totalCategories = 0;
+
+        // 从后端加载配置信息
+        async function loadConfig() {
+            try {
+                const response = await fetch(`${BASE_URL}/api/config`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                console.log('配置信息:', data);
+
+                // 更新版本显示
+                if (data.version) {
+                    const versionElement = document.getElementById('current-version');
+                    if (versionElement) {
+                        versionElement.textContent = 'v' + data.version;
+                    }
+                }
+
+                // 如果有备案号，显示备案信息
+                if (data.icp_beian_code) {
+                    const beianEl = document.getElementById('beian-info');
+                    const beianLink = beianEl.querySelector('a');
+                    if (beianLink) {
+                        beianLink.textContent = data.icp_beian_code;
+                        beianLink.href = data.icp_beian_url || 'https://beian.miit.gov.cn';
+                        beianEl.classList.remove('hidden');
+                    }
+                }
+            } catch (error) {
+                console.error('加载配置信息失败:', error);
+            }
+        }
+
+        // 初始化GitHub URL
+        function initGitHubUrl() {
+            const githubLink = document.getElementById('github-footer-link');
+            const dataGithubUrl = githubLink?.getAttribute('data-github-url');
+            if (dataGithubUrl && dataGithubUrl.trim() && dataGithubUrl !== '{{NAV_GITHUB_URL}}') {
+                githubLink.href = dataGithubUrl.trim();
+            }
+        }
+
+        // 更新顶部通知栏 - 滚动显示最新版本的更新内容
+        let announcementItems = [];
+        let currentAnnouncementIndex = 0;
+        let announcementInterval = null;
+
+        function updateAnnouncement(releases) {
+            const announcementText = document.getElementById('announcement-text');
+            if (!announcementText) {
+                console.warn('未找到announcement-text元素');
+                return;
+            }
+            
+            // 如果没有有效的releases数据或者为null/undefined，显示错误文本
+            if (!releases || !Array.isArray(releases) || releases.length === 0) {
+                console.warn('无有效的releases数据');
+                announcementText.innerHTML = '<p>欢迎使用随机图片API</p>';
+                return;
+            }
+
+            try {
+                // 获取当前本地版本号
+                const currentVersionElement = document.getElementById('current-version');
+                const currentVersion = currentVersionElement ? currentVersionElement.textContent.replace('v', '') : '';
+
+                // 查找与当前版本匹配的release
+                let targetRelease = null;
+                for (const release of releases) {
+                    const releaseVersion = release.tag_name || release.name || '';
+                    const releaseVersionClean = releaseVersion.replace(/^v/i, '');
+                    if (releaseVersionClean && currentVersion && releaseVersionClean === currentVersion) {
+                        targetRelease = release;
+                        break;
+                    }
+                }
+
+                // 如果没找到匹配的版本，使用最新版本
+                if (!targetRelease) {
+                    targetRelease = releases[0];
+                }
+
+                if (!targetRelease) {
+                    console.warn('targetRelease为空');
+                    announcementText.innerHTML = '<p>欢迎使用随机图片API</p>';
+                    return;
+                }
+                const bodyText = targetRelease.body || '';
+                const version = targetRelease.tag_name || targetRelease.name || '最新版本';
+
+            // 解析更新内容
+            const updates = [];
+            const segments = bodyText.split(/\n+/);
+            let currentCategory = '';
+
+            for (let segment of segments) {
+                const trimmedLine = segment.trim();
+                if (!trimmedLine) continue;
+
+                const titleMatch = trimmedLine.match(/^#{1,3}\s+(.+)/);
+
+                if (titleMatch) {
+                    currentCategory = titleMatch[1].trim();
+                } else {
+                    const listMatch = trimmedLine.match(/^[-*•]\s+(.+)/);
+                    const numberedMatch = trimmedLine.match(/^\d+[.)]\s*(.+)/);
+
+                    if (listMatch) {
+                        const text = listMatch[1].trim();
+                        if (currentCategory) {
+                            updates.push(`${currentCategory}: ${text}`);
+                        } else {
+                            updates.push(text);
+                        }
+                    } else if (numberedMatch) {
+                        const text = numberedMatch[1].trim();
+                        if (currentCategory) {
+                            updates.push(`${currentCategory}: ${text}`);
+                        } else {
+                            updates.push(text);
+                        }
+                    } else if (trimmedLine.length < 100 && !trimmedLine.includes('http')) {
+                        updates.push(trimmedLine);
+                    }
+                }
+            }
+
+            // 添加版本信息
+            const versionInfo = `${version} 已发布`;
+            announcements = [versionInfo, ...updates.slice(0, 5)]; // 最多显示5条
+
+            // 如果没有解析到任何内容，显示默认消息
+            if (announcements.length === 0) {
+                announcementText.innerHTML = '<p>欢迎使用随机图片API</p>';
+                return;
+            }
+
+            // 清除之前的定时器
+            if (announcementInterval) {
+                clearInterval(announcementInterval);
+            }
+
+            // 显示第一条公告
+            currentAnnouncementIndex = 0;
+            announcementText.innerHTML = `<p>${announcements[currentAnnouncementIndex]}</p>`;
+
+            // 启动滚动定时器 - 每5秒切换一次
+            announcementInterval = setInterval(() => {
+                currentAnnouncementIndex = (currentAnnouncementIndex + 1) % announcements.length;
+                announcementText.innerHTML = `<p>${announcements[currentAnnouncementIndex]}</p>`;
+            }, 5000);
+            } catch (error) {
+                console.error('更新通知栏时出错:', error);
+                announcementText.innerHTML = '<p>欢迎使用随机图片API</p>';
+            }
+        }
+
+        // 从 GitHub 获取更新日志
+        async function loadGitHubReleases() {
+            // 在函数开始就获取 changelog-content 容器引用
+            const changelogContent = document.getElementById('changelog-content');
+            if (!changelogContent) return;
+
+            try {
+                // 初始化GitHub URL
+                initGitHubUrl();
+                // 获取GitHub URL，优先使用环境变量，否则使用默认值
+                const githubUrl = document.getElementById('github-footer-link')?.href || 'https://github.com/YunJian101/Random-Pictures';
+                const githubRepoPath = githubUrl.replace('https://github.com/', '');
+                const response = await fetch(`https://api.github.com/repos/${githubRepoPath}/releases?per_page=4`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const releases = await response.json();
+                console.log('GitHub releases:', releases);
+
+                // 更新顶部通知栏 - 显示最新版本的更新内容
+                updateAnnouncement(releases);
+
+                // 获取当前本地版本号
+                const currentVersionElement = document.getElementById('current-version');
+                const currentVersion = currentVersionElement ? currentVersionElement.textContent.replace('v', '') : '';
+
+                // 清空现有内容（保留标题）
+                changelogContent.innerHTML = '<h4 class="text-2xl font-bold mb-6">更新日志</h4>';
+
+                // 生成更新日志HTML
+                let releasesHtml = '';
+                const borderColors = ['border-primary', 'border-secondary', 'border-accent', 'border-blue-400'];
+                const badgeColors = ['badge-primary', 'badge-secondary', 'badge-accent', 'badge-blue'];
+
+                releases.forEach((release, index) => {
+                    const borderColor = borderColors[index] || 'border-blue-400';
+                    const releaseVersion = release.tag_name || release.name || '';
+                    // 去除v前缀进行比较
+                    const releaseVersionClean = releaseVersion.replace(/^v/i, '');
+
+                    let badgeText = index === 0 ? '最新' : (release.prerelease ? '测试版' : '稳定版');
+                    // 根据版本类型使用相同的颜色
+                    const badgeColor = badgeText === '最新' ? 'badge-primary' : (badgeText === '测试版' ? 'badge-accent' : 'badge-secondary');
+
+                    // 如果版本号与当前版本一致，添加当前版本标签
+                    const isCurrentVersion = releaseVersionClean === currentVersion;
+                    const currentVersionBadge = isCurrentVersion ? '<span class="ml-2 badge badge-success">当前版本</span>' : '';
+
+                    // 解析发布日期
+                    const publishDate = new Date(release.published_at).toLocaleDateString('zh-CN');
+
+                    // 提取更新内容 - 支持多种格式
+                    const bodyText = release.body || '无更新说明';
+                    console.log(`Release ${release.tag_name} body:`, bodyText);
+
+                    let updates = '';
+                    let currentCategory = '';
+
+                    // 按段落解析内容
+                    const segments = bodyText.split(/\n+/);
+                    for (let segment of segments) {
+                        const trimmedLine = segment.trim();
+                        if (!trimmedLine) continue;
+
+                        // 检测是否为 Markdown 标题（### 开头）
+                        const titleMatch = trimmedLine.match(/^#{1,3}\s+(.+)/);
+
+                        if (titleMatch) {
+                            currentCategory = titleMatch[1].trim();
+                            updates += `<li class="mt-4 font-semibold text-lg text-gray-800 dark:text-gray-200">${currentCategory}</li>`;
+                        } else {
+                            // 解析列表项 - 支持中英文标点
+                            const listMatch = trimmedLine.match(/^[-*•]\s+(.+)/);
+                            const numberedMatch = trimmedLine.match(/^\d+[.)]\s*(.+)/);
+
+                            if (listMatch) {
+                                updates += `<li class="ml-6 text-sm font-normal text-gray-600 dark:text-gray-400">• ${listMatch[1].trim()}</li>`;
+                            } else if (numberedMatch) {
+                                updates += `<li class="ml-6 text-sm font-normal text-gray-600 dark:text-gray-400">• ${numberedMatch[1].trim()}</li>`;
+                            } else if (trimmedLine.length < 200 && !trimmedLine.includes('http') && !trimmedLine.includes('##')) {
+                                // 短行且不含链接和标题，作为更新项
+                                updates += `<li class="ml-6 text-sm font-normal text-gray-600 dark:text-gray-400">• ${trimmedLine}</li>`;
+                            }
+                        }
+                    }
+
+                    // 如果没有解析到内容，显示默认提示
+                    if (!updates) {
+                        updates = '<li class="text-sm text-gray-500">查看完整更新内容请访问 GitHub</li>';
+                    }
+
+                    releasesHtml += `
+                        <div class="border-l-4 ${borderColor} pl-4 py-2">
+                            <div class="flex justify-between items-center mb-1">
+                                <h5 class="text-2xl font-bold text-primary dark:text-primary">${release.tag_name || release.name} <span class="text-base font-normal text-gray-500 dark:text-gray-400">· ${publishDate}</span>${currentVersionBadge}</h5>
+                                <span class="badge ${badgeColor}">${badgeText}</span>
+                            </div>
+                            <ul class="text-muted-dark dark:text-muted-light space-y-2">
+                                ${updates}
+                            </ul>
+                        </div>
+                    `;
+                });
+
+                // 更新内容
+                changelogContent.innerHTML += releasesHtml;
+            } catch (error) {
+                console.error('加载GitHub releases失败:', error);
+                // 即使失败也要更新顶部通知栏，显示错误文本
+                updateAnnouncement(null);
+                
+                // 失败时显示提示信息 - 重新获取元素引用确保可用
+                const errorChangelogContent = document.getElementById('changelog-content');
+                if (errorChangelogContent) {
+                    const githubUrl = document.getElementById('github-footer-link')?.href || 'https://github.com/YunJian101/Random-Pictures';
+                    // 清空现有内容并显示错误提示
+                    errorChangelogContent.innerHTML = `
+                        <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6 text-center">
+                            <div class="text-yellow-600 dark:text-yellow-400 font-medium mb-2">
+                                <i class="fas fa-exclamation-triangle mr-2"></i>加载更新日志失败
+                            </div>
+                            <div class="text-gray-600 dark:text-gray-400 text-sm mb-3">
+                                暂时无法获取GitHub Releases数据
+                            </div>
+                            <a href="${githubUrl}/releases" target="_blank"
+                               class="inline-flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-all duration-200">
+                                <i class="fab fa-github mr-2"></i>前往 GitHub Releases 查看
+                            </a>
+                        </div>
+                    `;
+                    
+                    // 仅在从按钮触发时才自动激活标签页
+                    if (changelogErrorFromButton) {
+                        const changelogTab = document.querySelector('[data-tab="changelog"]');
+                        const changelogContentElement = document.getElementById('changelog-tab');
+                        
+                        if (changelogTab && changelogContentElement) {
+                            // 移除所有标签的激活状态
+                            const docTabs = document.querySelectorAll('.doc-tab');
+                            const docContents = document.querySelectorAll('.doc-content');
+                            
+                            docTabs.forEach(t => {
+                                t.classList.remove('text-primary', 'border-b-2', 'border-primary', 'font-medium');
+                                t.classList.add('text-muted-dark', 'dark:text-muted-light');
+                            });
+                            
+                            // 激活更新日志标签
+                            changelogTab.classList.remove('text-muted-dark', 'dark:text-muted-light');
+                            changelogTab.classList.add('text-primary', 'border-b-2', 'border-primary', 'font-medium');
+                            
+                            // 隐藏所有内容
+                            docContents.forEach(content => {
+                                content.classList.add('hidden');
+                            });
+                            
+                            // 显示更新日志内容
+                            changelogContentElement.classList.remove('hidden');
+                        }
+                    }
+                }
+                changelogErrorFromButton = false; // 重置标记
+            }
+        }
+
+        // 从后端加载分类数据
+        async function loadCategoriesFromBackend() {
+            try {
+                const response = await fetch(`${BASE_URL}/api/categories?page=${currentPage}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                console.log('从后端获取的分类数据:', data);
+
+                // 提取分类列表（data.categories 是一个对象，键是分类名，值是图片数量）
+                if (!data.categories || Object.keys(data.categories).length === 0) {
+                    console.warn('后端返回的分类数据为空');
+                    showNoCategoriesMessage();
+                    return;
+                }
+
+                // 保存分页信息到全局变量
+                totalPages = data.total_pages || 1;
+                totalCategories = data.total_categories || 0;
+
+                // 直接使用后端返回的分类数据，不做任何转换
+                categoriesData = Object.entries(data.categories).map(([name, images]) => ({
+                    name: name,
+                    count: Array.isArray(images) ? images.length : 0
+                }));
+
+                console.log('处理后的分类数据:', categoriesData);
+                console.log(`当前页: ${currentPage}, 总页数: ${totalPages}, 总分类数: ${totalCategories}`);
+
+                // 填充分类下拉框
+                populateCategorySelect();
+
+                // 动态生成分类预览区
+                generateCategoryPreview();
+
+                // 更新文档中的分类列表
+                updateDocCategoryList();
+
+                // 更新分页控件
+                updatePaginationControls();
+
+                // 更新文档中的BASE_URL
+                updateDocumentUrls();
+
+            } catch (error) {
+                console.error('加载分类数据失败:', error);
+                showNoCategoriesMessage();
+            }
+        }
+
+        // 显示无分类数据提示
+        function showNoCategoriesMessage() {
+            const categoriesGrid = document.getElementById('categories-grid');
+            if (categoriesGrid) {
+                categoriesGrid.innerHTML = '<div class="col-span-full text-center text-muted-dark dark:text-muted-light py-10">暂无分类数据</div>';
+            }
+            const categorySelect = document.getElementById('category-select');
+            if (categorySelect) {
+                categorySelect.innerHTML = '<option value="">暂无分类</option>';
+            }
+            const categoryList = document.getElementById('doc-category-list');
+            if (categoryList) {
+                categoryList.innerHTML = '<li>暂无分类</li>';
+            }
+        }
+
+
+
+        // 填充分类下拉框
+        function populateCategorySelect() {
+            const categorySelect = document.getElementById('category-select');
+            if (!categorySelect) return;
+
+            // 清空现有选项
+            categorySelect.innerHTML = '';
+
+            // 添加"全部"选项（调用全局随机图API）
+            const allOption = document.createElement('option');
+            allOption.value = 'all';
+            allOption.textContent = '全部';
+            categorySelect.appendChild(allOption);
+
+            // 动态添加分类选项
+            categoriesData.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category.name;
+                option.textContent = category.name;  // 直接使用后端返回的分类名
+                categorySelect.appendChild(option);
+            });
+        }
+
+        // 动态生成分类预览区
+        function generateCategoryPreview() {
+            const categoriesGrid = document.getElementById('categories-grid');
+            if (!categoriesGrid) return;
+
+            // 清空现有内容
+            categoriesGrid.innerHTML = '';
+
+            // 动态生成分类卡片
+            categoriesData.forEach(category => {
+                const card = document.createElement('div');
+                card.className = 'bg-card p-6 hover:translate-y-[-5px] transition-all';
+                card.innerHTML = `
+                    <div class="aspect-video bg-light-200 dark:bg-dark-200 rounded-xl overflow-hidden mb-5 flex items-center justify-center border border-light-300 dark:border-dark-300">
+                        <img class="category-preview h-full w-full object-cover hover:scale-105 transition-transform duration-500"
+                             data-src="${BASE_URL}/random?type=${encodeURIComponent(category.name)}"
+                             alt="${category.name}">
+                    </div>
+                    <div class="flex justify-between items-center mb-2">
+                        <h4 class="text-lg font-semibold">${category.name}</h4>
+                        <span class="badge badge-primary">${category.count}+ 张</span>
+                    </div>
+                    <p class="text-muted-dark dark:text-muted-light text-sm mb-5"></p>
+                    <div class="flex gap-3">
+                        <button onclick="showCategoryImages('${encodeURIComponent(category.name)}')"
+                           class="category-link btn-outline flex-1 text-center block text-sm">
+                            查看更多
+                        </button>
+                        <button class="btn-primary flex-1 text-center block text-sm">
+                            <i class="fa-solid fa-star mr-1"></i>收藏分类
+                        </button>
+                    </div>
+                `;
+                categoriesGrid.appendChild(card);
+            });
+        }
+
+        // 更新文档中的分类列表
+        function updateDocCategoryList() {
+            const categoryList = document.getElementById('doc-category-list');
+            if (!categoryList) return;
+
+            categoryList.innerHTML = '';
+            categoriesData.forEach(category => {
+                const li = document.createElement('li');
+                li.innerHTML = `<span class="badge badge-primary">${category.name}</span>`;
+                categoryList.appendChild(li);
+            });
+        }
+
+        // 更新文档中的URL占位符
+        function updateDocumentUrls() {
+            // 获取可用分类，每个示例使用不同分类
+            const getCategory = (index) => {
+                if (!categoriesData || categoriesData.length === 0) {
+                    return '默认';
+                }
+                // 确保索引不超出范围
+                const safeIndex = Math.min(index, categoriesData.length - 1);
+                return categoriesData[safeIndex].name;
+            };
+
+            const htmlCategory = getCategory(0);
+            const jsCategory = getCategory(1);
+            const pythonCategory = getCategory(2);
+            const phpCategory = getCategory(3);
+
+            // 替换所有 ${BASE_URL} 为实际地址
+            const elements = document.querySelectorAll('[data-replace-base-url]');
+            elements.forEach(el => {
+                el.textContent = el.textContent.replace(/\$\{BASE_URL\}/g, BASE_URL);
+            });
+
+            // 特殊处理有id的元素
+            const docBaseUrl = document.getElementById('doc-base-url');
+            if (docBaseUrl) {
+                docBaseUrl.textContent = `${BASE_URL}/random`;
+            }
+
+            const docCategoryUrl = document.getElementById('doc-category-url');
+            if (docCategoryUrl) {
+                docCategoryUrl.textContent = `${BASE_URL}/random?type=${getCategory(0)}`;
+            }
+
+            const docComboUrl = document.getElementById('doc-combo-url');
+            if (docComboUrl) {
+                docComboUrl.textContent = `${BASE_URL}/random?type=${getCategory(0)}&format=jpg`;
+            }
+
+            const docFormatUrl = document.getElementById('doc-format-url');
+            if (docFormatUrl) {
+                docFormatUrl.textContent = `${BASE_URL}/random?format=png`;
+            }
+
+            // 嵌入代码弹窗中的URL
+            const htmlCode = document.getElementById('html-code');
+            if (htmlCode) {
+                htmlCode.textContent = `<img src="${BASE_URL}/random" alt="随机图片">`;
+            }
+
+            const markdownCode = document.getElementById('markdown-code');
+            if (markdownCode) {
+                markdownCode.textContent = `![随机图片](${BASE_URL}/random)`;
+            }
+
+            const urlCode = document.getElementById('url-code');
+            if (urlCode) {
+                urlCode.textContent = BASE_URL + '/random';
+            }
+
+            const faqApiUsage = document.getElementById('faq-api-usage');
+            if (faqApiUsage) {
+                faqApiUsage.textContent = `直接访问 ${BASE_URL}/random 即可获取随机图片，支持分类筛选。`;
+            }
+
+            // 更新示例代码中的URL
+            const exampleHtml = document.getElementById('example-html');
+            if (exampleHtml) {
+                exampleHtml.innerHTML = `&lt;!-- 基础使用 --&gt;<br>
+                                &lt;img src="${BASE_URL}/random?type=${htmlCategory}" alt="随机${htmlCategory}图片"&gt;`;
+            }
+
+            const exampleJs = document.getElementById('example-js');
+            if (exampleJs) {
+                exampleJs.innerHTML = `// 动态加载随机图片<br>
+                                function loadRandomImage() {<br>
+                                &nbsp;&nbsp;const img = document.createElement('img');<br>
+                                &nbsp;&nbsp;img.src = '${BASE_URL}/random?type=${jsCategory}';<br>
+                                &nbsp;&nbsp;img.alt = '随机${jsCategory}图片';<br>
+                                &nbsp;&nbsp;document.getElementById('image-container').appendChild(img);<br>
+                                }<br><br>
+                                // 调用函数<br>
+                                loadRandomImage();`;
+            }
+
+            const examplePython = document.getElementById('example-python');
+            if (examplePython) {
+                examplePython.innerHTML = `import requests<br><br>
+                                # 获取随机${pythonCategory}图片并保存<br>
+                                def save_random_image():<br>
+                                &nbsp;&nbsp;url = '${BASE_URL}/random?type=${pythonCategory}'<br>
+                                &nbsp;&nbsp;response = requests.get(url)<br>
+                                &nbsp;&nbsp;if response.status_code == 200:<br>
+                                &nbsp;&nbsp;&nbsp;&nbsp;with open('random_image.jpg', 'wb') as f:<br>
+                                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;f.write(response.content)<br>
+                                &nbsp;&nbsp;&nbsp;&nbsp;print('图片保存成功')<br>
+                                &nbsp;&nbsp;else:<br>
+                                &nbsp;&nbsp;&nbsp;&nbsp;print(f'请求失败：{response.status_code}')<br><br>
+                                save_random_image()`;
+            }
+
+            const examplePhp = document.getElementById('example-php');
+            if (examplePhp) {
+                examplePhp.innerHTML = `&lt;?php<br>
+                                // 获取随机${phpCategory}图片URL<br>
+                                $url = "${BASE_URL}/random?type=${phpCategory}";<br><br>
+                                // 输出图片标签<br>
+                                echo "&lt;img src='{$url}' alt='随机${phpCategory}图片'&gt;";<br>
+                                ?&gt;`;
+            }
+        }
+
+        // 更新分页控件状态
+        function updatePaginationControls() {
+            const prevBtn = document.getElementById('prev-page');
+            const nextBtn = document.getElementById('next-page');
+            const pageInfo = document.getElementById('page-info');
+
+            if (!prevBtn || !nextBtn || !pageInfo) return;
+
+            // 更新页码显示
+            pageInfo.textContent = `第 ${currentPage} / ${totalPages} 页`;
+
+            // 更新按钮状态
+            prevBtn.disabled = currentPage === 1;
+            nextBtn.disabled = currentPage === totalPages;
+        }
+
+        // 上一页
+        function goToPrevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                categoryImagesLoaded = false;
+                loadCategoriesFromBackend().then(() => {
+                    // 滚动到分类预览区顶部
+                    document.getElementById('categories').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    loadCategoryImages();
+                });
+            }
+        }
+
+        // 下一页
+        function goToNextPage() {
+            if (currentPage < totalPages) {
+                currentPage++;
+                categoryImagesLoaded = false;
+                loadCategoriesFromBackend().then(() => {
+                    // 滚动到分类预览区顶部
+                    document.getElementById('categories').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    loadCategoryImages();
+                });
+            }
+        }
+
+        // 模块切换功能
+        window.showModule = function(moduleId) {
+            console.log('showModule 被调用，moduleId =', moduleId);
+            // 隐藏所有模块
+            const modules = document.querySelectorAll('#hero, #demo, #docs, #categories, #stats, #feedback, #category-images');
+            modules.forEach(module => {
+                module.classList.add('module-hidden');
+            });
+
+            // 显示目标模块
+            const targetModule = document.getElementById(moduleId);
+            console.log('找到目标模块:', targetModule);
+            if (targetModule) {
+                targetModule.classList.remove('module-hidden');
+                targetModule.classList.add('animate-fade-in');
+
+                // 如果是统计模块，初始化图表
+                if (moduleId === 'stats' && typeof categoryChart === 'undefined') {
+                    initCharts();
+                }
+
+                // 如果是演示模块，自动加载第一张随机图片
+                if (moduleId === 'demo') {
+                    console.log('检测到演示模块，自动加载随机图片');
+                    loadRandomImage();
+                }
+
+                // 如果是分类模块，加载分类预览图片
+                if (moduleId === 'categories') {
+                    console.log('检测到分类模块，准备加载图片');
+                    loadCategoryImages();
+                }
+            }
+
+            // 移动端菜单关闭
+            const mobileMenu = document.getElementById('mobile-menu');
+            if (mobileMenu) {
+                mobileMenu.classList.add('hidden');
+            }
+
+            // 滚动到顶部
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // 切换到基础用法标签页
+        function switchToBasicTab() {
+            // 使用 setTimeout 确保模块已显示后再切换标签页
+            setTimeout(() => {
+                // 找到"基础用法"标签按钮
+                const basicTab = document.querySelector('.doc-tab[data-tab="basic"]');
+                if (basicTab) {
+                    basicTab.click();
+                }
+            }, 100);
+        }
+
+        // 处理查看更新日志按钮点击
+        function handleChangelogClick() {
+            changelogErrorFromButton = true;
+            showModule('docs');
+            switchToChangelogTab();
+        }
+        
+        // 切换到更新日志标签页
+        function switchToChangelogTab() {
+            // 使用 setTimeout 确保模块已显示后再切换标签页
+            setTimeout(() => {
+                // 找到"更新日志"标签按钮
+                const changelogTab = document.querySelector('.doc-tab[data-tab="changelog"]');
+                if (changelogTab) {
+                    changelogTab.click();
+                }
+            }, 100);
+        }
+
+        // 加载分类预览图片
+        let categoryImagesLoaded = false;
+        function loadCategoryImages() {
+            console.log('loadCategoryImages 被调用');
+            if (categoryImagesLoaded) {
+                console.log('图片已加载，跳过');
+                return;
+            }
+
+            const categoryPreviews = document.querySelectorAll('.category-preview');
+            console.log('找到的图片元素数量:', categoryPreviews.length);
+
+            categoryPreviews.forEach((img, index) => {
+                if (index < categoriesData.length) {
+                    const category = categoriesData[index];
+                    const src = img.dataset.src;
+                    console.log(`处理图片 ${index}:`, src);
+                    img.src = src;
+                    img.onerror = function() {
+                        console.error('图片加载失败:', src);
+                        // 图片加载失败时显示占位符
+                        this.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300"%3E%3Crect width="400" height="300" fill="%23e5e7eb"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="16" fill="%239ca3af"%3E图片加载失败%3C/text%3E%3C/svg%3E';
+                    };
+                    img.onload = function() {
+                        console.log('图片加载成功:', src);
+                    };
+                }
+            });
+
+            categoryImagesLoaded = true;
+        }
+
+        // 分类图片列表相关变量
+        let currentCategoryName = '';
+        let currentCategoryPage = 1;
+        let totalCategoryPages = 1;
+        let totalCategoryImages = 0;
+
+        // 显示分类图片列表
+        window.showCategoryImages = function(encodedCategoryName) {
+            const categoryName = decodeURIComponent(encodedCategoryName);
+            currentCategoryName = categoryName;
+            currentCategoryPage = 1;
+
+            console.log('显示分类图片列表:', categoryName);
+
+            // 隐藏所有模块，显示分类图片列表模块
+            const modules = document.querySelectorAll('#hero, #demo, #docs, #categories, #stats, #feedback');
+            modules.forEach(module => {
+                module.classList.add('module-hidden');
+            });
+
+            const categoryImagesModule = document.getElementById('category-images');
+            if (categoryImagesModule) {
+                categoryImagesModule.classList.remove('module-hidden');
+                categoryImagesModule.classList.add('animate-fade-in');
+
+                // 更新分类标题
+                document.getElementById('category-title').textContent = categoryName;
+
+                // 加载分类图片
+                loadCategoryImagesList();
+            }
+
+            // 滚动到顶部
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // 返回分类列表
+        window.backToCategories = function() {
+            // 隐藏分类图片列表模块
+            document.getElementById('category-images').classList.add('module-hidden');
+
+            // 显示分类预览模块
+            showModule('categories');
+        }
+
+        // 加载分类图片列表
+        async function loadCategoryImagesList() {
+            try {
+                console.log(`加载分类 ${currentCategoryName} 的第 ${currentCategoryPage} 页图片`);
+
+                const response = await fetch(
+                    `${BASE_URL}/api/category/images?name=${encodeURIComponent(currentCategoryName)}&page=${currentCategoryPage}`
+                );
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log('分类图片数据:', data);
+
+                // 保存分页信息
+                totalCategoryPages = data.total_pages || 1;
+                totalCategoryImages = data.total_images || 0;
+
+                // 生成图片网格
+                renderCategoryImagesGrid(data.images || []);
+
+                // 更新分页控件
+                updateCategoryPaginationControls();
+
+            } catch (error) {
+                console.error('加载分类图片失败:', error);
+                const grid = document.getElementById('category-images-grid');
+                if (grid) {
+                    grid.innerHTML = '<div class="col-span-full text-center text-muted-dark dark:text-muted-light py-10">加载图片失败</div>';
+                }
+            }
+        }
+
+        // 渲染分类图片网格
+        function renderCategoryImagesGrid(images) {
+            const grid = document.getElementById('category-images-grid');
+            if (!grid) return;
+
+            if (!images || images.length === 0) {
+                grid.innerHTML = '<div class="col-span-full text-center text-muted-dark dark:text-muted-light py-10">暂无图片</div>';
+                return;
+            }
+
+            grid.innerHTML = '';
+
+            images.forEach(image => {
+                const imageUrl = `${BASE_URL}${image.url}`;
+                const card = document.createElement('div');
+                card.className = 'bg-card p-4 hover:translate-y-[-5px] transition-all';
+                card.innerHTML = `
+                    <div class="aspect-video bg-light-200 dark:bg-dark-200 rounded-xl overflow-hidden mb-3 border border-light-300 dark:border-dark-300">
+                        <img class="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                             src="${imageUrl}"
+                             alt="${currentCategoryName}"
+                             loading="lazy">
+                    </div>
+                    <p class="text-muted-dark dark:text-muted-light text-sm mb-3 truncate">${image.name}</p>
+                    <div class="flex gap-2">
+                        <a href="${imageUrl}" target="_blank" class="btn-outline flex-1 text-center text-sm py-2">
+                            <i class="fa-solid fa-external-link-alt mr-1"></i>查看
+                        </a>
+                        <button onclick="downloadImage('${imageUrl}', '${image.name}')" class="btn-primary flex-1 text-center text-sm py-2">
+                            <i class="fa-solid fa-download mr-1"></i>下载
+                        </button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+        
+        // 下载图片
+        async function downloadImage(url, filename) {
+            try {
+                const response = await fetch(url);
+                const blob = await response.blob();
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(link.href);
+            } catch (error) {
+                console.error('下载图片失败:', error);
+                alert('下载图片失败，请重试');
+            }
+        }
+
+
+        // 更新分类图片列表的分页控件
+        function updateCategoryPaginationControls() {
+            const prevBtn = document.getElementById('category-images-prev');
+            const nextBtn = document.getElementById('category-images-next');
+            const pageInfo = document.getElementById('category-images-page-info');
+
+            if (pageInfo) {
+                pageInfo.textContent = `第 ${currentCategoryPage} / ${totalCategoryPages} 页 (共 ${totalCategoryImages} 张)`;
+            }
+
+            if (prevBtn) {
+                prevBtn.disabled = currentCategoryPage === 1;
+                prevBtn.onclick = () => goToCategoryPrevPage();
+            }
+
+            if (nextBtn) {
+                nextBtn.disabled = currentCategoryPage === totalCategoryPages;
+                nextBtn.onclick = () => goToCategoryNextPage();
+            }
+        }
+
+        // 分类图片列表上一页
+        function goToCategoryPrevPage() {
+            if (currentCategoryPage > 1) {
+                currentCategoryPage--;
+                loadCategoryImagesList().then(() => {
+                    // 滚动到分类图片列表区域顶部
+                    document.getElementById('category-images').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            }
+        }
+
+        // 分类图片列表下一页
+        function goToCategoryNextPage() {
+            if (currentCategoryPage < totalCategoryPages) {
+                currentCategoryPage++;
+                loadCategoryImagesList().then(() => {
+                    // 滚动到分类图片列表区域顶部
+                    document.getElementById('category-images').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            }
+        }
+
+        // 主题切换功能
+        const themeToggle = document.getElementById('theme-toggle');
+        const html = document.documentElement;
+
+        if (localStorage.getItem('theme') === 'dark') {
+            html.classList.remove('light');
+            html.classList.add('dark');
+        }
+
+        themeToggle?.addEventListener('click', () => {
+            if (html.classList.contains('dark')) {
+                html.classList.remove('dark');
+                html.classList.add('light');
+                localStorage.setItem('theme', 'light');
+            } else {
+                html.classList.remove('light');
+                html.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+            }
+        });
+
+        // 语言切换功能
+        const langToggle = document.getElementById('lang-toggle');
+        const langDropdown = document.getElementById('lang-dropdown');
+        const langOptions = document.querySelectorAll('.lang-option');
+
+        langToggle?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            langDropdown.classList.toggle('hidden');
+        });
+
+        document.addEventListener('click', () => {
+            langDropdown?.classList.add('hidden');
+        });
+
+        langOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                const lang = option.dataset.lang;
+                console.log('切换语言:', lang);
+                // 这里可以添加实际的语言切换逻辑
+            });
+        });
+
+        // 移动端菜单切换
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
+
+        mobileMenuBtn?.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+        });
+
+        // 演示区功能
+        const refreshBtn = document.getElementById('refresh-btn');
+        const randomImage = document.getElementById('random-image');
+        const loading = document.getElementById('loading');
+        const error = document.getElementById('error');
+        const apiUrl = document.getElementById('api-url');
+        const categorySelect = document.getElementById('category-select');
+        const formatSelect = document.getElementById('format-select');
+        const sizeSelect = document.getElementById('size-select');
+
+        // 跟踪当前 blob URL，用于释放
+        let currentObjectUrl = null;
+
+        refreshBtn?.addEventListener('click', loadRandomImage);
+
+        async function loadRandomImage() {
+            const category = categorySelect.value;
+            const format = formatSelect.value;
+            const size = sizeSelect.value;
+
+            // 构建API URL - 使用动态BASE_URL
+            let url = BASE_URL + '/random';
+            const params = new URLSearchParams();
+
+            // 如果选择了具体分类（不是"全部"），则添加type参数
+            if (category && category !== 'all') {
+                params.append('type', category);
+            }
+            if (format) params.append('format', format);
+            if (size) params.append('size', size);
+
+            if (params.toString()) {
+                url += '?' + params.toString();
+            }
+
+            // 更新API URL显示
+            if (apiUrl) {
+                apiUrl.value = url;
+            }
+
+            // 显示加载状态
+            if (loading) loading.classList.remove('hidden');
+            if (randomImage) randomImage.classList.add('hidden');
+            if (error) error.classList.add('hidden');
+
+            try {
+                // 使用fetch API获取图片，禁用缓存 - 不使用时间戳
+                const response = await fetch(url, {
+                    method: 'GET',
+                    cache: 'no-store', // 最严格的缓存禁用
+                    headers: {
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'Pragma': 'no-cache',
+                        'Expires': '0'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                // 将响应转换为blob
+                const blob = await response.blob();
+                
+                // 释放之前的object URL
+                if (currentObjectUrl) {
+                    URL.revokeObjectURL(currentObjectUrl);
+                }
+                
+                // 创建新的object URL
+                currentObjectUrl = URL.createObjectURL(blob);
+                
+                // 设置图片源
+                if (randomImage) {
+                    randomImage.src = currentObjectUrl;
+                    randomImage.classList.remove('hidden');
+                    randomImage.onload = () => {
+                        if (loading) loading.classList.add('hidden');
+                        updateImageInfo();
+                    };
+                    randomImage.onerror = () => {
+                        if (loading) loading.classList.add('hidden');
+                        if (error) {
+                            error.classList.remove('hidden');
+                        }
+                    };
+                }
+            } catch (err) {
+                console.error('加载图片失败:', err);
+                if (loading) loading.classList.add('hidden');
+                if (error) {
+                    document.getElementById('error-message').textContent = `加载失败: ${err.message}`;
+                    error.classList.remove('hidden');
+                }
+            }
+        }
+
+        function updateImageInfo() {
+            const info = document.getElementById('image-info');
+            if (info && randomImage) {
+                info.textContent = `尺寸: ${randomImage.naturalWidth}x${randomImage.naturalHeight}`;
+            }
+        }
+
+        // 分页按钮事件绑定
+        document.getElementById('prev-page')?.addEventListener('click', goToPrevPage);
+        document.getElementById('next-page')?.addEventListener('click', goToNextPage);
+
+        // 初始化文档URL
+        updateDocPageUrls();
+
+        // 复制按钮功能
+        const copyBtn = document.getElementById('copy-btn');
+        copyBtn?.addEventListener('click', async () => {
+            if (apiUrl) {
+                try {
+                    await navigator.clipboard.writeText(apiUrl.value);
+                    copyBtn.innerHTML = '<i class="fa-solid fa-check text-green-500 text-lg"></i>';
+                    setTimeout(() => {
+                        copyBtn.innerHTML = '<i class="fa-solid fa-copy text-lg"></i>';
+                    }, 2000);
+                } catch (err) {
+                    console.error('复制失败:', err);
+                }
+            }
+        });
+
+        // 嵌入代码弹窗
+        const embedBtn = document.getElementById('embed-btn');
+        const embedModal = document.getElementById('embed-modal');
+        const closeEmbedModal = document.getElementById('close-embed-modal');
+        const copyEmbedCode = document.getElementById('copy-embed-code');
+        const htmlCode = document.getElementById('html-code');
+        const markdownCode = document.getElementById('markdown-code');
+        const urlCode = document.getElementById('url-code');
+
+        embedBtn?.addEventListener('click', () => {
+            if (apiUrl && htmlCode && markdownCode && urlCode) {
+                htmlCode.textContent = `<img src="${apiUrl.value}" alt="随机图片">`;
+                markdownCode.textContent = `![随机图片](${apiUrl.value})`;
+                urlCode.textContent = apiUrl.value;
+                embedModal.classList.remove('hidden');
+            }
+        });
+
+        closeEmbedModal?.addEventListener('click', () => {
+            embedModal.classList.add('hidden');
+        });
+
+        embedModal?.addEventListener('click', (e) => {
+            if (e.target === embedModal) {
+                embedModal.classList.add('hidden');
+            }
+        });
+
+        // 代码复制功能
+        copyEmbedCode?.addEventListener('click', async () => {
+            if (htmlCode) {
+                try {
+                    await navigator.clipboard.writeText(htmlCode.textContent);
+                    copyEmbedCode.innerHTML = '<i class="fa-solid fa-check text-green-500 text-lg"></i>';
+                    setTimeout(() => {
+                        copyEmbedCode.innerHTML = '<i class="fa-solid fa-copy text-lg"></i>';
+                    }, 2000);
+                } catch (err) {
+                    console.error('复制失败:', err);
+                }
+            }
+        });
+
+        // 分页功能
+
+        function goToPrevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                loadRandomImage();
+            }
+        }
+
+        function goToNextPage() {
+            currentPage++;
+            loadRandomImage();
+        }
+
+        function updateDocPageUrls() {
+            const docUrls = document.querySelectorAll('.doc-url');
+            docUrls.forEach(url => {
+                url.href = url.href.replace('{page}', currentPage);
+            });
+        }
+
+        copyEmbedCode?.addEventListener('click', async () => {
+            const code = `HTML:\n${htmlCode.textContent}\n\nMarkdown:\n${markdownCode.textContent}\n\nURL:\n${urlCode.textContent}`;
+            try {
+                setTimeout(() => {
+                    copyEmbedCode.innerHTML = '<i class="fa-solid fa-copy mr-2"></i>复制全部代码';
+                }, 2000);
+            } catch (err) {
+                console.error('复制失败:', err);
+            }
+        });
+
+        // 新窗口打开按钮
+        const openBtn = document.getElementById('open-btn');
+        openBtn?.addEventListener('click', () => {
+            if (apiUrl) {
+                window.open(apiUrl.value, '_blank');
+            }
+        });
+
+        // 文档标签页切换
+        const docTabs = document.querySelectorAll('.doc-tab');
+        const docContents = document.querySelectorAll('.doc-content');
+
+        docTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabName = tab.dataset.tab;
+
+                // 移除所有标签的激活状态
+                docTabs.forEach(t => {
+                    t.classList.remove('text-primary', 'border-b-2', 'border-primary', 'font-medium');
+                    t.classList.add('text-muted-dark', 'dark:text-muted-light');
+                });
+
+                // 激活当前标签
+                tab.classList.remove('text-muted-dark', 'dark:text-muted-light');
+                tab.classList.add('text-primary', 'border-b-2', 'border-primary', 'font-medium');
+
+                // 隐藏所有内容
+                docContents.forEach(content => {
+                    content.classList.add('hidden');
+                });
+
+                // 显示对应内容
+                const targetContent = document.getElementById(tabName + '-tab');
+                if (targetContent) {
+                    targetContent.classList.remove('hidden');
+                }
+
+                // 如果切换到基础用法标签，更新分类列表
+                if (tabName === 'basic') {
+                    updateDocCategoryList();
+                }
+                
+                // 如果切换到更新日志标签，检查是否需要重新加载
+                if (tabName === 'changelog') {
+                    const changelogContent = document.getElementById('changelog-content');
+                    // 检查是否只有标题没有实际内容（标题是一个h4元素）
+                    if (changelogContent && changelogContent.children.length <= 1) {
+                        loadGitHubReleases();
+                    }
+                }
+            });
+        });
+
+        // 图表初始化
+        let categoryChart = null;
+        let trendChart = null;
+
+        function initCharts() {
+            // 分类访问统计图表
+            const categoryCtx = document.getElementById('categoryChart');
+            if (categoryCtx) {
+                categoryChart = new Chart(categoryCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['自然风光', '城市建筑', '动物萌宠', '艺术创意', '科技产品', '美食饮品', '旅行风景'],
+                        datasets: [{
+                            data: [856, 724, 912, 688, 542, 786, 654],
+                            backgroundColor: [
+                                '#10b981',
+                                '#6366f1',
+                                '#f59e0b',
+                                '#ec4899',
+                                '#06b6d4',
+                                '#84cc16',
+                                '#f97316'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'right'
+                            }
+                        }
+                    }
+                });
+            }
+
+            // 月度访问趋势图表
+            const trendCtx = document.getElementById('trendChart');
+            if (trendCtx) {
+                trendChart = new Chart(trendCtx, {
+                    type: 'line',
+                    data: {
+                        labels: ['7月', '8月', '9月', '10月', '11月', '12月', '1月'],
+                        datasets: [{
+                            label: '访问次数',
+                            data: [1200000, 1350000, 1520000, 1680000, 1850000, 2100000, 2350000],
+                            borderColor: '#6366f1',
+                            backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return value / 10000 + '万';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // 反馈表单提交
+        const feedbackForm = document.getElementById('feedback-form');
+        feedbackForm?.addEventListener('submit', (e) => {
+            e.preventDefault();
+            alert('感谢您的反馈！我们会尽快处理。');
+            feedbackForm.reset();
+        });
+    </script>
+</body>
+</html>
