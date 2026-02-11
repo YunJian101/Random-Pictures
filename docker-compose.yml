@@ -25,7 +25,7 @@ services:
       # ========== 站点个性化配置 ==========
       # 以下配置留空则不显示对应元素
       - FAVICON_URL=https://shifeiyu.cn/upload/%E7%AB%99%E7%82%B9logo.png                                # 站点图标URL，支持本地或远程图片
-      - ICP_BEIAN_CODE=京ICP备12345678号                             # ICP备案号，如"京ICP备12345678号"
+      - ICP_BEIAN_CODE=京ICP备1234XXX号                             # ICP备案号，如"京ICP备12345678号"
       - ICP_BEIAN_URL=https://beian.miit.gov.cn                              # 备案信息链接，如"https://beian.miit.gov.cn"
       
       # ========== 导航栏按钮配置 ==========

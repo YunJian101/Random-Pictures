@@ -1074,7 +1074,9 @@
         // 检查用户登录状态
         async function checkAuthStatus() {
             try {
-                const response = await fetch(`${BASE_URL}/api/auth/verify`);
+                const response = await fetch(`${BASE_URL}/api/auth/verify`, {
+                    credentials: 'same-origin'  // 确保发送cookie
+                });
                 const data = await response.json();
 
                 const authBtn = document.getElementById('auth-btn');
