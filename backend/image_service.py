@@ -7,6 +7,7 @@
 
 import os
 import random
+from datetime import datetime
 from typing import List, Optional, Dict
 from urllib.parse import quote
 
@@ -221,7 +222,7 @@ def get_random_image_in_category(category_name: str) -> Optional[dict]:
 
 def get_random_image_in_all_categories() -> Optional[dict]:
     """
-    全局随机：直接返回随机单张图片
+    全局随机:直接返回随机单张图片
     """
     all_img_paths = []
 
@@ -248,4 +249,71 @@ def get_random_image_in_all_categories() -> Optional[dict]:
         "name": os.path.basename(random_path),
         "url": f"/image?path={quote(rel_path)}",
         "path": rel_path
+    }
+
+
+def get_all_images(page: int = 1) -> dict:
+    """
+    获取所有图片列表(分页)
+    """
+    all_images = []
+    categories_data = get_image_categories()
+
+    # 遍历所有分类,收集图片
+    for category_name, images in categories_data.items():
+        for img in images:
+            # 获取文件信息
+            file_path = os.path.join(IMG_ROOT_DIR, img["path"])
+            file_size = 0
+            file_resolution = "0x0"
+            modified_time = ""
+
+            if os.path.exists(file_path):
+                file_size = os.path.getsize(file_path)
+                modified_time = datetime.fromtimestamp(os.path.getmtime(file_path)).strftime('%Y-%m-%d')
+
+                # 尝试获取图片分辨率
+                try:
+                    from PIL import Image
+                    with Image.open(file_path) as img_obj:
+                        file_resolution = f"{img_obj.width}×{img_obj.height}"
+                except:
+                    pass
+
+            # 格式化文件大小
+            if file_size < 1024:
+                size_str = f"{file_size}B"
+            elif file_size < 1024 * 1024:
+                size_str = f"{file_size // 1024}KB"
+            else:
+                size_str = f"{file_size // (1024 * 1024)}MB"
+
+            all_images.append({
+                "id": len(all_images) + 1,
+                "name": img["name"],
+                "category": category_name,
+                "path": img["path"],
+                "url": img["url"],
+                "size": size_str,
+                "size_bytes": file_size,
+                "resolution": file_resolution,
+                "modified_time": modified_time
+            })
+
+    # 按修改时间倒序排序
+    all_images.sort(key=lambda x: x["modified_time"], reverse=True)
+
+    total_images = len(all_images)
+    total_pages = (total_images + HOME_PAGE_SIZE - 1) // HOME_PAGE_SIZE
+    page = max(1, min(page, total_pages))
+
+    start = (page - 1) * HOME_PAGE_SIZE
+    end = start + HOME_PAGE_SIZE
+
+    return {
+        "images": all_images[start:end],
+        "current_page": page,
+        "total_pages": total_pages,
+        "total_images": total_images,
+        "page_size": HOME_PAGE_SIZE
     }

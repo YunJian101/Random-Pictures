@@ -25,7 +25,7 @@ from .middlewares.logging import LoggingMiddleware
 from .handlers import error_handlers
 
 # 导入路由模块
-from .routers import page, image, auth, user, admin
+from .routers import page, image, auth, user, admin, feedback
 
 
 
@@ -94,6 +94,7 @@ app.get("/favicon.ico")(page.handle_favicon)
 # API路由 - 图片
 app.get("/api/categories")(image.api_categories)
 app.get("/api/category/images")(image.api_category_images)
+app.get("/api/images")(image.api_all_images)
 app.get("/api/config")(image.api_config)
 app.get("/random")(image.handle_random_image)
 app.get("/image")(image.handle_image)
@@ -116,6 +117,13 @@ app.post("/api/admin/users/{user_id}/ban")(admin.api_admin_user_ban)
 app.post("/api/admin/users/{user_id}/unban")(admin.api_admin_user_unban)
 app.delete("/api/admin/users/{user_id}")(admin.api_admin_user_delete)
 app.post("/api/create-admin")(admin.api_create_admin)
+
+# API路由 - 反馈
+app.get("/api/admin/feedbacks")(feedback.api_admin_feedbacks)
+app.get("/api/admin/feedbacks/{feedback_id}")(feedback.api_admin_feedback_detail)
+app.put("/api/admin/feedbacks/{feedback_id}/status")(feedback.api_admin_feedback_update_status)
+app.delete("/api/admin/feedbacks/{feedback_id}")(feedback.api_admin_feedback_delete)
+app.post("/api/feedbacks")(feedback.api_create_feedback)
 
 # 测试路由
 @app.get("/test-500")

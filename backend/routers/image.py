@@ -130,3 +130,10 @@ async def api_config():
         "code": 200,
         "msg": "success"
     })
+
+
+async def api_all_images(page: int = Query(1, ge=1, le=1000, description="页码")):
+    """获取所有图片列表API"""
+    from ..image_service import get_all_images
+    result = get_all_images(page)
+    return JSONResponse(content=result)

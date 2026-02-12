@@ -147,6 +147,30 @@ class ConfigResponse(BaseModel):
     msg: str = "success"
 
 
+# ==================== 反馈相关模型 ====================
+class FeedbackCreateRequest(BaseModel):
+    """创建反馈请求"""
+    content: str = Field(..., min_length=1, max_length=1000, description="反馈内容")
+
+
+class FeedbackResponse(BaseModel):
+    """反馈信息响应"""
+    id: int
+    user_id: int
+    username: str
+    content: str
+    status: str
+    created_at: str
+    updated_at: str
+
+
+class FeedbackListResponse(BaseModel):
+    """反馈列表响应"""
+    code: int
+    msg: str
+    data: dict
+
+
 # ==================== 错误信息模型 ====================
 class ErrorInfo(BaseModel):
     """错误信息"""
