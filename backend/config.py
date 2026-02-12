@@ -100,11 +100,11 @@ CACHE_EXPIRE_SECONDS = int(os.getenv('CACHE_EXPIRE_SECONDS', 10))
 SECRET_KEY = os.getenv('SECRET_KEY', 'your-secret-key-change-this-in-production')
 
 # Token过期时间（天）
-TOKEN_EXPIRE_DAYS = int(os.getenv('TOKEN_EXPIRE_DAYS', 7))
+TOKEN_EXPIRE_DAYS = float(os.getenv('TOKEN_EXPIRE_DAYS', 0.5))  # 改为12小时
 
 # Cookie配置
 COOKIE_NAME = 'token'
-COOKIE_MAX_AGE = TOKEN_EXPIRE_DAYS * 24 * 60 * 60  # 转换为秒
+COOKIE_MAX_AGE = int(TOKEN_EXPIRE_DAYS * 24 * 60 * 60)  # 转换为秒
 
 
 # ==================== CORS配置 ====================

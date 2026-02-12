@@ -25,7 +25,7 @@ from .middlewares.logging import LoggingMiddleware
 from .handlers import error_handlers
 
 # 导入路由模块
-from .routers import page, image, auth, user, admin, feedback
+from .routers import page, image, auth, user, admin, feedback, upload
 
 
 
@@ -124,6 +124,9 @@ app.get("/api/admin/feedbacks/{feedback_id}")(feedback.api_admin_feedback_detail
 app.put("/api/admin/feedbacks/{feedback_id}/status")(feedback.api_admin_feedback_update_status)
 app.delete("/api/admin/feedbacks/{feedback_id}")(feedback.api_admin_feedback_delete)
 app.post("/api/feedbacks")(feedback.api_create_feedback)
+
+# API路由 - 上传（仅管理员可用）
+app.post("/api/admin/upload")(upload.api_upload_images)
 
 # 测试路由
 @app.get("/test-500")

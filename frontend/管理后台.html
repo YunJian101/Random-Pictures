@@ -361,7 +361,7 @@
         <i class="fa fa-bell text-gray-600"></i>
         <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
       </button>
-      <span class="text-sm text-gray-500">超级管理员</span>
+      <span class="text-sm text-gray-500">管理员</span>
       <button class="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors" id="logoutBtn">
         <i class="fa fa-sign-out text-gray-600"></i>
       </button>
@@ -1986,6 +1986,20 @@ document.addEventListener('DOMContentLoaded', function() {
         </select>
       </div>
       <div>
+        <label class="text-sm text-gray-700 mb-1 block">目标分类</label>
+        <select class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" id="targetCategory">
+          <option value="">请选择分类</option>
+          <!-- 实际分类选项将从API动态加载 -->
+          <option value="new">创建新分类</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-sm text-gray-700 mb-1 block">默认分类</label>
+        <select class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" id="modalCategorySelect1">
+          <!-- 分类选项将从API动态加载 -->
+        </select>
+      </div>
+      <div>
         <label class="text-sm text-gray-700 mb-1 block">用户状态</label>
         <select class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" id="userStatus">
           <option value="active">活跃</option>
@@ -2525,6 +2539,27 @@ document.addEventListener('DOMContentLoaded', function() {
       modal.style.display = 'none';
     });
     document.getElementById('toast').style.display = 'none';
+    
+    // 重置所有文件输入元素，解决上传功能第二次无法使用的问题
+    document.querySelectorAll('input[type="file"]').forEach(fileInput => {
+      fileInput.value = '';
+    });
+    
+    // 隐藏上传文件列表
+    const uploadFileList = document.getElementById('uploadFileList');
+    const mainUploadList = document.getElementById('mainUploadList');
+    if (uploadFileList) {
+      uploadFileList.style.display = 'none';
+    }
+    if (mainUploadList) {
+      mainUploadList.style.display = 'none';
+    }
+    
+    // 隐藏上传设置
+    const mainUploadSettings = document.getElementById('mainUploadSettings');
+    if (mainUploadSettings) {
+      mainUploadSettings.style.display = 'none';
+    }
   }
 
   // 显示提示框
@@ -2706,28 +2741,73 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // 开始主上传
-    document.getElementById('startMainUploadBtn').addEventListener('click', function() {
+    document.getElementById('startMainUploadBtn').addEventListener('click', async function() {
+      const fileInput = document.getElementById('mainFileInput');
+      const categorySelect = document.getElementById('uploadCategorySelect');
+      
+      if (!fileInput.files || fileInput.files.length === 0) {
+        showToast('请先选择要上传的图片文件');
+        return;
+      }
+      
+      const category = categorySelect.value || '根目录';
+      const files = Array.from(fileInput.files);
+      
       const progressArea = document.getElementById('uploadProgressArea');
       const progressBar = document.getElementById('uploadProgressBar');
       const progressText = document.getElementById('uploadProgressText');
-
+      
       progressArea.style.display = 'block';
-      let progress = 0;
-      const interval = setInterval(() => {
-        progress += 10;
-        progressBar.style.width = progress + '%';
-        progressText.textContent = progress + '%';
-        if (progress >= 100) {
-          clearInterval(interval);
+      progressBar.style.width = '0%';
+      progressText.textContent = '0%';
+      
+      try {
+        // 创建FormData
+        const formData = new FormData();
+        files.forEach(file => {
+          formData.append('files', file);
+        });
+        formData.append('category', category);
+        
+        // 发送上传请求
+        const response = await fetch('http://localhost:8081/api/admin/upload', {
+          method: 'POST',
+          body: formData,
+          credentials: 'include' // 包含cookies
+        });
+        
+        const result = await response.json();
+        
+        if (result.code === 200) {
+          // 上传成功
+          progressBar.style.width = '100%';
+          progressText.textContent = '100%';
+          
           setTimeout(() => {
-            showToast('上传成功！已新增3张图片');
+            showToast(`上传成功！新增${result.data.uploaded_count}张图片`);
             progressArea.style.display = 'none';
-            progressBar.style.width = '0%';
             document.getElementById('mainUploadList').style.display = 'none';
             document.getElementById('uploadFileListContainer').innerHTML = '';
+            
+            // 重置文件输入元素
+            fileInput.value = '';
+            
+            // 可选：刷新图片列表
+            // loadImagesFromAPI();
           }, 500);
+        } else {
+          // 上传失败
+          throw new Error(result.msg || '上传失败');
         }
-      }, 200);
+        
+      } catch (error) {
+        console.error('上传错误:', error);
+        showToast(`上传失败: ${error.message}`);
+        progressArea.style.display = 'none';
+        
+        // 重置文件输入元素
+        fileInput.value = '';
+      }
     });
 
     // ==================== 分类管理功能 ====================
@@ -2914,10 +2994,31 @@ document.addEventListener('DOMContentLoaded', function() {
     // 退出登录
     document.getElementById('logoutBtn').addEventListener('click', function() {
       if (confirm('确定要退出登录吗？')) {
-        showToast('已成功退出登录！');
-        setTimeout(() => {
-          window.location.href = 'login.html';
-        }, 1000);
+        // 发送退出登录请求到后端API
+        fetch('/api/logout', {
+          method: 'POST',
+          credentials: 'include'
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.code === 200) {
+            showToast('已成功退出登录！');
+            // 退出成功后跳转回首页
+            setTimeout(() => {
+              window.location.href = '/';
+            }, 1000);
+          } else {
+            showToast('退出登录失败：' + (data.msg || '未知错误'));
+          }
+        })
+        .catch(error => {
+          console.error('退出登录请求失败:', error);
+          // 即使请求失败也跳转回首页
+          showToast('已退出登录！');
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 1000);
+        });
       }
     });
 
