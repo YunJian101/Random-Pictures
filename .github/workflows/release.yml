@@ -28,8 +28,8 @@ jobs:
           # 提取 major.minor 版本
           MAJOR_MINOR=$(echo $VERSION | cut -d. -f1,2)
           echo "major_minor=${MAJOR_MINOR}" >> $GITHUB_OUTPUT
-          # 获取小写的用户名
-          USERNAME=$(echo "${{ github.actor }}" | tr '[:upper:]' '[:lower:]')
+          # 固定用户名为 yunjian101
+          USERNAME="yunjian101"
           echo "username=${USERNAME}" >> $GITHUB_OUTPUT
 
       - name: Check if official release
@@ -97,8 +97,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ steps.get_version.outputs.username }}/random-pictures:v${{ steps.get_version.outputs.version }}
-            ghcr.io/${{ steps.get_version.outputs.username }}/random-pictures:v${{ steps.get_version.outputs.major_minor }}
+            ghcr.io/yunjian101/random-pictures:v${{ steps.get_version.outputs.version }}
+            ghcr.io/yunjian101/random-pictures:v${{ steps.get_version.outputs.major_minor }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -109,7 +109,7 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ steps.get_version.outputs.username }}/random-pictures:latest
+            ghcr.io/yunjian101/random-pictures:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -119,16 +119,16 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**版本:** ${{ steps.get_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "**标签:** ${{ steps.get_version.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
-          echo "**用户名:** ${{ steps.get_version.outputs.username }}" >> $GITHUB_STEP_SUMMARY
+          echo "**用户名:** yunjian101" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           if [ "${{ steps.check_release.outputs.is_official }}" == "true" ]; then
             echo "✅ **正式发布**" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "### 执行的操作:" >> $GITHUB_STEP_SUMMARY
             echo "- ✅ 创建了GitHub Release" >> $GITHUB_STEP_SUMMARY
-            echo "- ✅ 构建并推送了Docker镜像: \`ghcr.io/${{ steps.get_version.outputs.username }}/random-pictures:latest\`" >> $GITHUB_STEP_SUMMARY
-            echo "- ✅ 构建并推送了Docker镜像: \`ghcr.io/${{ steps.get_version.outputs.username }}/random-pictures:v${{ steps.get_version.outputs.major_minor }}\`" >> $GITHUB_STEP_SUMMARY
-            echo "- ✅ 构建并推送了Docker镜像: \`ghcr.io/${{ steps.get_version.outputs.username }}/random-pictures:v${{ steps.get_version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ 构建并推送了Docker镜像: \`ghcr.io/yunjian101/random-pictures:latest\`" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ 构建并推送了Docker镜像: \`ghcr.io/yunjian101/random-pictures:v${{ steps.get_version.outputs.major_minor }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ 构建并推送了Docker镜像: \`ghcr.io/yunjian101/random-pictures:v${{ steps.get_version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
           else
             echo "⚠️ **非正式版本**" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
