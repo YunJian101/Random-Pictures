@@ -1,0 +1,137 @@
+name: Release and Docker Build
+
+on:
+  push:
+    tags:
+      - 'v*'
+      - 'V*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract version and major.minor from tag
+        id: get_version
+        run: |
+          TAG="${{ github.ref_name }}"
+          # 提取版本号（去掉 v 前缀）
+          VERSION="${TAG#v}"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+          # 提取 major.minor 版本
+          MAJOR_MINOR=$(echo $VERSION | cut -d. -f1,2)
+          echo "major_minor=${MAJOR_MINOR}" >> $GITHUB_OUTPUT
+          # 获取小写的用户名
+          USERNAME=$(echo "${{ github.actor }}" | tr '[:upper:]' '[:lower:]')
+          echo "username=${USERNAME}" >> $GITHUB_OUTPUT
+
+      - name: Check if official release
+        id: check_release
+        run: |
+          VERSION="${{ steps.get_version.outputs.version }}"
+          # 检查是否符合语义化版本 (major.minor.patch)
+          if [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "is_official=true" >> $GITHUB_OUTPUT
+            echo "✓ Official release version: $VERSION"
+          else
+            echo "is_official=false" >> $GITHUB_OUTPUT
+            echo "✗ Non-official version: $VERSION"
+          fi
+
+      - name: Extract changelog
+        id: changelog
+        if: steps.check_release.outputs.is_official == 'true'
+        run: |
+          VERSION="${{ steps.get_version.outputs.version }}"
+          if [ -f CHANGELOG.md ]; then
+            # 提取两个 ## 标题之间的内容（指定版本），匹配带日期后缀的格式
+            awk -v version="\\[v${VERSION}\\]" '/^## \[.*\]/ {if (p) exit; if ($0 ~ version) p=1} p' CHANGELOG.md > /tmp/changelog_raw.txt
+            echo "Raw changelog:"
+            cat /tmp/changelog_raw.txt
+            echo "---"
+            # 移除第一行标题
+            tail -n +2 /tmp/changelog_raw.txt > /tmp/changelog.md
+            echo "Final changelog:"
+            cat /tmp/changelog.md
+            echo "Line count: $(wc -l < /tmp/changelog.md)"
+          else
+            echo "Release v${VERSION}" > /tmp/changelog.md
+          fi
+
+      - name: Create GitHub Release
+        if: steps.check_release.outputs.is_official == 'true'
+        uses: softprops/action-gh-release@v1
+        with:
+          body_path: /tmp/changelog.md
+          draft: false
+          prerelease: false
+          generate_release_notes: false
+          name: v${{ steps.get_version.outputs.version }}
+          tag_name: ${{ steps.get_version.outputs.tag }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Login to GitHub Container Registry
+        if: steps.check_release.outputs.is_official == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        if: steps.check_release.outputs.is_official == 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Docker image (version tags)
+        if: steps.check_release.outputs.is_official == 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ steps.get_version.outputs.username }}/random-pictures:v${{ steps.get_version.outputs.version }}
+            ghcr.io/${{ steps.get_version.outputs.username }}/random-pictures:v${{ steps.get_version.outputs.major_minor }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push Docker image (latest tag)
+        if: steps.check_release.outputs.is_official == 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ steps.get_version.outputs.username }}/random-pictures:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Summary
+        run: |
+          echo "## 发布摘要" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**版本:** ${{ steps.get_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**标签:** ${{ steps.get_version.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "**用户名:** ${{ steps.get_version.outputs.username }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.check_release.outputs.is_official }}" == "true" ]; then
+            echo "✅ **正式发布**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### 执行的操作:" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ 创建了GitHub Release" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ 构建并推送了Docker镜像: \`ghcr.io/${{ steps.get_version.outputs.username }}/random-pictures:latest\`" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ 构建并推送了Docker镜像: \`ghcr.io/${{ steps.get_version.outputs.username }}/random-pictures:v${{ steps.get_version.outputs.major_minor }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ 构建并推送了Docker镜像: \`ghcr.io/${{ steps.get_version.outputs.username }}/random-pictures:v${{ steps.get_version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ **非正式版本**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### 执行的操作:" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ 仅创建了标签（无发布，无Docker构建）" >> $GITHUB_STEP_SUMMARY
+          fi
