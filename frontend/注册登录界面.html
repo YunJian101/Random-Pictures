@@ -1043,10 +1043,6 @@
                             setTimeout(() => {
                                 loginBtn.classList.remove('success-pulse');
                             }, 600);
-                            
-                            if (data.data.user.role === 'admin') {
-                                alert('登录成功！您已登录为管理员');
-                            }
                             // 跳转到首页
                             window.location.href = '/';
                         } else {
