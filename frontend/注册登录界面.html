@@ -1,0 +1,1544 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>随机图片API - 全功能平台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入Font Awesome图标 - 多CDN竞争加载 -->
+    <script>
+    (function() {
+        var cdnList = [
+            'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css',
+            'https://cdn.bootcdn.net/ajax/libs/font-awesome/6.5.1/css/all.min.css',
+            'https://lib.baomitu.com/font-awesome/6.5.1/css/all.min.css'
+        ];
+
+        var loaded = false;
+        var links = [];
+
+        // 同时加载所有CDN
+        cdnList.forEach(function(cdn) {
+            var link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = cdn;
+
+            link.onload = function() {
+                if (!loaded) {  // 第一个加载成功的
+                    loaded = true;
+                    console.log('✅ Font Awesome CDN加载成功:', cdn);
+                    // 移除其他未完成的链接
+                    links.forEach(function(l) {
+                        if (l !== link && l.parentNode) {
+                            l.parentNode.removeChild(l);
+                        }
+                    });
+                }
+            };
+
+            links.push(link);
+            document.head.appendChild(link);
+        });
+    })();
+    </script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#6366f1', // 靛蓝色主调
+                        secondary: '#10b981', // 翠绿色辅助色
+                        accent: '#f59e0b', // 琥珀色强调色
+                        dark: {
+                            100: '#1f2937',
+                            200: '#111827',
+                            300: '#030712'
+                        },
+                        light: {
+                            100: '#f9fafb',
+                            200: '#f3f4f6',
+                            300: '#e5e7eb'
+                        },
+                        muted: {
+                            dark: '#6b7280',
+                            light: '#9ca3af'
+                        }
+                    }
+                }
+            }
+        };
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        /* 光明模式样式 */
+        body.light {
+            background: linear-gradient(135deg, #f5f7ff 0%, #eef2ff 100%);
+            color: #374151;
+        }
+        
+        /* 黑夜模式样式 */
+        body.dark {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+        }
+        
+        body {
+            font-family: 'Inter', 'Microsoft YaHei', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+            transition: background 0.5s cubic-bezier(0.4, 0, 0.2, 1), color 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* 渐变文字 - 光明模式 */
+        .text-gradient.light {
+            background: linear-gradient(135deg, #6366f1 0%, #10b981 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        /* 渐变文字 - 黑夜模式 */
+        .text-gradient.dark {
+            background: linear-gradient(135deg, #818cf8 0%, #34d399 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        /* 渐变按钮 - 光明模式 */
+        .btn-gradient.light {
+            background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+        }
+        
+        /* 渐变按钮 - 黑夜模式 */
+        .btn-gradient.dark {
+            background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
+        }
+        
+        .btn-gradient {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn-gradient:hover {
+            box-shadow: 0 12px 24px rgba(99, 102, 241, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        .btn-gradient.dark:hover {
+            box-shadow: 0 12px 24px rgba(129, 140, 248, 0.4);
+        }
+        
+        .btn-gradient:active {
+            transform: translateY(0);
+        }
+        
+        /* 按钮波纹效果 */
+        .ripple-effect {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.6);
+            transform: scale(0);
+            animation: ripple 0.6s linear;
+            pointer-events: none;
+        }
+        
+        .dark .ripple-effect {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        @keyframes ripple {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+        
+        /* 输入框焦点动画 - 光明模式 */
+        .input-focus.light {
+            background: white;
+            border-color: #d1d5db;
+        }
+        
+        .input-focus.light:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+        }
+        
+        /* 输入框焦点动画 - 黑夜模式 */
+        .input-focus.dark {
+            background: #1f2937;
+            border-color: #374151;
+            color: #e2e8f0;
+        }
+        
+        .input-focus.dark:focus {
+            border-color: #818cf8;
+            box-shadow: 0 0 0 4px rgba(129, 140, 248, 0.2);
+        }
+        
+        .input-focus {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+        
+        .input-focus:focus {
+            transform: translateY(-1px);
+        }
+        
+        /* 卡片悬浮动画 - 光明模式 */
+        .card-hover.light {
+            background: white;
+        }
+        
+        /* 卡片悬浮动画 - 黑夜模式 */
+        .card-hover.dark {
+            background: #1f2937;
+        }
+        
+        .card-hover {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+        }
+        
+        .dark .card-hover:hover {
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* 表单切换动画 */
+        .form-slide {
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* 密码强度指示器 */
+        .strength-bar {
+            height: 3px;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 2px;
+        }
+        
+        /* 加载动画 */
+        .loader {
+            border-top-color: #6366f1;
+            animation: spin 1s linear infinite;
+        }
+        
+        .dark .loader {
+            border-top-color: #818cf8;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* 页面入场动画 */
+        @keyframes pageEntrance {
+            0% {
+                opacity: 0;
+                transform: translateY(30px) scale(0.95);
+            }
+            50% {
+                opacity: 0.7;
+                transform: translateY(15px) scale(0.98);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        .page-enter {
+            animation: pageEntrance 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+        
+        /* 元素逐个进入动画 */
+        @keyframes staggerEntrance {
+            0% {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .stagger-item {
+            opacity: 0;
+            animation: staggerEntrance 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+        
+        /* 表单切换特效 */
+        @keyframes formSwitchIn {
+            0% {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        @keyframes formSwitchOut {
+            0% {
+                opacity: 1;
+                transform: translateX(0);
+            }
+            100% {
+                opacity: 0;
+                transform: translateX(-30px);
+            }
+        }
+        
+        .form-switch-in {
+            animation: formSwitchIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+        
+        .form-switch-out {
+            animation: formSwitchOut 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+        
+        /* 标签切换动画 */
+        .tab-transition {
+            position: relative;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .tab-transition::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: linear-gradient(90deg, #6366f1, #10b981);
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .dark .tab-transition::after {
+            background: linear-gradient(90deg, #818cf8, #34d399);
+        }
+        
+        .tab-transition.active::after {
+            width: 100%;
+        }
+        
+        /* 背景装饰动画 */
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0) rotate(0deg);
+            }
+            50% {
+                transform: translateY(-20px) rotate(180deg);
+            }
+        }
+        
+        .floating-element {
+            animation: float 8s ease-in-out infinite;
+        }
+        
+        .floating-element:nth-child(2) {
+            animation-delay: 2s;
+        }
+        
+        .floating-element:nth-child(3) {
+            animation-delay: 4s;
+        }
+        
+        /* 按钮悬停发光效果 */
+        .glow-hover {
+            transition: all 0.3s ease;
+        }
+        
+        .glow-hover:hover {
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+        }
+        
+        .dark .glow-hover:hover {
+            box-shadow: 0 0 20px rgba(129, 140, 248, 0.4);
+        }
+        
+        /* 输入框标签动画 */
+        .input-label {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .input-focus:not(:placeholder-shown) + .input-label,
+        .input-focus:focus + .input-label {
+            transform: translateY(-24px) scale(0.85);
+        }
+        
+        .light .input-focus:not(:placeholder-shown) + .input-label,
+        .light .input-focus:focus + .input-label {
+            color: #6366f1;
+        }
+        
+        .dark .input-focus:not(:placeholder-shown) + .input-label,
+        .dark .input-focus:focus + .input-label {
+            color: #818cf8;
+        }
+        
+        /* 背景粒子效果 */
+        .particles-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            animation: particleFloat 15s infinite linear;
+        }
+        
+        .light .particle {
+            background: rgba(99, 102, 241, 0.15);
+        }
+        
+        .dark .particle {
+            background: rgba(129, 140, 248, 0.2);
+        }
+        
+        @keyframes particleFloat {
+            0% {
+                transform: translateY(100vh) translateX(0) rotate(0deg);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-100px) translateX(100px) rotate(360deg);
+                opacity: 0;
+            }
+        }
+        
+        /* 卡片内部装饰动画 */
+        .card-decoration {
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .card-hover:hover .card-decoration {
+            transform: scale(1.1);
+        }
+        
+        .light .card-decoration {
+            background: #eef2ff;
+        }
+        
+        .dark .card-decoration {
+            background: #374151;
+        }
+        
+        /* 加载状态按钮 */
+        .loading-btn {
+            position: relative;
+        }
+        
+        .loading-btn .btn-text {
+            transition: opacity 0.2s ease;
+        }
+        
+        .loading-btn.loading .btn-text {
+            opacity: 0;
+        }
+        
+        .loading-btn.loading .loader {
+            opacity: 1;
+        }
+        
+        /* 错误提示动画 */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        
+        .shake-error {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+        
+        /* 成功提示动画 */
+        @keyframes successPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .success-pulse {
+            animation: successPulse 0.6s ease-in-out;
+        }
+        
+        /* 主题切换按钮样式 */
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+        }
+        
+        .dark .theme-toggle {
+            background: rgba(31, 41, 55, 0.9);
+            border: 1px solid rgba(129, 140, 248, 0.3);
+        }
+        
+        .theme-toggle:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+        }
+        
+        .dark .theme-toggle:hover {
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+        }
+        
+        .theme-toggle i {
+            font-size: 20px;
+            color: #6366f1;
+            transition: all 0.3s ease;
+        }
+        
+        .dark .theme-toggle i {
+            color: #818cf8;
+        }
+        
+        /* 主题切换动画 */
+        @keyframes themeTransition {
+            0% {
+                filter: brightness(1) saturate(1);
+            }
+            50% {
+                filter: brightness(1.1) saturate(1.2);
+            }
+            100% {
+                filter: brightness(1) saturate(1);
+            }
+        }
+        
+        .theme-changing {
+            animation: themeTransition 0.5s ease-in-out;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center py-8 px-4 relative light">
+    <!-- 主题切换按钮 -->
+    <button id="theme-toggle" class="theme-toggle" aria-label="切换主题">
+        <i class="fa-solid fa-moon"></i>
+    </button>
+    
+    <!-- 背景粒子装饰 -->
+    <div class="particles-container" id="particles"></div>
+    
+    <!-- 顶部Logo - 与首页一致 -->
+    <div class="mb-8 text-center stagger-item page-enter" style="animation-delay: 0.1s">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-r from-primary to-secondary mb-4 shadow-lg card-decoration floating-element">
+            <i class="fa-solid fa-images text-white text-xl"></i>
+        </div>
+        <h1 class="text-2xl font-bold text-gradient light mb-1">随机图片API</h1>
+        <p class="text-gray-500 dark:text-gray-400">稳定运行2000+天的高质量图片服务</p>
+    </div>
+
+    <!-- 登录注册卡片 -->
+    <div class="w-full max-w-md rounded-2xl shadow-sm p-6 md:p-8 card-hover light relative overflow-hidden stagger-item page-enter" style="animation-delay: 0.3s">
+        <!-- 背景装饰 -->
+        <div class="absolute -top-20 -right-20 w-40 h-40 rounded-full card-decoration floating-element"></div>
+        <div class="absolute -bottom-16 -left-16 w-32 h-32 rounded-full card-decoration floating-element"></div>
+        
+        <!-- 表单切换标签 -->
+        <div class="flex mb-8 relative z-10">
+            <button id="login-tab" class="flex-1 py-2 text-center font-medium text-indigo-600 border-b-2 border-indigo-600 tab-transition active glow-hover">
+                登录
+            </button>
+            <button id="register-tab" class="flex-1 py-2 text-center font-medium text-gray-500 tab-transition glow-hover">
+                注册
+            </button>
+        </div>
+
+        <!-- 登录表单 -->
+        <form id="login-form" class="form-slide relative z-10">
+            <div class="space-y-4 mb-6">
+                <!-- 用户名/邮箱输入 -->
+                <div>
+                    <label class="block text-sm font-medium mb-1 light:text-gray-700 dark:text-gray-300">用户名/邮箱</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 light:text-gray-400 dark:text-gray-500 transition-colors">
+                            <i class="fa-solid fa-user"></i>
+                        </span>
+                        <input type="text" id="login-account" 
+                               class="w-full pl-10 pr-4 py-2.5 rounded-lg text-sm input-focus light outline-none glow-hover"
+                               placeholder="请输入用户名或邮箱">
+                    </div>
+                    <p class="mt-1 text-xs text-red-500 hidden" id="login-account-error">请输入有效的用户名或邮箱</p>
+                </div>
+                
+                <!-- 密码输入 -->
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="block text-sm font-medium light:text-gray-700 dark:text-gray-300">密码</label>
+                        <a href="#" class="text-xs text-indigo-600 hover:text-indigo-700 transition-colors">忘记密码？</a>
+                    </div>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 light:text-gray-400 dark:text-gray-500 transition-colors">
+                            <i class="fa-solid fa-lock"></i>
+                        </span>
+                        <input type="password" id="login-password"
+                               class="w-full pl-10 pr-10 py-2.5 rounded-lg text-sm input-focus light outline-none glow-hover"
+                               placeholder="请输入密码">
+                        <button type="button" id="toggle-login-pwd" class="absolute right-3 top-1/2 -translate-y-1/2 light:text-gray-400 dark:text-gray-500 hover:text-gray-600 transition-colors glow-hover">
+                            <i class="fa-solid fa-eye-slash"></i>
+                        </button>
+                    </div>
+                    <p class="mt-1 text-xs text-red-500 hidden" id="login-password-error">密码长度不能少于6位</p>
+                </div>
+                
+                <!-- 记住我 -->
+                <div class="flex items-center">
+                    <input type="checkbox" id="remember-me" class="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-200 transition-all">
+                    <label for="remember-me" class="ml-2 text-sm light:text-gray-600 dark:text-gray-400">记住我（7天内免登录）</label>
+                </div>
+            </div>
+            
+            <!-- 登录按钮 -->
+            <button type="submit" id="login-btn" class="w-full btn-gradient light text-white py-2.5 rounded-lg font-medium flex items-center justify-center loading-btn glow-hover">
+                <span class="btn-text">登录</span>
+                <span class="ml-2 loader hidden w-4 h-4 border-2 border-white border-t-transparent rounded-full opacity-0"></span>
+            </button>
+            
+            <!-- 其他登录方式 -->
+            <div class="mt-6">
+                <div class="relative flex items-center justify-center">
+                    <hr class="w-full light:border-gray-200 dark:border-gray-700">
+                    <span class="absolute light:bg-white dark:bg-gray-800 px-2 text-xs light:text-gray-500 dark:text-gray-400">其他登录方式</span>
+                </div>
+                <div class="flex justify-center gap-4 mt-4">
+                    <button type="button" class="w-10 h-10 rounded-full light:border-gray-200 dark:border-gray-700 flex items-center justify-center light:text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all glow-hover">
+                        <i class="fa-brands fa-github"></i>
+                    </button>
+                    <button type="button" class="w-10 h-10 rounded-full light:border-gray-200 dark:border-gray-700 flex items-center justify-center light:text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all glow-hover">
+                        <i class="fa-brands fa-weixin text-green-500"></i>
+                    </button>
+                    <button type="button" class="w-10 h-10 rounded-full light:border-gray-200 dark:border-gray-700 flex items-center justify-center light:text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all glow-hover">
+                        <i class="fa-brands fa-qq text-blue-500"></i>
+                    </button>
+                </div>
+            </div>
+        </form>
+
+        <!-- 注册表单 -->
+        <form id="register-form" class="form-slide relative z-10 hidden">
+            <div class="space-y-4 mb-6">
+                <!-- 用户名输入 -->
+                <div>
+                    <label class="block text-sm font-medium mb-1 light:text-gray-700 dark:text-gray-300">用户名</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 light:text-gray-400 dark:text-gray-500 transition-colors">
+                            <i class="fa-solid fa-user"></i>
+                        </span>
+                        <input type="text" id="register-username" 
+                               class="w-full pl-10 pr-4 py-2.5 rounded-lg text-sm input-focus light outline-none glow-hover"
+                               placeholder="3-16位字母、数字、下划线组合">
+                    </div>
+                    <p class="mt-1 text-xs text-red-500 hidden" id="register-username-error">用户名格式不正确</p>
+                </div>
+                
+                <!-- 邮箱输入 -->
+                <div>
+                    <label class="block text-sm font-medium mb-1 light:text-gray-700 dark:text-gray-300">邮箱</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 light:text-gray-400 dark:text-gray-500 transition-colors">
+                            <i class="fa-solid fa-envelope"></i>
+                        </span>
+                        <input type="email" id="register-email" 
+                               class="w-full pl-10 pr-4 py-2.5 rounded-lg text-sm input-focus light outline-none glow-hover"
+                               placeholder="用于接收验证邮件">
+                    </div>
+                    <p class="mt-1 text-xs text-red-500 hidden" id="register-email-error">请输入有效的邮箱地址</p>
+                </div>
+                
+                <!-- 密码输入 -->
+                <div>
+                    <label class="block text-sm font-medium mb-1 light:text-gray-700 dark:text-gray-300">设置密码</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 light:text-gray-400 dark:text-gray-500 transition-colors">
+                            <i class="fa-solid fa-lock"></i>
+                        </span>
+                        <input type="password" id="register-password"
+                               class="w-full pl-10 pr-10 py-2.5 rounded-lg text-sm input-focus light outline-none glow-hover"
+                               placeholder="不少于6位，建议包含字母和数字">
+                        <button type="button" id="toggle-register-pwd" class="absolute right-3 top-1/2 -translate-y-1/2 light:text-gray-400 dark:text-gray-500 hover:text-gray-600 transition-colors glow-hover">
+                            <i class="fa-solid fa-eye-slash"></i>
+                        </button>
+                    </div>
+                    <!-- 密码强度指示器 -->
+                    <div class="mt-2 flex items-center">
+                        <div class="w-full h-2 light:bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                            <div id="strength-bar" class="strength-bar w-0 bg-red-400"></div>
+                        </div>
+                        <span id="strength-text" class="ml-2 text-xs light:text-gray-500 dark:text-gray-400">密码强度</span>
+                    </div>
+                    <p class="mt-1 text-xs text-red-500 hidden" id="register-password-error">密码长度不能少于6位</p>
+                </div>
+                
+                <!-- 确认密码 -->
+                <div>
+                    <label class="block text-sm font-medium mb-1 light:text-gray-700 dark:text-gray-300">确认密码</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 light:text-gray-400 dark:text-gray-500 transition-colors">
+                            <i class="fa-solid fa-lock"></i>
+                        </span>
+                        <input type="password" id="register-confirm-pwd"
+                               class="w-full pl-10 pr-10 py-2.5 rounded-lg text-sm input-focus light outline-none glow-hover"
+                               placeholder="再次输入密码">
+                        <button type="button" id="toggle-confirm-pwd" class="absolute right-3 top-1/2 -translate-y-1/2 light:text-gray-400 dark:text-gray-500 hover:text-gray-600 transition-colors glow-hover">
+                            <i class="fa-solid fa-eye-slash"></i>
+                        </button>
+                    </div>
+                    <p class="mt-1 text-xs text-red-500 hidden" id="register-confirm-error">两次输入的密码不一致</p>
+                </div>
+                
+                <!-- 验证码 -->
+                <div>
+                    <label class="block text-sm font-medium mb-1 light:text-gray-700 dark:text-gray-300">验证码</label>
+                    <div class="flex gap-2">
+                        <div class="relative flex-1">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 light:text-gray-400 dark:text-gray-500 transition-colors">
+                                <i class="fa-solid fa-shield-halved"></i>
+                            </span>
+                            <input type="text" id="register-code"
+                                   class="w-full pl-10 pr-4 py-2.5 rounded-lg text-sm input-focus light outline-none glow-hover"
+                                   placeholder="请输入验证码">
+                        </div>
+                        <button type="button" id="send-code-btn" class="whitespace-nowrap px-4 py-2.5 light:border-indigo-200 dark:border-indigo-500 light:bg-indigo-50 dark:bg-indigo-900 light:text-indigo-600 dark:text-indigo-300 rounded-lg text-sm font-medium hover:bg-indigo-100 dark:hover:bg-indigo-800 transition-all glow-hover">
+                            获取验证码
+                        </button>
+                    </div>
+                    <p class="mt-1 text-xs text-red-500 hidden" id="register-code-error">请输入正确的验证码</p>
+                </div>
+                
+                <!-- 用户协议 -->
+                <div class="flex items-start">
+                    <input type="checkbox" id="agree-terms" class="w-4 h-4 mt-0.5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-200 transition-all">
+                    <label for="agree-terms" class="ml-2 text-xs light:text-gray-600 dark:text-gray-400">
+                        我已阅读并同意<a href="#" class="text-indigo-600 hover:underline transition-colors">《用户服务协议》</a>和<a href="#" class="text-indigo-600 hover:underline transition-colors">《隐私政策》</a>
+                    </label>
+                </div>
+                <p class="mt-1 text-xs text-red-500 hidden" id="register-terms-error">请阅读并同意用户协议和隐私政策</p>
+            </div>
+            
+            <!-- 注册按钮 -->
+            <button type="submit" id="register-btn" class="w-full btn-gradient light text-white py-2.5 rounded-lg font-medium flex items-center justify-center loading-btn glow-hover">
+                <span class="btn-text">注册</span>
+                <span class="ml-2 loader hidden w-4 h-4 border-2 border-white border-t-transparent rounded-full opacity-0"></span>
+            </button>
+        </form>
+    </div>
+
+    <!-- 底部版权信息 -->
+    <div class="mt-8 text-center text-sm light:text-gray-500 dark:text-gray-400 stagger-item page-enter" style="animation-delay: 0.5s">
+        <p>© 2026 随机图片API - 稳定运行2000+天</p>
+        <p class="mt-1 text-xs">本服务仅用于学习交流，请勿用于非法用途</p>
+    </div>
+
+        <!-- 自定义成功弹窗 -->
+    <div id="success-modal" class="fixed inset-0 flex items-center justify-center z-50 hidden">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" id="modal-backdrop"></div>
+        <div class="relative bg-white dark:bg-gray-800 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl transform transition-all duration-300 scale-95 opacity-0" id="modal-content">
+            <!-- 弹窗图标 -->
+            <div class="flex justify-center mb-4">
+                <div class="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
+                    <i class="fa-solid fa-check text-green-500 dark:text-green-400 text-2xl"></i>
+                </div>
+            </div>
+            <!-- 弹窗标题 -->
+            <h3 class="text-xl font-bold text-center light:text-gray-800 dark:text-gray-200 mb-2" id="modal-title">注册成功</h3>
+            <!-- 弹窗内容 -->
+            <p class="text-center light:text-gray-600 dark:text-gray-400 mb-6" id="modal-message">恭喜！您的账户已成功创建</p>
+            <!-- 弹窗按钮 -->
+            <div class="flex justify-center">
+                <button id="modal-close" class="btn-gradient light text-white px-6 py-2 rounded-lg font-medium hover:shadow-lg transition-all">
+                    确定
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 交互逻辑脚本 -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 主题管理
+            const themeToggle = document.getElementById('theme-toggle');
+            const themeIcon = themeToggle.querySelector('i');
+            const body = document.body;
+            
+            // 获取保存的主题偏好
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            setTheme(savedTheme);
+            
+            // 主题切换事件
+            themeToggle.addEventListener('click', function() {
+                const currentTheme = body.classList.contains('dark') ? 'dark' : 'light';
+                const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+                setTheme(newTheme);
+            });
+            
+            function setTheme(theme) {
+                // 添加过渡动画类
+                body.classList.add('theme-changing');
+                
+                // 切换主题类
+                body.classList.remove('light', 'dark');
+                body.classList.add(theme);
+                
+                // 更新所有相关元素的主题类
+                document.querySelectorAll('.text-gradient, .btn-gradient, .card-hover, .input-focus').forEach(el => {
+                    el.classList.remove('light', 'dark');
+                    el.classList.add(theme);
+                });
+                
+                // 更新图标
+                themeIcon.className = theme === 'light' ? 'fa-solid fa-moon' : 'fa-solid fa-sun';
+                
+                // 保存到本地存储
+                localStorage.setItem('theme', theme);
+                
+                // 移除过渡动画类
+                setTimeout(() => {
+                    body.classList.remove('theme-changing');
+                }, 500);
+                
+                console.log(`主题已切换为: ${theme}`);
+            }
+            
+            // 初始化背景粒子
+            initParticles();
+            
+            // 1. 表单切换逻辑
+            const loginTab = document.getElementById('login-tab');
+            const registerTab = document.getElementById('register-tab');
+            const loginForm = document.getElementById('login-form');
+            const registerForm = document.getElementById('register-form');
+            
+            // 切换到登录表单
+            loginTab.addEventListener('click', function() {
+                switchTab('login');
+            });
+            
+            // 切换到注册表单
+            registerTab.addEventListener('click', function() {
+                switchTab('register');
+            });
+            
+            function switchTab(targetTab) {
+                const isLogin = targetTab === 'login';
+                
+                // 更新标签样式
+                if (isLogin) {
+                    loginTab.classList.add('text-indigo-600', 'border-b-2', 'border-indigo-600', 'active');
+                    loginTab.classList.remove('text-gray-500');
+                    registerTab.classList.remove('text-indigo-600', 'border-b-2', 'border-indigo-600', 'active');
+                    registerTab.classList.add('text-gray-500');
+                } else {
+                    registerTab.classList.add('text-indigo-600', 'border-b-2', 'border-indigo-600', 'active');
+                    registerTab.classList.remove('text-gray-500');
+                    loginTab.classList.remove('text-indigo-600', 'border-b-2', 'border-indigo-600', 'active');
+                    loginTab.classList.add('text-gray-500');
+                }
+                
+                // 表单切换动画
+                const currentForm = isLogin ? registerForm : loginForm;
+                const targetForm = isLogin ? loginForm : registerForm;
+                
+                currentForm.classList.add('form-switch-out');
+                setTimeout(() => {
+                    currentForm.classList.add('hidden');
+                    currentForm.classList.remove('form-switch-out');
+                    
+                    targetForm.classList.remove('hidden');
+                    targetForm.classList.add('form-switch-in');
+                    setTimeout(() => {
+                        targetForm.classList.remove('form-switch-in');
+                    }, 400);
+                }, 300);
+            }
+            
+            // 2. 密码显示/隐藏切换
+            const togglePwd = (btnId, pwdId) => {
+                const btn = document.getElementById(btnId);
+                const pwdInput = document.getElementById(pwdId);
+                
+                btn.addEventListener('click', function() {
+                    const icon = btn.querySelector('i');
+                    if (pwdInput.type === 'password') {
+                        pwdInput.type = 'text';
+                        icon.classList.remove('fa-eye-slash');
+                        icon.classList.add('fa-eye');
+                    } else {
+                        pwdInput.type = 'password';
+                        icon.classList.remove('fa-eye');
+                        icon.classList.add('fa-eye-slash');
+                    }
+                });
+            };
+            
+            // 绑定密码切换事件
+            togglePwd('toggle-login-pwd', 'login-password');
+            togglePwd('toggle-register-pwd', 'register-password');
+            togglePwd('toggle-confirm-pwd', 'register-confirm-pwd');
+            
+            // 3. 密码强度检测
+            const passwordInput = document.getElementById('register-password');
+            const strengthBar = document.getElementById('strength-bar');
+            const strengthText = document.getElementById('strength-text');
+            
+            passwordInput.addEventListener('input', function() {
+                const pwd = this.value;
+                let strength = 0;
+                
+                // 密码长度检测
+                if (pwd.length >= 6) strength += 25;
+                // 包含字母
+                if (/[a-zA-Z]/.test(pwd)) strength += 25;
+                // 包含数字
+                if (/[0-9]/.test(pwd)) strength += 25;
+                // 包含特殊字符
+                if (/[^a-zA-Z0-9]/.test(pwd)) strength += 25;
+                
+                // 更新强度条
+                strengthBar.style.width = `${strength}%`;
+                
+                // 更新强度文字和颜色
+                if (strength === 0) {
+                    strengthText.textContent = '密码强度';
+                    strengthBar.className = 'strength-bar w-0 bg-red-400';
+                } else if (strength < 50) {
+                    strengthText.textContent = '弱';
+                    strengthBar.className = 'strength-bar bg-red-400';
+                } else if (strength < 75) {
+                    strengthText.textContent = '中';
+                    strengthBar.className = 'strength-bar bg-yellow-400';
+                } else {
+                    strengthText.textContent = '强';
+                    strengthBar.className = 'strength-bar bg-green-400';
+                }
+            });
+            
+            // 4. 验证码倒计时
+            const sendCodeBtn = document.getElementById('send-code-btn');
+            let countdown = 0;
+            
+            sendCodeBtn.addEventListener('click', function() {
+                const email = document.getElementById('register-email').value;
+                const emailError = document.getElementById('register-email-error');
+                
+                // 邮箱验证
+                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                    emailError.textContent = '请输入有效的邮箱地址';
+                    emailError.classList.remove('hidden');
+                    return;
+                }
+                emailError.classList.add('hidden');
+                
+                // 开始倒计时
+                countdown = 60;
+                sendCodeBtn.disabled = true;
+                sendCodeBtn.textContent = `${countdown}秒后重新获取`;
+                sendCodeBtn.classList.add('light:bg-gray-100', 'dark:bg-gray-700', 'light:text-gray-500', 'dark:text-gray-400');
+                sendCodeBtn.classList.remove('light:bg-indigo-50', 'dark:bg-indigo-900', 'light:text-indigo-600', 'dark:text-indigo-300', 'hover:bg-indigo-100', 'dark:hover:bg-indigo-800');
+                
+                const timer = setInterval(() => {
+                    countdown--;
+                    sendCodeBtn.textContent = `${countdown}秒后重新获取`;
+                    
+                    if (countdown <= 0) {
+                        clearInterval(timer);
+                        sendCodeBtn.disabled = false;
+                        sendCodeBtn.textContent = '获取验证码';
+                        sendCodeBtn.classList.remove('light:bg-gray-100', 'dark:bg-gray-700', 'light:text-gray-500', 'dark:text-gray-400');
+                        sendCodeBtn.classList.add('light:bg-indigo-50', 'dark:bg-indigo-900', 'light:text-indigo-600', 'dark:text-indigo-300', 'hover:bg-indigo-100', 'dark:hover:bg-indigo-800');
+                    }
+                }, 1000);
+                
+                // 模拟发送验证码
+                console.log(`向邮箱 ${email} 发送验证码`);
+            });
+            
+            // 5. 表单验证逻辑
+            // 显示错误提示
+            const showError = (elementId, message) => {
+                const errorElement = document.getElementById(elementId);
+                errorElement.textContent = message;
+                errorElement.classList.remove('hidden');
+                // 添加错误动画
+                errorElement.classList.add('shake-error');
+                setTimeout(() => {
+                    errorElement.classList.remove('shake-error');
+                }, 500);
+            };
+            
+            // 隐藏错误提示
+            const hideError = (elementId) => {
+                document.getElementById(elementId).classList.add('hidden');
+            };
+            
+            // 登录表单验证
+            document.getElementById('login-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                let isValid = true;
+                
+                // 账号验证
+                const account = document.getElementById('login-account').value.trim();
+                if (!account) {
+                    showError('login-account-error', '请输入用户名或邮箱');
+                    isValid = false;
+                } else {
+                    hideError('login-account-error');
+                }
+                
+                // 密码验证
+                const password = document.getElementById('login-password').value;
+                if (password.length < 6) {
+                    showError('login-password-error', '密码长度不能少于6位');
+                    isValid = false;
+                } else {
+                    hideError('login-password-error');
+                }
+                
+                // 提交表单
+                if (isValid) {
+                    const loginBtn = document.getElementById('login-btn');
+                    const btnText = loginBtn.querySelector('.btn-text');
+                    const loader = loginBtn.querySelector('.loader');
+                    
+                    // 显示加载状态
+                    loginBtn.classList.add('loading');
+                    loginBtn.disabled = true;
+                    
+                    // 发送登录请求
+                    fetch('/api/login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            account: account,
+                            password: password,
+                            remember: document.getElementById('remember-me').checked
+                        }),
+                        signal: AbortSignal.timeout(10000)  // 10秒超时
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        // 恢复按钮状态
+                        loginBtn.classList.remove('loading');
+                        loginBtn.disabled = false;
+                        
+                        if (data.code === 200) {
+                            // 登录成功动画
+                            loginBtn.classList.add('success-pulse');
+                            setTimeout(() => {
+                                loginBtn.classList.remove('success-pulse');
+                            }, 600);
+                            // 跳转到首页
+                            window.location.href = '/';
+                        } else {
+                            // 显示错误弹窗
+                            const modal = document.getElementById('success-modal');
+                            const modalContent = document.getElementById('modal-content');
+                            const modalTitle = document.getElementById('modal-title');
+                            const modalMessage = document.getElementById('modal-message');
+                            const modalClose = document.getElementById('modal-close');
+                            
+                            // 修改弹窗样式为错误样式
+                            modalContent.querySelector('.fa-check').className = 'fa-solid fa-times text-red-500 dark:text-red-400 text-2xl';
+                            modalContent.querySelector('.bg-green-100').className = 'w-16 h-16 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center';
+                            modalClose.className = 'bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg font-medium hover:shadow-lg transition-all';
+                            
+                            modalTitle.textContent = '登录失败';
+                            modalMessage.textContent = data.msg || '登录失败，请检查账号和密码';
+                            
+                            modal.classList.remove('hidden');
+                            setTimeout(() => {
+                                modalContent.classList.remove('scale-95', 'opacity-0');
+                                modalContent.classList.add('scale-100', 'opacity-100');
+                            }, 10);
+                            
+                            // 关闭弹窗事件
+                            modalClose.onclick = () => {
+                                modalContent.classList.remove('scale-100', 'opacity-100');
+                                modalContent.classList.add('scale-95', 'opacity-0');
+                                setTimeout(() => {
+                                    modal.classList.add('hidden');
+                                    // 恢复弹窗样式
+                                    modalContent.querySelector('.fa-times').className = 'fa-solid fa-check text-green-500 dark:text-green-400 text-2xl';
+                                    modalContent.querySelector('.bg-red-100').className = 'w-16 h-16 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center';
+                                    modalClose.className = 'btn-gradient light text-white px-6 py-2 rounded-lg font-medium hover:shadow-lg transition-all';
+                                }, 300);
+                            };
+                        }
+                    })
+                    .catch(error => {
+                        // 恢复按钮状态
+                        loginBtn.classList.remove('loading');
+                        loginBtn.disabled = false;
+                        
+                        console.error('登录错误:', error);
+                        if (error.name === 'AbortError') {
+                            // 显示错误弹窗
+                            const modal = document.getElementById('success-modal');
+                            const modalContent = document.getElementById('modal-content');
+                            const modalTitle = document.getElementById('modal-title');
+                            const modalMessage = document.getElementById('modal-message');
+                            const modalClose = document.getElementById('modal-close');
+                            
+                            // 修改弹窗样式为错误样式
+                            modalContent.querySelector('.fa-check').className = 'fa-solid fa-times text-red-500 dark:text-red-400 text-2xl';
+                            modalContent.querySelector('.bg-green-100').className = 'w-16 h-16 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center';
+                            modalClose.className = 'bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg font-medium hover:shadow-lg transition-all';
+                            
+                            modalTitle.textContent = '请求超时';
+                            modalMessage.textContent = '请求超时，请检查网络连接后重试';
+                            
+                            modal.classList.remove('hidden');
+                            setTimeout(() => {
+                                modalContent.classList.remove('scale-95', 'opacity-0');
+                                modalContent.classList.add('scale-100', 'opacity-100');
+                            }, 10);
+                            
+                            // 关闭弹窗事件
+                            modalClose.onclick = () => {
+                                modalContent.classList.remove('scale-100', 'opacity-100');
+                                modalContent.classList.add('scale-95', 'opacity-0');
+                                setTimeout(() => {
+                                    modal.classList.add('hidden');
+                                    // 恢复弹窗样式
+                                    modalContent.querySelector('.fa-times').className = 'fa-solid fa-check text-green-500 dark:text-green-400 text-2xl';
+                                    modalContent.querySelector('.bg-red-100').className = 'w-16 h-16 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center';
+                                    modalClose.className = 'btn-gradient light text-white px-6 py-2 rounded-lg font-medium hover:shadow-lg transition-all';
+                                }, 300);
+                            };
+                        } else {
+                            // 显示错误弹窗
+                            const modal = document.getElementById('success-modal');
+                            const modalContent = document.getElementById('modal-content');
+                            const modalTitle = document.getElementById('modal-title');
+                            const modalMessage = document.getElementById('modal-message');
+                            const modalClose = document.getElementById('modal-close');
+                            
+                            // 修改弹窗样式为错误样式
+                            modalContent.querySelector('.fa-check').className = 'fa-solid fa-times text-red-500 dark:text-red-400 text-2xl';
+                            modalContent.querySelector('.bg-green-100').className = 'w-16 h-16 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center';
+                            modalClose.className = 'bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg font-medium hover:shadow-lg transition-all';
+                            
+                            modalTitle.textContent = '网络错误';
+                            modalMessage.textContent = '网络错误，请稍后重试';
+                            
+                            modal.classList.remove('hidden');
+                            setTimeout(() => {
+                                modalContent.classList.remove('scale-95', 'opacity-0');
+                                modalContent.classList.add('scale-100', 'opacity-100');
+                            }, 10);
+                            
+                            // 关闭弹窗事件
+                            modalClose.onclick = () => {
+                                modalContent.classList.remove('scale-100', 'opacity-100');
+                                modalContent.classList.add('scale-95', 'opacity-0');
+                                setTimeout(() => {
+                                    modal.classList.add('hidden');
+                                    // 恢复弹窗样式
+                                    modalContent.querySelector('.fa-times').className = 'fa-solid fa-check text-green-500 dark:text-green-400 text-2xl';
+                                    modalContent.querySelector('.bg-red-100').className = 'w-16 h-16 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center';
+                                    modalClose.className = 'btn-gradient light text-white px-6 py-2 rounded-lg font-medium hover:shadow-lg transition-all';
+                                }, 300);
+                            };
+                        }
+                    });
+                }
+            });
+            
+            // 注册表单验证
+            document.getElementById('register-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                let isValid = true;
+                
+                // 用户名验证
+                const username = document.getElementById('register-username').value.trim();
+                const usernameRegex = /^[a-zA-Z0-9_]{3,16}$/;
+                if (!usernameRegex.test(username)) {
+                    showError('register-username-error', '用户名需为3-16位字母、数字、下划线组合');
+                    isValid = false;
+                } else {
+                    hideError('register-username-error');
+                }
+                
+                // 邮箱验证
+                const email = document.getElementById('register-email').value.trim();
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(email)) {
+                    showError('register-email-error', '请输入有效的邮箱地址');
+                    isValid = false;
+                } else {
+                    hideError('register-email-error');
+                }
+                
+                // 密码验证
+                const password = document.getElementById('register-password').value;
+                if (password.length < 6) {
+                    showError('register-password-error', '密码长度不能少于6位');
+                    isValid = false;
+                } else {
+                    hideError('register-password-error');
+                }
+                
+                // 确认密码验证
+                const confirmPwd = document.getElementById('register-confirm-pwd').value;
+                if (confirmPwd !== password) {
+                    showError('register-confirm-error', '两次输入的密码不一致');
+                    isValid = false;
+                } else {
+                    hideError('register-confirm-error');
+                }
+                
+                // 验证码验证（暂时跳过，使用任意6位即可）
+                const code = document.getElementById('register-code').value.trim();
+                // 简化验证码验证，前端不验证，后端暂不实现邮箱验证码
+                hideError('register-code-error');
+                
+                // 协议同意验证
+                const agreeTerms = document.getElementById('agree-terms').checked;
+                if (!agreeTerms) {
+                    showError('register-terms-error', '请阅读并同意用户协议和隐私政策');
+                    isValid = false;
+                } else {
+                    hideError('register-terms-error');
+                }
+                
+                // 提交表单
+                if (isValid) {
+                    const registerBtn = document.getElementById('register-btn');
+                    const btnText = registerBtn.querySelector('.btn-text');
+                    const loader = registerBtn.querySelector('.loader');
+                    
+                    // 显示加载状态
+                    registerBtn.classList.add('loading');
+                    registerBtn.disabled = true;
+                    
+                    // 发送注册请求
+                    fetch('/api/register', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            username: username,
+                            email: email,
+                            password: password
+                        }),
+                        signal: AbortSignal.timeout(10000)  // 10秒超时
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        // 恢复按钮状态
+                        registerBtn.classList.remove('loading');
+                        registerBtn.disabled = false;
+                        
+                        if (data.code === 200) {
+                            // 注册成功动画
+                            registerBtn.classList.add('success-pulse');
+                            setTimeout(() => {
+                                registerBtn.classList.remove('success-pulse');
+                            }, 600);
+                            
+                            // 显示自定义弹窗
+                            const modal = document.getElementById('success-modal');
+                            const modalContent = document.getElementById('modal-content');
+                            const modalTitle = document.getElementById('modal-title');
+                            const modalMessage = document.getElementById('modal-message');
+                            
+                            modalTitle.textContent = data.data.role === 'admin' ? '🎉 恭喜成为管理员' : '注册成功';
+                            modalMessage.textContent = data.data.role === 'admin' ? '您是第一个注册用户，已自动成为管理员！' : '您的账户已成功创建，请登录';
+                            
+                            // 显示弹窗
+                            modal.classList.remove('hidden');
+                            setTimeout(() => {
+                                modalContent.classList.remove('scale-95', 'opacity-0');
+                                modalContent.classList.add('scale-100', 'opacity-100');
+                            }, 10);
+                            
+                            // 等待弹窗关闭后切换到登录表单
+                            const closeButton = document.getElementById('modal-close');
+                            const originalOnClick = closeButton.onclick;
+                            closeButton.onclick = function() {
+                                // 执行原有关闭逻辑
+                                if (originalOnClick) {
+                                    originalOnClick();
+                                } else {
+                                    modalContent.classList.remove('scale-100', 'opacity-100');
+                                    modalContent.classList.add('scale-95', 'opacity-0');
+                                    setTimeout(() => {
+                                        modal.classList.add('hidden');
+                                        // 恢复弹窗样式
+                                        const iconElement = modalContent.querySelector('.fa-times') || modalContent.querySelector('.fa-check');
+                                        const bgElement = modalContent.querySelector('.bg-red-100') || modalContent.querySelector('.bg-green-100');
+                                        const closeBtn = document.getElementById('modal-close');
+                                        
+                                        if (iconElement) {
+                                            iconElement.className = 'fa-solid fa-check text-green-500 dark:text-green-400 text-2xl';
+                                        }
+                                        if (bgElement) {
+                                            bgElement.className = 'w-16 h-16 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center';
+                                        }
+                                        if (closeBtn) {
+                                            closeBtn.className = 'btn-gradient light text-white px-6 py-2 rounded-lg font-medium hover:shadow-lg transition-all';
+                                        }
+                                        // 切换到登录表单
+                                        switchTab('login');
+                                    }, 300);
+                                }
+                            };
+                        } else {
+                            // 注册失败，显示错误提示
+                            if (data.msg.includes('用户名')) {
+                                showError('register-username-error', data.msg);
+                            } else if (data.msg.includes('邮箱')) {
+                                showError('register-email-error', data.msg);
+                            } else {
+                                // 显示错误弹窗
+                                const modal = document.getElementById('success-modal');
+                                const modalContent = document.getElementById('modal-content');
+                                const modalTitle = document.getElementById('modal-title');
+                                const modalMessage = document.getElementById('modal-message');
+                                const modalClose = document.getElementById('modal-close');
+                                
+                                // 修改弹窗样式为错误样式
+                                modalContent.querySelector('.fa-check').className = 'fa-solid fa-times text-red-500 dark:text-red-400 text-2xl';
+                                modalContent.querySelector('.bg-green-100').className = 'w-16 h-16 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center';
+                                modalClose.className = 'bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg font-medium hover:shadow-lg transition-all';
+                                
+                                modalTitle.textContent = '注册失败';
+                                modalMessage.textContent = data.msg || '注册失败，请稍后重试';
+                                
+                                modal.classList.remove('hidden');
+                                setTimeout(() => {
+                                    modalContent.classList.remove('scale-95', 'opacity-0');
+                                    modalContent.classList.add('scale-100', 'opacity-100');
+                                }, 10);
+                                
+                                // 关闭弹窗事件
+                                modalClose.onclick = () => {
+                                    modalContent.classList.remove('scale-100', 'opacity-100');
+                                    modalContent.classList.add('scale-95', 'opacity-0');
+                                    setTimeout(() => {
+                                        modal.classList.add('hidden');
+                                        // 恢复弹窗样式
+                                        modalContent.querySelector('.fa-times').className = 'fa-solid fa-check text-green-500 dark:text-green-400 text-2xl';
+                                        modalContent.querySelector('.bg-red-100').className = 'w-16 h-16 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center';
+                                        modalClose.className = 'btn-gradient light text-white px-6 py-2 rounded-lg font-medium hover:shadow-lg transition-all';
+                                    }, 300);
+                                };
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        // 恢复按钮状态
+                        registerBtn.classList.remove('loading');
+                        registerBtn.disabled = false;
+                        
+                        console.error('注册错误:', error);
+                        if (error.name === 'AbortError') {
+                            // 显示错误弹窗
+                            const modal = document.getElementById('success-modal');
+                            const modalContent = document.getElementById('modal-content');
+                            const modalTitle = document.getElementById('modal-title');
+                            const modalMessage = document.getElementById('modal-message');
+                            const modalClose = document.getElementById('modal-close');
+                            
+                            // 修改弹窗样式为错误样式
+                            modalContent.querySelector('.fa-check').className = 'fa-solid fa-times text-red-500 dark:text-red-400 text-2xl';
+                            modalContent.querySelector('.bg-green-100').className = 'w-16 h-16 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center';
+                            modalClose.className = 'bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg font-medium hover:shadow-lg transition-all';
+                            
+                            modalTitle.textContent = '请求超时';
+                            modalMessage.textContent = '请求超时，请检查网络连接后重试';
+                            
+                            modal.classList.remove('hidden');
+                            setTimeout(() => {
+                                modalContent.classList.remove('scale-95', 'opacity-0');
+                                modalContent.classList.add('scale-100', 'opacity-100');
+                            }, 10);
+                            
+                            // 关闭弹窗事件
+                            modalClose.onclick = () => {
+                                modalContent.classList.remove('scale-100', 'opacity-100');
+                                modalContent.classList.add('scale-95', 'opacity-0');
+                                setTimeout(() => {
+                                    modal.classList.add('hidden');
+                                    // 恢复弹窗样式
+                                    modalContent.querySelector('.fa-times').className = 'fa-solid fa-check text-green-500 dark:text-green-400 text-2xl';
+                                    modalContent.querySelector('.bg-red-100').className = 'w-16 h-16 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center';
+                                    modalClose.className = 'btn-gradient light text-white px-6 py-2 rounded-lg font-medium hover:shadow-lg transition-all';
+                                }, 300);
+                            };
+                        } else {
+                            // 显示错误弹窗
+                            const modal = document.getElementById('success-modal');
+                            const modalContent = document.getElementById('modal-content');
+                            const modalTitle = document.getElementById('modal-title');
+                            const modalMessage = document.getElementById('modal-message');
+                            const modalClose = document.getElementById('modal-close');
+                            
+                            // 修改弹窗样式为错误样式
+                            modalContent.querySelector('.fa-check').className = 'fa-solid fa-times text-red-500 dark:text-red-400 text-2xl';
+                            modalContent.querySelector('.bg-green-100').className = 'w-16 h-16 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center';
+                            modalClose.className = 'bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg font-medium hover:shadow-lg transition-all';
+                            
+                            modalTitle.textContent = '网络错误';
+                            modalMessage.textContent = '网络错误，请稍后重试';
+                            
+                            modal.classList.remove('hidden');
+                            setTimeout(() => {
+                                modalContent.classList.remove('scale-95', 'opacity-0');
+                                modalContent.classList.add('scale-100', 'opacity-100');
+                            }, 10);
+                            
+                            // 关闭弹窗事件
+                            modalClose.onclick = () => {
+                                modalContent.classList.remove('scale-100', 'opacity-100');
+                                modalContent.classList.add('scale-95', 'opacity-0');
+                                setTimeout(() => {
+                                    modal.classList.add('hidden');
+                                    // 恢复弹窗样式
+                                    modalContent.querySelector('.fa-times').className = 'fa-solid fa-check text-green-500 dark:text-green-400 text-2xl';
+                                    modalContent.querySelector('.bg-red-100').className = 'w-16 h-16 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center';
+                                    modalClose.className = 'btn-gradient light text-white px-6 py-2 rounded-lg font-medium hover:shadow-lg transition-all';
+                                }, 300);
+                            };
+                        }
+                    });
+                }
+            });
+            
+            // 6. 输入框焦点事件（隐藏错误提示）
+            const inputElements = document.querySelectorAll('input');
+            inputElements.forEach(input => {
+                input.addEventListener('focus', function() {
+                    const errorId = `${this.id}-error`;
+                    if (document.getElementById(errorId)) {
+                        hideError(errorId);
+                    }
+                });
+            });
+            
+            // 7. 添加按钮波纹效果
+            document.querySelectorAll('button').forEach(button => {
+                button.addEventListener('click', function(e) {
+                    createRippleEffect(e, this);
+                });
+            });
+            
+            function createRippleEffect(e, button) {
+                const ripple = document.createElement('span');
+                ripple.classList.add('ripple-effect');
+                
+                const rect = button.getBoundingClientRect();
+                const size = Math.max(rect.width, rect.height);
+                const x = e.clientX - rect.left - size / 2;
+                const y = e.clientY - rect.top - size / 2;
+                
+                ripple.style.width = ripple.style.height = `${size}px`;
+                ripple.style.left = `${x}px`;
+                ripple.style.top = `${y}px`;
+                
+                button.appendChild(ripple);
+                
+                setTimeout(() => {
+                    ripple.remove();
+                }, 600);
+            }
+            
+            // 8. 背景粒子初始化
+            function initParticles() {
+                const container = document.getElementById('particles');
+                const particleCount = 20;
+                
+                for (let i = 0; i < particleCount; i++) {
+                    const particle = document.createElement('div');
+                    particle.classList.add('particle');
+                    
+                    // 随机大小
+                    const size = Math.random() * 15 + 5;
+                    particle.style.width = `${size}px`;
+                    particle.style.height = `${size}px`;
+                    
+                    // 随机位置
+                    particle.style.left = `${Math.random() * 100}%`;
+                    
+                    // 随机动画延迟和持续时间
+                    particle.style.animationDelay = `${Math.random() * 15}s`;
+                    particle.style.animationDuration = `${15 + Math.random() * 10}s`;
+                    
+                    // 随机透明度
+                    particle.style.opacity = Math.random() * 0.3 + 0.1;
+                    
+                    container.appendChild(particle);
+                }
+            }
+            
+            // 9. 自定义弹窗关闭事件
+            document.getElementById('modal-close')?.addEventListener('click', function() {
+                const modal = document.getElementById('success-modal');
+                const modalContent = document.getElementById('modal-content');
+                
+                if (modal && modalContent) {
+                    modalContent.classList.remove('scale-100', 'opacity-100');
+                    modalContent.classList.add('scale-95', 'opacity-0');
+                    setTimeout(() => {
+                        modal.classList.add('hidden');
+                        // 恢复弹窗样式
+                        const iconElement = modalContent.querySelector('.fa-times') || modalContent.querySelector('.fa-check');
+                        const bgElement = modalContent.querySelector('.bg-red-100') || modalContent.querySelector('.bg-green-100');
+                        const closeButton = document.getElementById('modal-close');
+                        
+                        if (iconElement) {
+                            iconElement.className = 'fa-solid fa-check text-green-500 dark:text-green-400 text-2xl';
+                        }
+                        if (bgElement) {
+                            bgElement.className = 'w-16 h-16 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center';
+                        }
+                        if (closeButton) {
+                            closeButton.className = 'btn-gradient light text-white px-6 py-2 rounded-lg font-medium hover:shadow-lg transition-all';
+                        }
+                    }, 300);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

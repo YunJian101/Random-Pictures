@@ -1,0 +1,1328 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>随机图片API - 首页</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 多CDN竞争加载 Font Awesome 4.7.0 -->
+    <script>
+        (function() {
+            var cdnList = [
+                'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css',
+                'https://cdn.bootcdn.net/ajax/libs/font-awesome/6.5.1/css/all.min.css',
+                'https://lib.baomitu.com/font-awesome/6.5.1/css/all.min.css'
+            ];
+            var loaded = false;
+            var links = [];
+            cdnList.forEach(function(cdn) {
+                var link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = cdn;
+                link.onload = function() {
+                    if (!loaded) {
+                        loaded = true;
+                        links.forEach(function(l) {
+                            if (l !== link && l.parentNode) {
+                                l.parentNode.removeChild(l);
+                            }
+                        });
+                    }
+                };
+                links.push(link);
+                document.head.appendChild(link);
+            });
+        })();
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', 'Microsoft YaHei', sans-serif;
+            transition: background 0.3s ease, color 0.3s ease;
+        }
+        /* 延续统一的视觉风格 */
+        .bg-gradient-main {
+            background: linear-gradient(to bottom right, rgba(99, 102, 241, 0.1), rgba(16, 185, 129, 0.1));
+        }
+        
+        .dark .bg-gradient-main {
+            background: linear-gradient(to bottom right, rgba(99, 102, 241, 0.05), rgba(16, 185, 129, 0.05));
+        }
+
+        /* 夜间模式 */
+        .dark-mode {
+            --bg-main: #1a1a2e;
+            --bg-card: #242526;
+            --bg-input: #3e4042;
+            --text-primary: #e4e6eb;
+            --text-secondary: #b0b3b8;
+            --text-muted: #8a8d91;
+            --border-color: #4e4f50;
+            --bg-hover: #3e4042;
+        }
+
+        .dark-mode body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        }
+
+        .dark-mode .bg-white {
+            background: #242526 !important;
+        }
+
+        .dark-mode .bg-white\/80 {
+            background: rgba(36, 37, 38, 0.9) !important;
+        }
+
+        .dark-mode header {
+            border-bottom: 1px solid #3e4042;
+        }
+
+        .dark-mode .text-gray-800,
+        .dark-mode .text-gray-700 {
+            color: #e4e6eb;
+        }
+
+        .dark-mode .text-gray-600,
+        .dark-mode .text-gray-500 {
+            color: #b0b3b8;
+        }
+
+        .dark-mode .text-gray-400 {
+            color: #8a8d91;
+        }
+
+        .dark-mode .border-gray-200 {
+            border-color: #4e4f50;
+        }
+
+        .dark-mode .border-gray-100 {
+            border-color: #3e4042;
+        }
+
+        .dark-mode input,
+        .dark-mode select,
+        .dark-mode textarea {
+            background: #3e4042;
+            border-color: #4e4f50;
+            color: #e4e6eb;
+        }
+
+        .dark-mode .bg-gray-50,
+        .dark-mode .bg-gray-100 {
+            background: #3e4042;
+        }
+
+        .dark-mode .hover\:bg-gray-50:hover {
+            background: #3e4042;
+        }
+
+        .dark-mode .shadow-sm {
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .dark-mode .card-hover:hover {
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+        }
+
+        .dark-mode .img-loading {
+            background: linear-gradient(45deg, #3e4042, #4e4f50);
+        }
+
+        /* 状态标签夜间模式 */
+        .dark-mode .status-pending {
+            background-color: #2e1a1a;
+            color: #ff6370;
+        }
+
+        .dark-mode .status-processing {
+            background-color: #1a243e;
+            color: #5177ff;
+        }
+
+        .dark-mode .status-replied {
+            background-color: #1a2e1a;
+            color: #0be881;
+        }
+
+        .dark-mode .status-rejected {
+            background-color: #3e4042;
+            color: #b0b3b8;
+        }
+
+        /* 标签页夜间模式 */
+        .dark-mode .tab-active {
+            color: #818cf8;
+            border-bottom-color: #818cf8;
+        }
+
+        .dark-mode .tab-inactive {
+            color: #b0b3b8;
+        }
+
+        /* 按钮夜间模式 */
+        .dark-mode .bg-indigo-50 {
+            background: #312e81;
+        }
+
+        .dark-mode .text-indigo-600 {
+            color: #818cf8;
+        }
+
+        .dark-mode .text-indigo-700 {
+            color: #6366f1;
+        }
+
+        /* FAQ折叠面板夜间模式 */
+        .dark-mode .faq-answer {
+            background: #3e4042;
+        }
+
+        .dark-mode .faq-item:hover .faq-question {
+            background: #3e4042;
+        }
+
+        .btn-primary { background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%); }
+        .btn-primary:hover { background: linear-gradient(135deg, #4338ca 0%, #4f46e5 100%); }
+        .card-hover { transition: all 0.2s ease; }
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08); }
+        /* 图片加载动画 */
+        .img-loading {
+            background: linear-gradient(45deg, #e2e8f0, #f1f5f9);
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+        /* 反馈状态标签样式 */
+        .status-pending { background-color: #fef2f2; color: #dc2626; }
+        .status-processing { background-color: #eff6ff; color: #2563eb; }
+        .status-replied { background-color: #f0fdf4; color: #16a34a; }
+        .status-rejected { background-color: #fafafa; color: #737373; }
+        /* 反馈回复折叠/展开动画 */
+        .reply-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+        .reply-content.show { max-height: 500px; }
+
+        /* 主题切换按钮动画 */
+        .theme-toggle {
+            transition: transform 0.3s ease;
+        }
+        .theme-toggle:hover {
+            transform: rotate(180deg);
+        }
+        
+        /* 通用工具类 */
+        .text-gradient {
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            background-image: linear-gradient(to right, #6366f1, #10b981);
+        }
+        
+        /* 颜色定义 */
+        :root {
+            --primary: #6366f1;
+            --secondary: #10b981;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-white dark:bg-dark-200 text-dark-200 dark:text-light-100 transition-colors duration-300">
+    <!-- 背景装饰 -->
+    <div class="fixed inset-0 bg-gradient-main -z-10"></div>
+    <!-- 顶部导航栏（和管理后台/错误页面风格统一） -->
+    <header class="sticky top-0 w-full bg-white/80 backdrop-blur-sm shadow-sm z-50">
+        <div class="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo区域 -->
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-r from-[#6366f1] to-[#10b981] flex items-center justify-center shadow-lg">
+                        <i class="fa-solid fa-images text-white text-xl"></i>
+                    </div>
+                    <a href="/" class="text-xl md:text-2xl font-bold text-gradient no-underline hover:opacity-80 transition-opacity">随机图片API</a>
+                </div>
+                
+                <!-- 导航菜单 -->
+                <nav class="hidden md:flex items-center gap-6">
+                    <a href="#quick-use" class="text-indigo-600 font-medium">快速使用</a>
+                    <a href="#preview" class="text-gray-600 hover:text-indigo-600 transition-colors">图片预览</a>
+                    <a href="#docs" class="text-gray-600 hover:text-indigo-600 transition-colors">使用文档</a>
+                    <a href="#feedback" class="text-gray-600 hover:text-indigo-600 transition-colors">反馈建议</a>
+                </nav>
+                
+                <!-- 右侧功能 -->
+                <div class="flex items-center gap-4">
+                    <!-- 主题切换按钮 -->
+                    <button class="theme-toggle p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors" id="themeToggleBtn" title="切换主题">
+                        <i class="fa-solid fa-sun text-gray-600" id="themeIcon"></i>
+                    </button>
+                    <button id="mobile-menu-btn" class="md:hidden text-gray-700">
+                        <i class="fa-solid fa-bars text-xl"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 移动端导航菜单 -->
+        <div id="mobile-menu" class="md:hidden hidden bg-white dark:bg-dark-200 border-b border-gray-200 dark:border-gray-700">
+            <div class="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+                <nav class="flex flex-col gap-3">
+                    <a href="#quick-use" class="py-2 text-indigo-600 font-medium">快速使用</a>
+                    <a href="#preview" class="py-2 text-gray-600 hover:text-indigo-600 transition-colors">图片预览</a>
+                    <a href="#docs" class="py-2 text-gray-600 hover:text-indigo-600 transition-colors">使用文档</a>
+                    <a href="#feedback" class="py-2 text-gray-600 hover:text-indigo-600 transition-colors">反馈建议</a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主体内容 -->
+    <main class="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- 1. 快速调用区 -->
+        <section id="quick-use" class="bg-white rounded-2xl shadow-sm p-6 md:p-8 mb-8 card-hover">
+            <h2 class="text-xl font-semibold text-gray-800 mb-6 flex items-center">
+                <i class="fa fa-bolt text-indigo-600 mr-2"></i> 快速调用
+            </h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <!-- 分类选择 -->
+                <div class="col-span-1">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">选择分类</label>
+                    <div class="relative">
+                        <select id="category-select" class="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 appearance-none">
+                            <option value="random">随机分类</option>
+                            <!-- 分类将通过JavaScript动态加载 -->
+                        </select>
+                        <i class="fa fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></i>
+                    </div>
+                </div>
+                
+                <!-- 格式选择 -->
+                <div class="col-span-1">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">返回格式</label>
+                    <div class="flex gap-2">
+                        <button id="format-img" class="flex-1 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg text-sm font-medium">图片</button>
+                        <button id="format-json" class="flex-1 px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium">JSON</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 生成的代码区域 -->
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">调用代码</label>
+                <div class="relative">
+                    <textarea id="code-output" class="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm font-mono bg-gray-50 h-24 focus:outline-none focus:ring-2 focus:ring-indigo-200" readonly>https://你的域名/random?type=random</textarea>
+                    <button id="copy-code" class="absolute right-3 top-3 px-2 py-1 bg-indigo-600 text-white text-xs rounded hover:bg-indigo-700 transition-colors">
+                        <i class="fa fa-copy mr-1"></i> 复制
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 代码类型切换 -->
+            <div class="flex flex-wrap gap-2 mb-4">
+                <button id="code-type-url" class="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-sm font-medium">直接链接</button>
+                <button id="code-type-html" class="px-3 py-1 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium">HTML</button>
+                <button id="code-type-markdown" class="px-3 py-1 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium">Markdown</button>
+                <button id="code-type-js" class="px-3 py-1 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium">JavaScript</button>
+                <button id="code-type-python" class="px-3 py-1 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium">Python</button>
+            </div>
+            
+            <!-- 操作按钮 -->
+            <div class="flex gap-3">
+                <button id="preview-btn" class="btn-primary text-white px-4 py-2 rounded-lg text-sm flex items-center hover:shadow-lg transition-shadow">
+                    <i class="fa fa-eye mr-2"></i> 预览图片
+                </button>
+                <button id="refresh-code" class="px-4 py-2 border border-gray-200 rounded-lg text-sm flex items-center hover:bg-gray-50 transition-colors">
+                    <i class="fa fa-refresh mr-2"></i> 刷新链接
+                </button>
+            </div>
+        </section>
+
+        <!-- 2. 图片预览区 -->
+        <section id="preview" class="bg-white rounded-2xl shadow-sm p-6 md:p-8 mb-8 card-hover">
+            <h2 class="text-xl font-semibold text-gray-800 mb-6 flex items-center">
+                <i class="fa fa-image text-indigo-600 mr-2"></i> 图片预览
+            </h2>
+            
+            <div class="flex flex-col items-center">
+                <!-- 预览图片容器 -->
+                <div id="preview-container" class="w-full max-w-2xl aspect-video img-loading rounded-xl overflow-hidden mb-4 flex items-center justify-center bg-gray-100">
+                    <i class="fa fa-picture-o text-5xl text-gray-400"></i>
+                </div>
+                
+                <!-- 图片信息 -->
+                <div class="w-full max-w-2xl flex flex-wrap justify-between items-center text-sm text-gray-600 mb-4">
+                    <div>
+                        <span id="img-info">未加载图片</span>
+                    </div>
+                    <div class="flex gap-3">
+                        <button id="refresh-img" class="px-3 py-1 border border-gray-200 rounded-lg flex items-center hover:bg-gray-50 transition-colors disabled:opacity-50" disabled>
+                            <i class="fa fa-refresh mr-1"></i> 刷新随机图
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 分类图片快速预览 -->
+                <div class="w-full mt-6">
+                    <h3 class="text-sm font-medium text-gray-700 mb-3">分类快速预览</h3>
+                    <div class="overflow-x-auto pb-2">
+                        <div id="category-preview-container" class="flex gap-3 min-w-max">
+                            <!-- 分类预览项将通过JavaScript动态加载 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. 个人使用统计 -->
+        <section class="bg-white rounded-2xl shadow-sm p-6 md:p-8 mb-8 card-hover">
+            <h2 class="text-xl font-semibold text-gray-800 mb-6 flex items-center">
+                <i class="fa fa-bar-chart text-indigo-600 mr-2"></i> 我的使用统计
+            </h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- 今日调用次数 -->
+                <div class="bg-indigo-50 rounded-xl p-4 text-center">
+                    <p class="text-sm text-gray-600 mb-1">今日调用次数</p>
+                    <h3 class="text-3xl font-bold text-indigo-600">128</h3>
+                    <p class="text-xs text-green-600 mt-1"><i class="fa fa-arrow-up"></i> 较昨日 +12%</p>
+                </div>
+                
+                <!-- 剩余调用次数 -->
+                <div class="bg-amber-50 rounded-xl p-4 text-center">
+                    <p class="text-sm text-gray-600 mb-1">今日剩余次数</p>
+                    <h3 class="text-3xl font-bold text-amber-600">872</h3>
+                    <p class="text-xs text-gray-500 mt-1">每日限额：1000次</p>
+                </div>
+                
+                <!-- 常用分类 -->
+                <div class="bg-green-50 rounded-xl p-4">
+                    <p class="text-sm text-gray-600 mb-2 text-center">常用分类 TOP3</p>
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-gray-700">二次元</span>
+                            <div class="w-2/3 bg-gray-200 rounded-full h-2">
+                                <div class="bg-green-500 h-2 rounded-full" style="width: 65%"></div>
+                            </div>
+                            <span class="text-xs text-gray-600">65%</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-gray-700">人物</span>
+                            <div class="w-2/3 bg-gray-200 rounded-full h-2">
+                                <div class="bg-green-500 h-2 rounded-full" style="width: 20%"></div>
+                            </div>
+                            <span class="text-xs text-gray-600">20%</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-gray-700">剧照</span>
+                            <div class="w-2/3 bg-gray-200 rounded-full h-2">
+                                <div class="bg-green-500 h-2 rounded-full" style="width: 15%"></div>
+                            </div>
+                            <span class="text-xs text-gray-600">15%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. 使用文档区 -->
+        <section id="docs" class="bg-white rounded-2xl shadow-sm p-6 md:p-8 mb-8 card-hover">
+            <h2 class="text-xl font-semibold text-gray-800 mb-6 flex items-center">
+                <i class="fa fa-book text-indigo-600 mr-2"></i> 使用文档
+            </h2>
+            
+            <!-- 文档标签页 -->
+            <div class="border-b border-gray-200 mb-6">
+                <nav class="flex space-x-8">
+                    <button class="text-indigo-600 border-b-2 border-indigo-600 py-2 text-sm font-medium">基础用法</button>
+                    <button class="text-gray-500 hover:text-indigo-600 py-2 text-sm font-medium">参数说明</button>
+                    <button class="text-gray-500 hover:text-indigo-600 py-2 text-sm font-medium">错误码说明</button>
+                    <button class="text-gray-500 hover:text-indigo-600 py-2 text-sm font-medium">常见问题</button>
+                </nav>
+            </div>
+            
+            <!-- 基础用法内容 -->
+            <div class="space-y-6">
+                <div>
+                    <h3 class="text-lg font-medium text-gray-800 mb-3">基本调用格式</h3>
+                    <div class="bg-gray-50 rounded-lg p-4 font-mono text-sm text-gray-800">
+                        https://你的域名/random?type=<span class="text-indigo-600">分类名称</span>&width=<span class="text-green-600">宽度</span>&height=<span class="text-green-600">高度</span>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3 class="text-lg font-medium text-gray-800 mb-3">调用示例</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- HTML示例 -->
+                        <div>
+                            <p class="text-sm font-medium text-gray-700 mb-2">HTML</p>
+                            <pre class="bg-gray-50 rounded-lg p-3 text-xs font-mono overflow-x-auto">
+&lt;img src="https://你的域名/random?type=二次元" alt="随机图片"&gt;</pre>
+                        </div>
+                        
+                        <!-- JavaScript示例 -->
+                        <div>
+                            <p class="text-sm font-medium text-gray-700 mb-2">JavaScript</p>
+                            <pre class="bg-gray-50 rounded-lg p-3 text-xs font-mono overflow-x-auto">
+// 加载随机图片
+fetch('https://你的域名/random?type=二次元')
+  .then(response => response.blob())
+  .then(blob => {
+    const imgUrl = URL.createObjectURL(blob);
+    document.getElementById('img-container').src = imgUrl;
+  });</pre>
+                        </div>
+                        
+                        <!-- Python示例 -->
+                        <div>
+                            <p class="text-sm font-medium text-gray-700 mb-2">Python</p>
+                            <pre class="bg-gray-50 rounded-lg p-3 text-xs font-mono overflow-x-auto">
+import requests
+
+# 获取随机图片
+response = requests.get('https://你的域名/random?type=二次元')
+# 保存图片到本地
+with open('random_img.jpg', 'wb') as f:
+    f.write(response.content)</pre>
+                        </div>
+                        
+                        <!-- PHP示例 -->
+                        <div>
+                            <p class="text-sm font-medium text-gray-700 mb-2">PHP</p>
+                            <pre class="bg-gray-50 rounded-lg p-3 text-xs font-mono overflow-x-auto">
+// 获取随机图片URL
+$imgUrl = 'https://你的域名/random?type=二次元';
+// 输出图片标签
+echo "&lt;img src='{$imgUrl}' alt='随机图片'&gt;";
+</pre>
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3 class="text-lg font-medium text-gray-800 mb-3">注意事项</h3>
+                    <ul class="list-disc list-inside text-gray-600 space-y-2 text-sm">
+                        <li>请勿滥用API，单IP每日调用上限1000次，超出将触发429限流</li>
+                        <li>Donate分类为捐赠用户专属，普通用户访问将返回403错误</li>
+                        <li>图片尺寸参数为选填，不填将返回原图尺寸</li>
+                        <li>建议缓存图片链接，避免频繁调用API</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- 5. 反馈建议区（新增我的反馈标签页） -->
+        <section id="feedback" class="bg-white rounded-2xl shadow-sm p-6 md:p-8 card-hover">
+            <h2 class="text-xl font-semibold text-gray-800 mb-6 flex items-center">
+                <i class="fa fa-comment-o text-indigo-600 mr-2"></i> 反馈与建议
+            </h2>
+            
+            <!-- 反馈标签页（新增我的反馈） -->
+            <div class="border-b border-gray-200 mb-6">
+                <nav class="flex space-x-8">
+                    <button id="tab-submit" class="text-indigo-600 border-b-2 border-indigo-600 py-2 text-sm font-medium">提交反馈</button>
+                    <button id="tab-my-feedback" class="text-gray-500 hover:text-indigo-600 py-2 text-sm font-medium">我的反馈</button>
+                    <button id="tab-faq" class="text-gray-500 hover:text-indigo-600 py-2 text-sm font-medium">常见问题</button>
+                </nav>
+            </div>
+            
+            <!-- 1. 提交反馈面板（原有） -->
+            <div id="panel-submit" class="block">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- 反馈表单 -->
+                    <div>
+                        <form>
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">反馈类型</label>
+                                <select class="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200">
+                                    <option>功能建议</option>
+                                    <option>问题反馈</option>
+                                    <option>限流申诉</option>
+                                    <option>封禁申诉</option>
+                                    <option>其他</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">联系邮箱（选填）</label>
+                                <input type="email" placeholder="方便我们回复你" class="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200">
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">反馈标题</label>
+                                <input type="text" placeholder="请简要描述你的问题/建议" class="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200">
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">反馈内容</label>
+                                <textarea rows="5" placeholder="请详细描述你的问题或建议..." class="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200"></textarea>
+                            </div>
+                            
+                            <button type="submit" class="btn-primary text-white px-4 py-2 rounded-lg text-sm hover:shadow-lg transition-shadow">
+                                <i class="fa fa-paper-plane mr-2"></i> 提交反馈
+                            </button>
+                        </form>
+                    </div>
+                    
+                    <!-- 常见问题 -->
+                    <div>
+                        <h3 class="text-lg font-medium text-gray-800 mb-4">常见问题</h3>
+                        <div class="space-y-3">
+                            <div class="border-b border-gray-100 pb-3">
+                                <h4 class="font-medium text-gray-800 mb-1">Q: 为什么调用API返回429错误？</h4>
+                                <p class="text-sm text-gray-600">A: 429表示请求过于频繁，单IP每日调用上限1000次，分钟级上限60次。请降低调用频率，或捐赠升级为高级用户（无频率限制）。</p>
+                            </div>
+                            
+                            <div class="border-b border-gray-100 pb-3">
+                                <h4 class="font-medium text-gray-800 mb-1">Q: Donate分类如何访问？</h4>
+                                <p class="text-sm text-gray-600">A: Donate分类为捐赠用户专属，完成捐赠后会自动解锁该分类访问权限，捐赠地址：<a href="#" class="text-indigo-600 hover:underline">https://你的域名/donate</a>。</p>
+                            </div>
+                            
+                            <div class="border-b border-gray-100 pb-3">
+                                <h4 class="font-medium text-gray-800 mb-1">Q: 如何自定义返回图片的尺寸？</h4>
+                                <p class="text-sm text-gray-600">A: 在调用链接中添加width和height参数即可，例如：<code class="bg-gray-100 px-1 rounded">https://你的域名/random?type=二次元&width=800&height=600</code>。</p>
+                            </div>
+                            
+                            <div>
+                                <h4 class="font-medium text-gray-800 mb-1">Q: API返回的图片可以商用吗？</h4>
+                                <p class="text-sm text-gray-600">A: 所有图片仅用于个人学习交流使用，禁止商用。如需商用，请联系管理员获取授权。</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 2. 我的反馈面板（新增核心功能） -->
+            <div id="panel-my-feedback" class="hidden">
+                <!-- 反馈筛选 -->
+                <div class="flex flex-wrap gap-3 mb-6">
+                    <select class="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200">
+                        <option>所有状态</option>
+                        <option>未处理</option>
+                        <option>处理中</option>
+                        <option>已回复</option>
+                        <option>已驳回</option>
+                    </select>
+                    <select class="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200">
+                        <option>所有类型</option>
+                        <option>功能建议</option>
+                        <option>问题反馈</option>
+                        <option>限流申诉</option>
+                        <option>封禁申诉</option>
+                    </select>
+                    <div class="relative flex-1 max-w-xs">
+                        <input type="text" placeholder="搜索反馈标题" class="w-full pl-8 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200">
+                        <i class="fa fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                    </div>
+                </div>
+                
+                <!-- 我的反馈列表 -->
+                <div class="space-y-4">
+                    <!-- 反馈项1：已回复 -->
+                    <div class="border border-gray-200 rounded-lg p-4 card-hover">
+                        <div class="flex justify-between items-start mb-3">
+                            <div class="flex items-center">
+                                <span class="px-2 py-1 status-replied text-xs rounded-full">已回复</span>
+                                <h3 class="ml-3 font-medium text-gray-800">申诉：请求被误判为非法请求</h3>
+                                <span class="ml-2 text-xs text-gray-400">(限流申诉)</span>
+                            </div>
+                            <span class="text-xs text-gray-500">2026-02-09 10:25 提交</span>
+                        </div>
+                        
+                        <!-- 反馈内容 -->
+                        <div class="text-sm text-gray-600 mb-3 bg-gray-50 p-3 rounded-lg">
+                            <p>请求ID：20260209102500-d253</p>
+                            <p>用户IP：240e:314:b701:1f00:1dea:caf3:dea7:6a42</p>
+                            <p>反馈内容：我访问/image?path=二次元/123.webp被判定为非法请求，请求解封</p>
+                        </div>
+                        
+                        <!-- 回复展开/收起按钮 -->
+                        <button class="toggle-reply text-indigo-600 text-sm flex items-center mb-2">
+                            <i class="fa fa-chevron-down mr-1"></i> 查看管理员回复
+                        </button>
+                        
+                        <!-- 管理员回复内容（默认折叠） -->
+                        <div class="reply-content bg-green-50 p-3 rounded-lg mb-3">
+                            <div class="flex items-center mb-2">
+                                <img src="https://picsum.photos/24/24" class="w-6 h-6 rounded-full mr-2" alt="管理员头像">
+                                <div>
+                                    <span class="font-medium text-sm text-gray-800">管理员</span>
+                                    <span class="text-xs text-gray-500 ml-2">2026-02-09 14:30 回复</span>
+                                </div>
+                            </div>
+                            <p class="text-sm text-gray-700">
+                                您好！经核查，你的请求因短时间内调用频率超出正常范围触发了风控机制，已为你解除限制。
+                                建议降低调用频率（每分钟不超过10次），避免再次触发限流。如有其他问题，请随时反馈。
+                            </p>
+                        </div>
+                        
+                        <!-- 操作按钮 -->
+                        <div class="flex gap-2">
+                            <button class="px-3 py-1 border border-gray-200 rounded-lg text-sm hover:bg-gray-50 flex items-center">
+                                <i class="fa fa-plus mr-1"></i> 补充说明
+                            </button>
+                            <button class="px-3 py-1 border border-gray-200 rounded-lg text-sm hover:bg-gray-50 flex items-center">
+                                <i class="fa fa-refresh mr-1"></i> 重新申诉
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- 反馈项2：处理中 -->
+                    <div class="border border-gray-200 rounded-lg p-4 card-hover">
+                        <div class="flex justify-between items-start mb-3">
+                            <div class="flex items-center">
+                                <span class="px-2 py-1 status-processing text-xs rounded-full">处理中</span>
+                                <h3 class="ml-3 font-medium text-gray-800">建议：增加更多二次元分类的图片</h3>
+                                <span class="ml-2 text-xs text-gray-400">(功能建议)</span>
+                            </div>
+                            <span class="text-xs text-gray-500">2026-02-08 16:40 提交</span>
+                        </div>
+                        
+                        <!-- 反馈内容 -->
+                        <div class="text-sm text-gray-600 mb-3 bg-gray-50 p-3 rounded-lg">
+                            <p>用户邮箱：user@example.com</p>
+                            <p>反馈内容：目前二次元分类的图片数量较少，希望能增加更多高质量的二次元壁纸，分辨率最好在1920×1080以上</p>
+                        </div>
+                        
+                        <!-- 回复展开/收起按钮 -->
+                        <button class="toggle-reply text-indigo-600 text-sm flex items-center mb-2 opacity-50 cursor-not-allowed">
+                            <i class="fa fa-chevron-down mr-1"></i> 暂无回复（处理中）
+                        </button>
+                        
+                        <!-- 操作按钮 -->
+                        <div class="flex gap-2">
+                            <button class="px-3 py-1 border border-gray-200 rounded-lg text-sm hover:bg-gray-50 flex items-center">
+                                <i class="fa fa-edit mr-1"></i> 修改反馈
+                            </button>
+                            <button class="px-3 py-1 border border-gray-200 rounded-lg text-sm hover:bg-gray-50 flex items-center">
+                                <i class="fa fa-trash mr-1"></i> 取消反馈
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- 反馈项3：已驳回 -->
+                    <div class="border border-gray-200 rounded-lg p-4 card-hover">
+                        <div class="flex justify-between items-start mb-3">
+                            <div class="flex items-center">
+                                <span class="px-2 py-1 status-rejected text-xs rounded-full">已驳回</span>
+                                <h3 class="ml-3 font-medium text-gray-800">申请：解锁Donate分类权限</h3>
+                                <span class="ml-2 text-xs text-gray-400">(其他)</span>
+                            </div>
+                            <span class="text-xs text-gray-500">2026-02-07 09:15 提交</span>
+                        </div>
+                        
+                        <!-- 反馈内容 -->
+                        <div class="text-sm text-gray-600 mb-3 bg-gray-50 p-3 rounded-lg">
+                            <p>反馈内容：希望免费解锁Donate分类权限，学生党没有经济能力捐赠，但是非常喜欢你们的API</p>
+                        </div>
+                        
+                        <!-- 回复展开/收起按钮 -->
+                        <button class="toggle-reply text-indigo-600 text-sm flex items-center mb-2">
+                            <i class="fa fa-chevron-down mr-1"></i> 查看管理员回复
+                        </button>
+                        
+                        <!-- 管理员回复内容（默认折叠） -->
+                        <div class="reply-content bg-gray-50 p-3 rounded-lg mb-3">
+                            <div class="flex items-center mb-2">
+                                <img src="https://picsum.photos/24/25" class="w-6 h-6 rounded-full mr-2" alt="管理员头像">
+                                <div>
+                                    <span class="font-medium text-sm text-gray-800">管理员</span>
+                                    <span class="text-xs text-gray-500 ml-2">2026-02-07 11:20 回复</span>
+                                </div>
+                            </div>
+                            <p class="text-sm text-gray-700">
+                                您好！感谢你的支持与理解。Donate分类作为捐赠用户专属权益，暂时无法免费解锁。
+                                我们会定期更新免费分类的图片资源，也会推出低价捐赠套餐（最低5元/月），敬请关注。
+                            </p>
+                        </div>
+                        
+                        <!-- 操作按钮 -->
+                        <div class="flex gap-2">
+                            <button class="px-3 py-1 border border-gray-200 rounded-lg text-sm hover:bg-gray-50 flex items-center">
+                                <i class="fa fa-refresh mr-1"></i> 重新申请
+                            </button>
+                            <button class="px-3 py-1 border border-gray-200 rounded-lg text-sm hover:bg-gray-50 flex items-center">
+                                <i class="fa fa-link mr-1"></i> 前往捐赠
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- 反馈项4：未处理 -->
+                    <div class="border border-gray-200 rounded-lg p-4 card-hover">
+                        <div class="flex justify-between items-start mb-3">
+                            <div class="flex items-center">
+                                <span class="px-2 py-1 status-pending text-xs rounded-full">未处理</span>
+                                <h3 class="ml-3 font-medium text-gray-800">反馈：API返回图片加载缓慢</h3>
+                                <span class="ml-2 text-xs text-gray-400">(问题反馈)</span>
+                            </div>
+                            <span class="text-xs text-gray-500">2026-02-10 08:30 提交</span>
+                        </div>
+                        
+                        <!-- 反馈内容 -->
+                        <div class="text-sm text-gray-600 mb-3 bg-gray-50 p-3 rounded-lg">
+                            <p>反馈内容：最近调用API返回的图片加载速度很慢，有时候需要等待5-10秒才能加载完成，希望能优化服务器速度</p>
+                        </div>
+                        
+                        <!-- 回复展开/收起按钮 -->
+                        <button class="toggle-reply text-indigo-600 text-sm flex items-center mb-2 opacity-50 cursor-not-allowed">
+                            <i class="fa fa-chevron-down mr-1"></i> 暂无回复（未处理）
+                        </button>
+                        
+                        <!-- 操作按钮 -->
+                        <div class="flex gap-2">
+                            <button class="px-3 py-1 border border-gray-200 rounded-lg text-sm hover:bg-gray-50 flex items-center">
+                                <i class="fa fa-edit mr-1"></i> 修改反馈
+                            </button>
+                            <button class="px-3 py-1 border border-gray-200 rounded-lg text-sm hover:bg-gray-50 flex items-center">
+                                <i class="fa fa-trash mr-1"></i> 删除反馈
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 分页控件 -->
+                <div class="flex justify-between items-center mt-6 text-sm">
+                    <div class="text-gray-600">显示 1-4 条，共 8 条</div>
+                    <div class="flex gap-1">
+                        <button class="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-gray-400">«</button>
+                        <button class="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 bg-indigo-50 text-indigo-600">1</button>
+                        <button class="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-50">2</button>
+                        <button class="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-50">»</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 3. 常见问题面板（原有） -->
+            <div id="panel-faq" class="hidden">
+                <div class="space-y-6">
+                    <div class="border-b border-gray-100 pb-4">
+                        <h3 class="text-lg font-medium text-gray-800 mb-2">API使用相关</h3>
+                        <div class="space-y-3 pl-2">
+                            <div>
+                                <h4 class="font-medium text-gray-800">Q: 调用API返回403错误是什么原因？</h4>
+                                <p class="text-sm text-gray-600 mt-1">A: 403错误通常有以下原因：1. 访问了Donate分类但未捐赠；2. IP被封禁；3. 请求参数非法。请检查你的请求参数，或提交申诉解除封禁。</p>
+                            </div>
+                            <div>
+                                <h4 class="font-medium text-gray-800">Q: 如何提高API调用限额？</h4>
+                                <p class="text-sm text-gray-600 mt-1">A: 普通用户每日限额1000次，捐赠用户可提升至10000次/日，高级捐赠用户无调用限额。捐赠地址：<a href="#" class="text-indigo-600 hover:underline">https://你的域名/donate</a>。</p>
+                            </div>
+                            <div>
+                                <h4 class="font-medium text-gray-800">Q: API支持跨域调用吗？</h4>
+                                <p class="text-sm text-gray-600 mt-1">A: 支持！API已配置CORS跨域头，可直接在前端页面调用，无需额外配置代理。</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="border-b border-gray-100 pb-4">
+                        <h3 class="text-lg font-medium text-gray-800 mb-2">反馈处理相关</h3>
+                        <div class="space-y-3 pl-2">
+                            <div>
+                                <h4 class="font-medium text-gray-800">Q: 提交反馈后多久能收到回复？</h4>
+                                <p class="text-sm text-gray-600 mt-1">A: 我们会在24小时内处理反馈，紧急问题（如封禁申诉）会在2小时内回复。你可在「我的反馈」中查看处理进度。</p>
+                            </div>
+                            <div>
+                                <h4 class="font-medium text-gray-800">Q: 对反馈处理结果不满意怎么办？</h4>
+                                <p class="text-sm text-gray-600 mt-1">A: 你可点击「重新申诉」或「补充说明」按钮，提交更多信息，我们会重新审核你的反馈。</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h3 class="text-lg font-medium text-gray-800 mb-2">其他问题</h3>
+                        <div class="space-y-3 pl-2">
+                            <div>
+                                <h4 class="font-medium text-gray-800">Q: 可以商用API返回的图片吗？</h4>
+                                <p class="text-sm text-gray-600 mt-1">A: 所有图片仅用于个人学习交流，禁止商用。如需商用，请联系管理员获取授权（需支付版权费用）。</p>
+                            </div>
+                            <div>
+                                <h4 class="font-medium text-gray-800">Q: API会一直免费提供吗？</h4>
+                                <p class="text-sm text-gray-600 mt-1">A: 基础功能会永久免费，但为了维持服务器运营，我们会推出付费增值服务（如更高调用限额、专属分类等）。</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 底部版权信息 -->
+    <footer class="bg-white py-6 border-t border-gray-200">
+        <div class="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="text-center md:text-left mb-4 md:mb-0">
+                    <p class="text-sm text-gray-500">© 2026 随机图片API - 稳定运行2000+天</p>
+                    <p class="text-xs text-gray-400 mt-1">本API仅用于学习交流，请勿用于非法用途</p>
+                </div>
+                
+                <div class="flex gap-6 text-sm">
+                    <a href="#" class="text-gray-500 hover:text-indigo-600 transition-colors">捐赠支持</a>
+                    <a href="#" class="text-gray-500 hover:text-indigo-600 transition-colors">隐私政策</a>
+                    <a href="#" class="text-gray-500 hover:text-indigo-600 transition-colors">联系我们</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- 补充说明/重新申诉弹窗 -->
+    <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden" id="feedback-modal">
+        <div class="bg-white rounded-xl p-6 w-full max-w-md">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-semibold text-gray-800" id="modal-title">补充说明</h3>
+                <button id="close-modal" class="text-gray-400 hover:text-gray-600"><i class="fa fa-times"></i></button>
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">反馈标题</label>
+                <input type="text" value="申诉：请求被误判为非法请求" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50" readonly>
+            </div>
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-1">补充内容</label>
+                <textarea rows="4" placeholder="请输入补充说明或重新申诉的理由..." class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200"></textarea>
+            </div>
+            <div class="flex gap-3 justify-end">
+                <button id="cancel-modal" class="px-4 py-2 border border-gray-200 rounded-lg text-sm hover:bg-gray-50">取消</button>
+                <button class="btn-primary text-white px-4 py-2 rounded-lg text-sm">提交</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 交互逻辑脚本（新增反馈相关交互） -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 1. 从后端获取分类数据
+            const fetchCategories = async () => {
+                try {
+                    // 清空现有分类（保留随机分类）
+                    const categorySelect = document.getElementById('category-select');
+                    const randomOption = categorySelect.querySelector('option[value="random"]');
+                    categorySelect.innerHTML = '';
+                    categorySelect.appendChild(randomOption);
+                    
+                    // 清空分类预览容器
+                    const previewContainer = document.getElementById('category-preview-container');
+                    previewContainer.innerHTML = '';
+                    
+                    // 分页获取全部分类
+                    let allCategories = {};
+                    let currentPage = 1;
+                    let totalPages = 1;
+                    
+                    do {
+                        const response = await fetch(`/api/categories?page=${currentPage}`);
+                        const data = await response.json();
+                        
+                        // 合并分类数据
+                        Object.assign(allCategories, data.categories);
+                        
+                        // 更新分页信息
+                        totalPages = data.total_pages || 1;
+                        currentPage++;
+                    } while (currentPage <= totalPages);
+                    
+                    // 添加获取到的分类
+                    const categories = Object.keys(allCategories);
+                    categories.forEach(category => {
+                        // 添加到分类选择下拉框
+                        const option = document.createElement('option');
+                        option.value = category;
+                        option.textContent = category;
+                        categorySelect.appendChild(option);
+                        
+                        // 创建分类预览项
+                        const previewItem = document.createElement('div');
+                        previewItem.className = 'category-preview-item cursor-pointer hover:opacity-80 transition-opacity w-56';
+                        previewItem.dataset.category = category;
+                        
+                        // 获取分类下的第一张图片作为预览图
+                        const categoryImages = allCategories[category];
+                        const previewImageUrl = categoryImages.length > 0 ? 
+                            categoryImages[0].url : 
+                            `https://picsum.photos/200/200?${encodeURIComponent(category)}`;
+                        
+                        previewItem.innerHTML = `
+                            <div class="bg-gray-100 rounded-lg aspect-video overflow-hidden">
+                                <img src="${previewImageUrl}" class="w-full h-full object-cover" alt="${category}">
+                            </div>
+                            <p class="text-xs text-center mt-1 text-gray-700">${category}</p>
+                        `;
+                        
+                        previewContainer.appendChild(previewItem);
+                    });
+                    
+                    // 重新绑定分类预览点击事件
+                    bindCategoryPreviewEvents();
+                } catch (error) {
+                    console.error('获取分类失败:', error);
+                    // 加载失败时提示错误
+                    const previewContainer = document.getElementById('category-preview-container');
+                    previewContainer.innerHTML = `
+                        <div class="text-center py-8">
+                            <i class="fa fa-exclamation-circle text-red-500 text-4xl mb-2"></i>
+                            <p class="text-gray-600">获取分类失败，请刷新页面重试</p>
+                        </div>
+                    `;
+                }
+            };
+            
+            // 绑定分类预览点击事件
+            const bindCategoryPreviewEvents = () => {
+                document.querySelectorAll('.category-preview-item').forEach(item => {
+                    item.addEventListener('click', function() {
+                        const category = this.dataset.category;
+                        document.getElementById('category-select').value = category;
+                        generateCode();
+                        
+                        // 触发预览
+                        document.getElementById('preview-btn').click();
+                    });
+                });
+            };
+            
+            // 2. 代码生成逻辑（原有）
+            const generateCode = () => {
+                const category = document.getElementById('category-select').value;
+                const isJson = document.getElementById('format-json').classList.contains('bg-indigo-50');
+                
+                let baseUrl = '/random';
+                let params = '';
+                
+                // 当选择的不是随机分类时，才添加type参数
+                if (category !== 'random') {
+                    params = `type=${category}`;
+                }
+                
+                if (isJson) params += `${params ? '&' : ''}format=json`;
+                
+                const finalUrl = params ? `${baseUrl}?${params}` : baseUrl;
+                
+                // 根据选中的代码类型生成对应代码
+                const codeTypeActive = document.querySelector('[id^="code-type-"].bg-indigo-50').id;
+                let codeOutput = finalUrl;
+                
+                if (codeTypeActive === 'code-type-html') {
+                    codeOutput = `<img src="${finalUrl}" alt="随机图片">`;
+                } else if (codeTypeActive === 'code-type-markdown') {
+                    codeOutput = `![随机图片](${finalUrl})`;
+                } else if (codeTypeActive === 'code-type-js') {
+                    codeOutput = `fetch('${finalUrl}')
+  .then(response => response.blob())
+  .then(blob => {
+    const imgUrl = URL.createObjectURL(blob);
+    // 使用图片URL
+  });`;
+                } else if (codeTypeActive === 'code-type-python') {
+                    codeOutput = `import requests
+response = requests.get('${finalUrl}')
+with open('random_img.jpg', 'wb') as f:
+    f.write(response.content)`;
+                }
+                
+                document.getElementById('code-output').value = codeOutput;
+                return finalUrl;
+            };
+            
+            // 2. 格式切换（图片/JSON）（原有）
+            const formatButtons = [document.getElementById('format-img'), document.getElementById('format-json')];
+            formatButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    formatButtons.forEach(b => {
+                        b.classList.remove('bg-indigo-50', 'text-indigo-600');
+                        b.classList.add('bg-gray-100', 'text-gray-600');
+                    });
+                    this.classList.remove('bg-gray-100', 'text-gray-600');
+                    this.classList.add('bg-indigo-50', 'text-indigo-600');
+                    generateCode();
+                });
+            });
+            
+            // 3. 代码类型切换（原有）
+            const codeTypeButtons = [
+                document.getElementById('code-type-url'),
+                document.getElementById('code-type-html'),
+                document.getElementById('code-type-markdown'),
+                document.getElementById('code-type-js'),
+                document.getElementById('code-type-python')
+            ];
+            codeTypeButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    codeTypeButtons.forEach(b => {
+                        b.classList.remove('bg-indigo-50', 'text-indigo-600');
+                        b.classList.add('bg-gray-100', 'text-gray-600');
+                    });
+                    this.classList.remove('bg-gray-100', 'text-gray-600');
+                    this.classList.add('bg-indigo-50', 'text-indigo-600');
+                    generateCode();
+                });
+            });
+            
+            // 4. 复制代码（原有）
+            document.getElementById('copy-code').addEventListener('click', function() {
+                const codeOutput = document.getElementById('code-output');
+                codeOutput.select();
+                navigator.clipboard.writeText(codeOutput.value);
+                
+                // 复制成功提示
+                this.innerHTML = '<i class="fa fa-check mr-1"></i> 已复制';
+                setTimeout(() => {
+                    this.innerHTML = '<i class="fa fa-copy mr-1"></i> 复制';
+                }, 2000);
+            });
+            
+            // 5. 预览图片（原有）
+            document.getElementById('preview-btn').addEventListener('click', async function() {
+                const imgUrl = generateCode().replace('&format=json', ''); // JSON格式不预览
+                const previewContainer = document.getElementById('preview-container');
+                
+                // 加载中状态
+                previewContainer.classList.add('img-loading');
+                previewContainer.innerHTML = '<i class="fa fa-spinner fa-spin text-5xl text-gray-400"></i>';
+                
+                try {
+                    // 使用fetch API获取图片，设置缓存控制头
+                    const response = await fetch(imgUrl, {
+                        headers: {
+                            'Cache-Control': 'no-cache, no-store, must-revalidate',
+                            'Pragma': 'no-cache',
+                            'Expires': '0'
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('图片加载失败');
+                    }
+                    
+                    // 将响应转换为Blob
+                    const blob = await response.blob();
+                    // 创建Blob URL
+                    const blobUrl = URL.createObjectURL(blob);
+                    
+                    // 创建图片元素
+                    const img = new Image();
+                    img.src = blobUrl;
+                    img.className = 'w-full h-full object-cover rounded-xl';
+                    
+                    img.onload = function() {
+                        previewContainer.classList.remove('img-loading');
+                        previewContainer.innerHTML = '';
+                        previewContainer.appendChild(img);
+                        
+                        // 更新图片信息
+                        let categoryName = document.getElementById('category-select').value;
+                        if (categoryName === 'random') {
+                            categoryName = '全局随机';
+                        }
+                        document.getElementById('img-info').textContent = 
+                            `分辨率：${img.naturalWidth}×${img.naturalHeight} | 分类：${categoryName}`;
+                        
+                        // 启用刷新按钮
+                        document.getElementById('refresh-img').disabled = false;
+                        
+                        // 释放Blob URL
+                        setTimeout(() => {
+                            URL.revokeObjectURL(blobUrl);
+                        }, 100);
+                    };
+                    
+                    img.onerror = function() {
+                        previewContainer.classList.remove('img-loading');
+                        previewContainer.innerHTML = '<i class="fa fa-exclamation-circle text-5xl text-red-400"></i>';
+                        document.getElementById('img-info').textContent = '图片加载失败，请刷新重试';
+                        
+                        // 释放Blob URL
+                        URL.revokeObjectURL(blobUrl);
+                    };
+                } catch (error) {
+                    console.error('图片加载错误:', error);
+                    previewContainer.classList.remove('img-loading');
+                    previewContainer.innerHTML = '<i class="fa fa-exclamation-circle text-5xl text-red-400"></i>';
+                    document.getElementById('img-info').textContent = '图片加载失败，请刷新重试';
+                }
+            });
+            
+            // 6. 刷新链接（原有）
+            document.getElementById('refresh-code').addEventListener('click', generateCode);
+            
+            // 7. 分类选择变化时更新代码（原有）
+            document.getElementById('category-select').addEventListener('change', generateCode);
+            
+            // 8. 页面加载完成后获取分类数据
+            fetchCategories();
+            
+            // 9. 页面加载完成后自动加载一张随机图片
+            setTimeout(() => {
+                document.getElementById('preview-btn').click();
+            }, 500);
+            
+            // 10. 为刷新按钮添加点击事件
+            document.getElementById('refresh-img').addEventListener('click', function() {
+                document.getElementById('preview-btn').click();
+            });
+            
+            // ========== 新增：反馈相关交互逻辑 ==========
+            // 9. 反馈标签页切换
+            const tabs = {
+                submit: document.getElementById('tab-submit'),
+                myFeedback: document.getElementById('tab-my-feedback'),
+                faq: document.getElementById('tab-faq')
+            };
+            const panels = {
+                submit: document.getElementById('panel-submit'),
+                myFeedback: document.getElementById('panel-my-feedback'),
+                faq: document.getElementById('panel-faq')
+            };
+            
+            // 切换标签页函数
+            const switchTab = (tabName) => {
+                // 重置所有标签样式
+                Object.values(tabs).forEach(tab => {
+                    tab.classList.remove('text-indigo-600', 'border-b-2', 'border-indigo-600');
+                    tab.classList.add('text-gray-500');
+                });
+                
+                // 隐藏所有面板
+                Object.values(panels).forEach(panel => {
+                    panel.classList.add('hidden');
+                    panel.classList.remove('block');
+                });
+                
+                // 激活选中的标签和面板
+                tabs[tabName].classList.add('text-indigo-600', 'border-b-2', 'border-indigo-600');
+                tabs[tabName].classList.remove('text-gray-500');
+                panels[tabName].classList.remove('hidden');
+                panels[tabName].classList.add('block');
+            };
+            
+            // 绑定标签点击事件
+            tabs.submit.addEventListener('click', () => switchTab('submit'));
+            tabs.myFeedback.addEventListener('click', () => switchTab('myFeedback'));
+            tabs.faq.addEventListener('click', () => switchTab('faq'));
+            
+            // 10. 管理员回复折叠/展开
+            document.querySelectorAll('.toggle-reply').forEach(btn => {
+                // 跳过禁用状态的按钮
+                if (btn.classList.contains('opacity-50')) return;
+                
+                btn.addEventListener('click', function() {
+                    const replyContent = this.nextElementSibling;
+                    replyContent.classList.toggle('show');
+                    
+                    // 更新按钮文字和图标
+                    if (replyContent.classList.contains('show')) {
+                        this.innerHTML = '<i class="fa fa-chevron-up mr-1"></i> 收起管理员回复';
+                    } else {
+                        this.innerHTML = '<i class="fa fa-chevron-down mr-1"></i> 查看管理员回复';
+                    }
+                });
+            });
+            
+            // 11. 反馈操作弹窗（补充说明/重新申诉）
+            const modal = document.getElementById('feedback-modal');
+            const modalTitle = document.getElementById('modal-title');
+            const closeModal = document.getElementById('close-modal');
+            const cancelModal = document.getElementById('cancel-modal');
+            
+            // 打开弹窗
+            document.querySelectorAll('.flex gap-2 button').forEach(btn => {
+                if (btn.innerHTML.includes('补充说明') || btn.innerHTML.includes('重新申诉') || btn.innerHTML.includes('重新申请')) {
+                    btn.addEventListener('click', function() {
+                        // 设置弹窗标题
+                        if (this.innerHTML.includes('补充说明')) {
+                            modalTitle.textContent = '补充说明';
+                        } else {
+                            modalTitle.textContent = '重新申诉';
+                        }
+                        modal.classList.remove('hidden');
+                    });
+                }
+            });
+            
+            // 关闭弹窗
+            closeModal.addEventListener('click', () => modal.classList.add('hidden'));
+            cancelModal.addEventListener('click', () => modal.classList.add('hidden'));
+            
+            // 点击弹窗外层关闭
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.classList.add('hidden');
+                }
+            });
+            
+            // 初始化生成代码
+            generateCode();
+
+            // ========== 移动端导航菜单功能 ==========
+            document.getElementById('mobile-menu-btn').addEventListener('click', function() {
+                const mobileMenu = document.getElementById('mobile-menu');
+                mobileMenu.classList.toggle('hidden');
+            });
+
+            // ========== 主题切换功能 ==========
+            // 检查本地存储的主题设置
+            const savedTheme = localStorage.getItem('theme');
+            const themeIcon = document.getElementById('themeIcon');
+
+            // 应用主题
+            function applyTheme(theme) {
+                if (theme === 'dark') {
+                    document.documentElement.classList.add('dark-mode');
+                    themeIcon.classList.remove('fa-sun-o');
+                    themeIcon.classList.add('fa-moon-o');
+                    themeIcon.classList.remove('text-gray-600');
+                    themeIcon.classList.add('text-yellow-400');
+                } else {
+                    document.documentElement.classList.remove('dark-mode');
+                    themeIcon.classList.remove('fa-moon-o');
+                    themeIcon.classList.add('fa-sun-o');
+                    themeIcon.classList.remove('text-yellow-400');
+                    themeIcon.classList.add('text-gray-600');
+                }
+            }
+
+            // 初始化主题
+            if (savedTheme) {
+                applyTheme(savedTheme);
+            } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                // 如果没有保存的设置,但系统偏好是暗色模式
+                applyTheme('dark');
+            }
+
+            // 主题切换按钮点击事件
+            document.getElementById('themeToggleBtn').addEventListener('click', function() {
+                const isDarkMode = document.documentElement.classList.contains('dark-mode');
+
+                if (isDarkMode) {
+                    // 切换到亮色模式
+                    applyTheme('light');
+                    localStorage.setItem('theme', 'light');
+                    showToast('已切换到日间模式');
+                } else {
+                    // 切换到暗色模式
+                    applyTheme('dark');
+                    localStorage.setItem('theme', 'dark');
+                    showToast('已切换到夜间模式');
+                }
+            });
+
+            // 显示提示框函数
+            function showToast(message) {
+                // 创建提示框元素
+                const toast = document.createElement('div');
+                toast.className = 'fixed top-20 right-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 px-4 py-2 rounded-lg shadow-lg flex items-center z-50 transition-all duration-300 transform translate-x-full opacity-0';
+                toast.innerHTML = `<i class="fa fa-check-circle mr-2 text-green-500"></i><span>${message}</span>`;
+                document.body.appendChild(toast);
+
+                // 显示动画
+                setTimeout(() => {
+                    toast.classList.remove('translate-x-full', 'opacity-0');
+                }, 10);
+
+                // 3秒后自动消失
+                setTimeout(() => {
+                    toast.classList.add('translate-x-full', 'opacity-0');
+                    setTimeout(() => {
+                        toast.remove();
+                    }, 300);
+                }, 2000);
+            }
+        });
+    </script>
+</body>
+</html>
