@@ -88,14 +88,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Debug GHCR authentication
-        if: steps.check_release.outputs.is_official == 'true'
-        run: |
-          echo "Testing GHCR authentication..."
-          echo "Username: ${{ github.actor }}"
-          echo "Registry: ghcr.io"
-          echo "Attempting login..."
-
       - name: Login to GitHub Container Registry
         if: steps.check_release.outputs.is_official == 'true'
         uses: docker/login-action@v3
@@ -104,18 +96,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Verify Docker authentication
-        if: steps.check_release.outputs.is_official == 'true'
-        run: |
-          echo "Verifying Docker authentication..."
-          docker info | grep -i registry
-          echo "Testing push capability..."
-          echo "test" | docker build -t ghcr.io/yunjian101/random-pictures:test-${{ github.run_id }} -
-          docker push ghcr.io/yunjian101/random-pictures:test-${{ github.run_id }} || echo "Push test failed"
-          # Clean up test image
-          docker rmi ghcr.io/yunjian101/random-pictures:test-${{ github.run_id }} || true
-
-      - name: Build and push Docker image (version tags)
+      - name: Build and push Docker images
         if: steps.check_release.outputs.is_official == 'true'
         uses: docker/build-push-action@v5
         with:
@@ -124,17 +105,6 @@ jobs:
           tags: |
             ghcr.io/yunjian101/random-pictures:v${{ steps.get_version.outputs.version }}
             ghcr.io/yunjian101/random-pictures:v${{ steps.get_version.outputs.major_minor }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          provenance: false
-
-      - name: Build and push Docker image (latest tag)
-        if: steps.check_release.outputs.is_official == 'true'
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: |
             ghcr.io/yunjian101/random-pictures:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -146,19 +116,11 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**版本:** ${{ steps.get_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "**标签:** ${{ steps.get_version.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
-          echo "**用户名:** yunjian101" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
           if [ "${{ steps.check_release.outputs.is_official }}" == "true" ]; then
-            echo "✅ **正式发布**" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "### 执行的操作:" >> $GITHUB_STEP_SUMMARY
-            echo "- ✅ 创建了GitHub Release" >> $GITHUB_STEP_SUMMARY
-            echo "- ✅ 构建并推送了Docker镜像: \`ghcr.io/yunjian101/random-pictures:latest\`" >> $GITHUB_STEP_SUMMARY
-            echo "- ✅ 构建并推送了Docker镜像: \`ghcr.io/yunjian101/random-pictures:v${{ steps.get_version.outputs.major_minor }}\`" >> $GITHUB_STEP_SUMMARY
-            echo "- ✅ 构建并推送了Docker镜像: \`ghcr.io/yunjian101/random-pictures:v${{ steps.get_version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "✅ **正式发布完成**" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ GitHub Release已创建" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ Docker镜像已推送至GHCR" >> $GITHUB_STEP_SUMMARY
           else
             echo "⚠️ **非正式版本**" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "### 执行的操作:" >> $GITHUB_STEP_SUMMARY
-            echo "- ✅ 仅创建了标签（无发布，无Docker构建）" >> $GITHUB_STEP_SUMMARY
+            echo "- 仅创建了标签" >> $GITHUB_STEP_SUMMARY
           fi
