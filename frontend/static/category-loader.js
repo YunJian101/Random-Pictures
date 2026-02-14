@@ -11,7 +11,7 @@ async function loadCategoryInfo() {
 
     try {
         console.log('正在获取分类信息...');
-        
+
         // 使用默认请求配置，让浏览器遵循后端的缓存指令
         const response = await fetch('/api/categories');
 
@@ -22,11 +22,11 @@ async function loadCategoryInfo() {
         const data = await response.json();
         console.log('分类API响应:', data);
 
-        // 解析分类数据
+        // 解析分类数据 - 使用新格式 category_list
         const totalCategories = data.total_categories || 0;
-        const categoriesObj = data.categories || {};
-        const categoryNames = Object.keys(categoriesObj);
-        
+        const categoryList = data.category_list || [];
+        const categoryNames = categoryList.map(cat => cat.name);
+
         // 生成显示文本
         let displayText;
         if (categoryNames.length > 0) {

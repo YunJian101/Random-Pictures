@@ -1134,12 +1134,26 @@
                         authBtn.href = '/user-panel';
                         mobileAuthBtn.href = '/user-panel';
                     }
+                    
+                    // 存储登录状态到localStorage，用于跨页面同步
+                    localStorage.setItem('auth_status', JSON.stringify({
+                        isLoggedIn: true,
+                        username: username,
+                        role: role,
+                        timestamp: Date.now()
+                    }));
                 } else {
                     // 未登录
                     authText.textContent = '登录';
                     mobileAuthText.textContent = '登录/注册';
                     authBtn.href = '/login';
                     mobileAuthBtn.href = '/login';
+                    
+                    // 清除登录状态
+                    localStorage.setItem('auth_status', JSON.stringify({
+                        isLoggedIn: false,
+                        timestamp: Date.now()
+                    }));
                 }
             } catch (error) {
                 console.log('检查登录状态失败:', error);
@@ -1148,8 +1162,51 @@
                 const mobileAuthText = document.getElementById('mobile-auth-text');
                 if (authText) authText.textContent = '登录';
                 if (mobileAuthText) mobileAuthText.textContent = '登录/注册';
+                
+                // 清除登录状态
+                localStorage.setItem('auth_status', JSON.stringify({
+                    isLoggedIn: false,
+                    timestamp: Date.now()
+                }));
             }
         }
+        
+        // 监听存储事件，实现跨页面登录状态同步
+        window.addEventListener('storage', function(e) {
+            if (e.key === 'auth_status') {
+                try {
+                    const authStatus = JSON.parse(e.newValue);
+                    if (!authStatus.isLoggedIn) {
+                        // 其他页面已退出登录，同步状态
+                        const authText = document.getElementById('auth-text');
+                        const mobileAuthText = document.getElementById('mobile-auth-text');
+                        const authBtn = document.getElementById('auth-btn');
+                        const mobileAuthBtn = document.getElementById('mobile-auth-btn');
+                        
+                        if (authText) authText.textContent = '登录';
+                        if (mobileAuthText) mobileAuthText.textContent = '登录/注册';
+                        if (authBtn) authBtn.href = '/login';
+                        if (mobileAuthBtn) mobileAuthBtn.href = '/login';
+                    } else {
+                        // 其他页面已登录，同步状态
+                        const authText = document.getElementById('auth-text');
+                        const mobileAuthText = document.getElementById('mobile-auth-text');
+                        const authBtn = document.getElementById('auth-btn');
+                        const mobileAuthBtn = document.getElementById('mobile-auth-btn');
+                        
+                        if (authText) authText.textContent = authStatus.username || '用户';
+                        if (mobileAuthText) mobileAuthText.textContent = authStatus.username || '用户';
+                        if (authBtn) authBtn.href = '/user-panel';
+                        if (mobileAuthBtn) mobileAuthBtn.href = '/user-panel';
+                    }
+                } catch (error) {
+                    console.error('解析登录状态失败:', error);
+                }
+            }
+        });
+        
+        // 定期检查登录状态（每30秒）
+        setInterval(checkAuthStatus, 30000);
 
         // 全局变量：当前页码、总页数、总分类数
         let currentPage = 1;
@@ -1487,8 +1544,8 @@
                 const data = await response.json();
                 console.log('从后端获取的分类数据:', data);
 
-                // 提取分类列表（data.categories 是一个对象，键是分类名，值是图片数量）
-                if (!data.categories || Object.keys(data.categories).length === 0) {
+                // 从数据库读取的新格式（category_list 数组）
+                if (!data.category_list || data.category_list.length === 0) {
                     console.warn('后端返回的分类数据为空');
                     showNoCategoriesMessage();
                     return;
@@ -1498,10 +1555,10 @@
                 totalPages = data.total_pages || 1;
                 totalCategories = data.total_categories || 0;
 
-                // 直接使用后端返回的分类数据，不做任何转换
-                categoriesData = Object.entries(data.categories).map(([name, images]) => ({
-                    name: name,
-                    count: Array.isArray(images) ? images.length : 0
+                // 使用新格式的分类数据
+                categoriesData = data.category_list.map(category => ({
+                    name: category.name,
+                    count: category.image_count || 0
                 }));
 
                 console.log('处理后的分类数据:', categoriesData);

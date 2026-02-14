@@ -261,3 +261,34 @@ def get_client_ip(x_forwarded_for: str, remote_addr: str) -> str:
             if is_valid_public_ip(ip):
                 return ip
     return remote_addr
+
+
+def get_error_page(error_type: str, context: dict = None) -> str:
+    """
+    获取错误页面内容
+    
+    Args:
+        error_type: 错误类型，如 "404分类不存在"、"404图片不存在" 等
+        context: 错误页面模板上下文，用于替换占位符
+        
+    Returns:
+        错误页面HTML内容，如果页面不存在则返回空字符串
+    """
+    error_page_path = os.path.join(os.path.dirname(__file__), "..", "frontend", "Status_Code", f"{error_type}.html")
+    if not os.path.exists(error_page_path):
+        return ""
+    
+    try:
+        with open(error_page_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        
+        # 替换占位符
+        if context:
+            for key, value in context.items():
+                placeholder = "{{" + key + "}}"
+                content = content.replace(placeholder, str(value) if value is not None else "")
+        
+        return content
+    except Exception as e:
+        print(f"[ERROR] 读取错误页面失败: {str(e)}")
+        return ""

@@ -631,25 +631,6 @@
                 <span class="btn-text">登录</span>
                 <span class="ml-2 loader hidden w-4 h-4 border-2 border-white border-t-transparent rounded-full opacity-0"></span>
             </button>
-            
-            <!-- 其他登录方式 -->
-            <div class="mt-6">
-                <div class="relative flex items-center justify-center">
-                    <hr class="w-full light:border-gray-200 dark:border-gray-700">
-                    <span class="absolute light:bg-white dark:bg-gray-800 px-2 text-xs light:text-gray-500 dark:text-gray-400">其他登录方式</span>
-                </div>
-                <div class="flex justify-center gap-4 mt-4">
-                    <button type="button" class="w-10 h-10 rounded-full light:border-gray-200 dark:border-gray-700 flex items-center justify-center light:text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all glow-hover">
-                        <i class="fa-brands fa-github"></i>
-                    </button>
-                    <button type="button" class="w-10 h-10 rounded-full light:border-gray-200 dark:border-gray-700 flex items-center justify-center light:text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all glow-hover">
-                        <i class="fa-brands fa-weixin text-green-500"></i>
-                    </button>
-                    <button type="button" class="w-10 h-10 rounded-full light:border-gray-200 dark:border-gray-700 flex items-center justify-center light:text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all glow-hover">
-                        <i class="fa-brands fa-qq text-blue-500"></i>
-                    </button>
-                </div>
-            </div>
         </form>
 
         <!-- 注册表单 -->
@@ -1066,6 +1047,14 @@
                             setTimeout(() => {
                                 loginBtn.classList.remove('success-pulse');
                             }, 600);
+                            
+                            // 更新localStorage中的登录状态
+                            localStorage.setItem('auth_status', JSON.stringify({
+                                isLoggedIn: true,
+                                username: data.data.user.username,
+                                timestamp: Date.now()
+                            }));
+                            
                             // 跳转到首页
                             window.location.href = '/';
                         } else {

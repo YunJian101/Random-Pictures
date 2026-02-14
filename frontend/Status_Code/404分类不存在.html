@@ -107,31 +107,8 @@
             <h3 class="text-lg font-semibold text-primary mb-4 flex items-center">
                 <i class="fa-solid fa-list mr-2"></i> 可用分类列表
             </h3>
-            <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
-                <div class="bg-white rounded-lg p-3 text-center hover:shadow-md transition-shadow">
-                    <i class="fa-solid fa-coins text-green-500 mb-1"></i>
-                    <p class="text-gray-800">Donate</p>
-                </div>
-                <div class="bg-white rounded-lg p-3 text-center hover:shadow-md transition-shadow">
-                    <i class="fa-solid fa-gamepad text-purple-500 mb-1"></i>
-                    <p class="text-gray-800">二次元</p>
-                </div>
-                <div class="bg-white rounded-lg p-3 text-center hover:shadow-md transition-shadow">
-                    <i class="fa-solid fa-user text-pink-500 mb-1"></i>
-                    <p class="text-gray-800">人物</p>
-                </div>
-                <div class="bg-white rounded-lg p-3 text-center hover:shadow-md transition-shadow">
-                    <i class="fa-solid fa-film text-blue-500 mb-1"></i>
-                    <p class="text-gray-800">剧照</p>
-                </div>
-                <div class="bg-white rounded-lg p-3 text-center hover:shadow-md transition-shadow">
-                    <i class="fa-solid fa-tv text-red-500 mb-1"></i>
-                    <p class="text-gray-800">动漫</p>
-                </div>
-                <div class="bg-white rounded-lg p-3 text-center hover:shadow-md transition-shadow">
-                    <i class="fa-solid fa-star text-amber-500 mb-1"></i>
-                    <p class="text-gray-800">其他</p>
-                </div>
+            <div id="categoriesList" class="grid grid-cols-2 md:grid-cols-3 gap-2">
+                <p class="text-gray-500 text-center col-span-full">加载分类中...</p>
             </div>
         </div>
 
@@ -155,5 +132,64 @@
     <footer class="mt-8 text-gray-500 text-sm text-center">
         <p>© 2026 随机图片API - 稳定运行2000+天</p>
     </footer>
+
+    <script>
+        // 获取基础URL
+        const baseUrl = window.location.origin;
+        
+        // 可用的图标类
+        const iconClasses = [
+            "fa-coins", "fa-gamepad", "fa-user", "fa-film", "fa-tv", "fa-star",
+            "fa-mountain", "fa-beach", "fa-forest", "fa-sun", "fa-moon", "fa-cloud",
+            "fa-ship", "fa-plane", "fa-car", "fa-bicycle", "fa-music", "fa-book",
+            "fa-paint-brush", "fa-camera", "fa-cake", "fa-coffee", "fa-heart", "fa-diamond"
+        ];
+        
+        // 随机获取一个图标
+        function getRandomIcon() {
+            return iconClasses[Math.floor(Math.random() * iconClasses.length)];
+        }
+        
+        // 加载分类列表
+        async function loadCategories() {
+            const categoriesList = document.getElementById('categoriesList');
+            
+            try {
+                // 调用API获取分类列表
+                const response = await fetch(`${baseUrl}/api/categories`);
+                if (!response.ok) {
+                    throw new Error('获取分类列表失败');
+                }
+                
+                const data = await response.json();
+                const categoryList = data.category_list || [];
+                
+                if (categoryList.length === 0) {
+                    categoriesList.innerHTML = '<p class="text-gray-500 text-center col-span-full">暂无可用分类</p>';
+                    return;
+                }
+                
+                // 生成分类HTML
+                let categoriesHtml = '';
+                for (const category of categoryList) {
+                    const icon = getRandomIcon();
+                    categoriesHtml += `
+                        <a href="${baseUrl}/random?type=${encodeURIComponent(category.name)}" class="bg-white rounded-lg p-3 text-center hover:shadow-md transition-shadow">
+                            <i class="fa-solid ${icon} text-primary mb-1"></i>
+                            <p class="text-gray-800">${category.name}</p>
+                        </a>
+                    `;
+                }
+                
+                categoriesList.innerHTML = categoriesHtml;
+            } catch (error) {
+                console.error('加载分类失败:', error);
+                categoriesList.innerHTML = '<p class="text-gray-500 text-center col-span-full">加载分类失败</p>';
+            }
+        }
+        
+        // 页面加载完成后加载分类列表
+        window.addEventListener('DOMContentLoaded', loadCategories);
+    </script>
 </body>
 </html>

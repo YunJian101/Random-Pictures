@@ -78,6 +78,10 @@
             localStorage.setItem('openModule', 'docs');
             window.location.href = '{{BASE_URL}}/';
         }
+        function showFeedback() {
+            localStorage.setItem('openModule', 'feedback');
+            window.location.href = '{{BASE_URL}}/';
+        }
     </script>
 </head>
 <body class="bg-gradient min-h-screen flex flex-col items-center justify-center p-4">
@@ -120,9 +124,9 @@
                     <i class="fa-solid fa-book text-indigo-500 text-xl mb-2"></i>
                     <p class="text-gray-800 font-medium">API文档</p>
                 </a>
-                <a href="{{BASE_URL}}/donate" class="bg-white rounded-lg p-4 text-center hover:shadow-md transition-shadow">
-                    <i class="fa-solid fa-heart text-indigo-500 text-xl mb-2"></i>
-                    <p class="text-gray-800 font-medium">支持我们</p>
+                <a href="javascript:void(0)" onclick="showFeedback()" class="bg-white rounded-lg p-4 text-center hover:shadow-md transition-shadow cursor-pointer">
+                    <i class="fa-solid fa-comment-dots text-indigo-500 text-xl mb-2"></i>
+                    <p class="text-gray-800 font-medium">反馈</p>
                 </a>
             </div>
         </div>

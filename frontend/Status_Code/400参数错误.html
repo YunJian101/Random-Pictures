@@ -70,6 +70,15 @@
         }
     </style>
     <script>
+        function showDocs() {
+            localStorage.setItem('openModule', 'docs');
+            window.location.href = '/';
+        }
+        function showFeedback() {
+            localStorage.setItem('openModule', 'feedback');
+            window.location.href = '/';
+        }
+        
         // 动态获取当前域名并替换示例中的URL
         (function() {
             var protocol = window.location.protocol;
@@ -77,10 +86,91 @@
             var baseUrl = protocol + '//' + host;
 
             document.addEventListener('DOMContentLoaded', function() {
-                var codeElement = document.querySelector('.text-indigo-600.font-mono');
-                if (codeElement) {
-                    codeElement.textContent = baseUrl + '/random?type=二次元';
-                }
+                // 从API获取分类列表
+                fetch(baseUrl + '/api/categories')
+                    .then(function(response) {
+                        if (!response.ok) {
+                            throw new Error('获取分类列表失败');
+                        }
+                        return response.json();
+                    })
+                    .then(function(data) {
+                        // 获取分类列表
+                        var categories = [];
+                        
+                        // 尝试不同的API返回格式
+                        if (data.categories && Array.isArray(data.categories)) {
+                            // 格式1: { "categories": [{ "name": "分类1" }, ...] }
+                            categories = data.categories.map(function(item) { return item.name; });
+                        } else if (data.category_list && Array.isArray(data.category_list)) {
+                            // 格式2: { "category_list": [{ "name": "分类1" }, ...] }
+                            categories = data.category_list.map(function(item) { return item.name; });
+                        } else if (Array.isArray(data)) {
+                            // 格式3: [{ "name": "分类1" }, ...]
+                            categories = data.map(function(item) { return item.name; });
+                        }
+                        
+                        // 替换示例URL - 使用从API获取的第一个分类
+                        var codeElements = document.querySelectorAll('code.text-primary.font-mono');
+                        codeElements.forEach(function(element) {
+                            var exampleCategory = categories.length > 0 ? categories[0] : '分类';
+                            element.textContent = baseUrl + '/random?type=' + exampleCategory;
+                        });
+                        
+                        // 更准确地定位分类容器 - 查找包含"支持的分类："文本的容器
+                        var containers = document.querySelectorAll('.bg-white.rounded-lg.p-4.text-sm');
+                        var categoriesContainer = null;
+                        
+                        containers.forEach(function(container) {
+                            if (container.textContent.includes('支持的分类：')) {
+                                categoriesContainer = container;
+                            }
+                        });
+                        
+                        if (categoriesContainer) {
+                            // 清空现有的分类（保留"支持的分类："文本）
+                            var children = categoriesContainer.children;
+                            var categoryElements = [];
+                            
+                            for (var i = 0; i < children.length; i++) {
+                                if (children[i].tagName === 'P') {
+                                    // 保留"支持的分类："文本
+                                    continue;
+                                }
+                                categoryElements.push(children[i]);
+                            }
+                            
+                            // 删除所有分类元素
+                            categoryElements.forEach(function(element) {
+                                element.remove();
+                            });
+
+                            // 添加从API获取的分类，最多显示4个
+                            if (categories.length > 0) {
+                                // 只显示前4个分类
+                                var displayCategories = categories.slice(0, 4);
+                                displayCategories.forEach(function(category) {
+                                    var categoryElement = document.createElement('span');
+                                    categoryElement.className = 'inline-block px-3 py-1 bg-primary/10 text-primary rounded-full mr-2 mb-2';
+                                    categoryElement.textContent = category;
+                                    categoriesContainer.appendChild(categoryElement);
+                                });
+                            } else {
+                                var noCategoriesElement = document.createElement('p');
+                                noCategoriesElement.className = 'text-gray-500';
+                                noCategoriesElement.textContent = '暂无可用分类';
+                                categoriesContainer.appendChild(noCategoriesElement);
+                            }
+                        }
+                    })
+                    .catch(function(error) {
+                        console.error('加载分类失败:', error);
+                        // 即使API调用失败，也要确保示例URL正确显示
+                        var codeElements = document.querySelectorAll('code.text-primary.font-mono');
+                        codeElements.forEach(function(element) {
+                            element.textContent = baseUrl + '/random?type=分类';
+                        });
+                    });
             });
         })();
     </script>
@@ -134,11 +224,11 @@
 
         <!-- 辅助提示 -->
         <div class="flex flex-col md:flex-row gap-4 justify-center items-center text-gray-500 text-sm">
-            <a href="/" class="flex items-center hover:text-primary transition-colors">
+            <a href="javascript:void(0)" onclick="showDocs()" class="flex items-center hover:text-primary transition-colors">
                 <i class="fa-solid fa-book mr-1"></i> 查看API文档
             </a>
             <span class="hidden md:block">|</span>
-            <a href="/" class="flex items-center hover:text-primary transition-colors">
+            <a href="javascript:void(0)" onclick="showFeedback()" class="flex items-center hover:text-primary transition-colors">
                 <i class="fa-solid fa-comment mr-1"></i> 反馈问题
             </a>
         </div>

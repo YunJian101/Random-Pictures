@@ -288,11 +288,11 @@ async def api_admin_update_category(category_id: int, request: Request, current_
 async def api_admin_delete_category(category_id: int, current_user: dict = Depends(get_current_admin)):
     """管理员删除分类API"""
     from ..database import get_db_connection
-    
+
     try:
         with get_db_connection() as conn:
             cursor = conn.cursor()
-            
+
             # 检查分类是否存在
             cursor.execute('SELECT id FROM categories WHERE id = %s', (category_id,))
             if not cursor.fetchone():
@@ -300,17 +300,193 @@ async def api_admin_delete_category(category_id: int, current_user: dict = Depen
                     'code': 404,
                     'msg': '分类不存在'
                 }, status_code=404)
-            
+
+            # 查询该分类下的图片数量
+            cursor.execute('SELECT COUNT(*) FROM images WHERE category_id = %s', (category_id,))
+            image_count = cursor.fetchone()[0]
+
+            # 更新该分类下的图片，将 category_id 设为 NULL
+            if image_count > 0:
+                cursor.execute('UPDATE images SET category_id = NULL WHERE category_id = %s', (category_id,))
+                print(f"[INFO] 已将分类 {category_id} 下的 {image_count} 张图片移至未分类状态")
+
             # 删除分类
             cursor.execute('DELETE FROM categories WHERE id = %s', (category_id,))
-            
+
             return JSONResponse(content={
                 'code': 200,
-                'msg': '分类删除成功'
+                'msg': f'分类删除成功，已处理 {image_count} 张图片'
             })
     except Exception as e:
         print(f"[ERROR] 删除分类时发生错误: {str(e)}")
         return JSONResponse(content={
             'code': 500,
             'msg': '删除分类时发生错误'
+        }, status_code=500)
+
+
+async def api_system_update(current_user: dict = Depends(get_current_admin)):
+    """系统更新API - 获取GitHub版本信息"""
+    import requests
+    import json
+
+    try:
+        # 从GitHub API获取最新版本信息
+        github_api_url = "https://api.github.com/repos/YunJian101/Random-Pictures/releases"
+        response = requests.get(github_api_url, timeout=10)
+        response.raise_for_status()
+
+        releases = response.json()
+        changelog = []
+
+        # 处理前5个版本的更新日志
+        for release in releases[:5]:
+            version = release.get('tag_name', '未知版本')
+            date = release.get('published_at', '').split('T')[0] if release.get('published_at') else '未知日期'
+            changes = []
+
+            # 解析更新内容
+            body = release.get('body', '')
+            if body:
+                # 简单解析Markdown格式的更新内容
+                lines = body.strip().split('\n')
+                for line in lines:
+                    line = line.strip()
+                    if line and not line.startswith('#'):
+                        changes.append(line)
+
+            changelog.append({
+                'version': version,
+                'date': date,
+                'changes': changes if changes else ['无更新说明']
+            })
+
+        # 获取最新版本信息
+        latest_version = changelog[0]['version'] if changelog else '未知'
+        latest_version_date = changelog[0]['date'] if changelog else '未知'
+
+        return JSONResponse(content={
+            'code': 200,
+            'msg': 'success',
+            'data': {
+                'latest_version': latest_version,
+                'latest_version_date': latest_version_date,
+                'changelog': changelog
+            }
+        })
+    except Exception as e:
+        print(f"[ERROR] 获取GitHub版本信息失败: {str(e)}")
+        return JSONResponse(content={
+            'code': 503,
+            'msg': '获取版本信息失败'
+        }, status_code=503)
+
+
+async def api_system_backups(current_user: dict = Depends(get_current_admin)):
+    """系统备份列表API"""
+    try:
+        from ..services.update_service import UpdateService
+        update_service = UpdateService()
+        backups = await update_service.get_backups()
+
+        # 格式化备份列表
+        formatted_backups = []
+        for i, backup in enumerate(backups, 1):
+            # 计算文件大小
+            size_bytes = backup['size']
+            if size_bytes < 1024:
+                size_str = f"{size_bytes} B"
+            elif size_bytes < 1024 * 1024:
+                size_str = f"{size_bytes / 1024:.2f} KB"
+            else:
+                size_str = f"{size_bytes / (1024 * 1024):.2f} MB"
+            
+            formatted_backups.append({
+                'id': i,
+                'time': backup['timestamp'],
+                'version': backup['version'],
+                'size': size_str,
+                'filename': backup['filename']
+            })
+
+        return JSONResponse(content={
+            'code': 200,
+            'msg': 'success',
+            'data': {
+                'backups': formatted_backups
+            }
+        })
+    except Exception as e:
+        print(f"[ERROR] 获取备份列表失败: {str(e)}")
+        return JSONResponse(content={
+            'code': 500,
+            'msg': '获取备份列表失败'
+        }, status_code=500)
+
+
+async def api_system_check_update(current_user: dict = Depends(get_current_admin)):
+    """系统更新检查API"""
+    try:
+        from ..services.update_service import UpdateService
+        update_service = UpdateService()
+        update_info = await update_service.check_update()
+
+        return JSONResponse(content={
+            'code': 200,
+            'msg': 'success',
+            'data': update_info
+        })
+    except Exception as e:
+        print(f"[ERROR] 检查更新失败: {str(e)}")
+        return JSONResponse(content={
+            'code': 500,
+            'msg': '检查更新失败'
+        }, status_code=500)
+
+
+async def api_system_execute_update(current_user: dict = Depends(get_current_admin)):
+    """系统执行更新API"""
+    try:
+        from ..services.update_service import UpdateService
+        update_service = UpdateService()
+        update_result = await update_service.execute_update()
+
+        return JSONResponse(content={
+            'code': 200 if update_result['success'] else 500,
+            'msg': update_result['message'],
+            'data': update_result
+        })
+    except Exception as e:
+        print(f"[ERROR] 执行更新失败: {str(e)}")
+        return JSONResponse(content={
+            'code': 500,
+            'msg': f'执行更新失败: {str(e)}'
+        }, status_code=500)
+
+
+async def api_system_rollback(request: Request, current_user: dict = Depends(get_current_admin)):
+    """系统回滚API"""
+    try:
+        data = await request.json()
+        backup_path = data.get('backup_path')
+        
+        if not backup_path:
+            return JSONResponse(content={
+                'code': 400,
+                'msg': '备份路径不能为空'
+            }, status_code=400)
+
+        from ..services.update_service import UpdateService
+        update_service = UpdateService()
+        rollback_result = await update_service.rollback(backup_path)
+
+        return JSONResponse(content={
+            'code': 200,
+            'msg': rollback_result
+        })
+    except Exception as e:
+        print(f"[ERROR] 执行回滚失败: {str(e)}")
+        return JSONResponse(content={
+            'code': 500,
+            'msg': f'执行回滚失败: {str(e)}'
         }, status_code=500)

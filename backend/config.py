@@ -112,6 +112,8 @@ COOKIE_MAX_AGE = int(TOKEN_EXPIRE_DAYS * 24 * 60 * 60)  # 转换为秒
 
 # ==================== CORS配置 ====================
 # 允许的源（生产环境应限制具体域名）
+# 注意：当使用credentials: 'include'时，不能使用通配符*作为allow_origins
+# 但我们在main.py中使用了特殊处理，允许所有域名的请求
 ALLOW_ORIGINS = os.getenv('ALLOW_ORIGINS', '*').split(',')
 
 # 允许的HTTP方法

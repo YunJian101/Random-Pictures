@@ -138,9 +138,45 @@ def init_db():
         )
     ''')
 
+    # 创建images表
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS images (
+            id SERIAL PRIMARY KEY,
+            filename TEXT NOT NULL,
+            file_path TEXT NOT NULL,
+            category_id INTEGER,
+            file_size BIGINT,
+            width INTEGER,
+            height INTEGER,
+            format TEXT,
+            md5 TEXT,
+            uploader TEXT,
+            upload_ip TEXT,
+            view_count INTEGER DEFAULT 0,
+            last_viewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            status TEXT DEFAULT 'enabled',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
+        )
+    ''')
+
+    # 为images表创建索引以提高查询性能
+    cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_images_category_id ON images(category_id)
+    ''')
+
+    cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_images_status ON images(status)
+    ''')
+
+    cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_images_created_at ON images(created_at DESC)
+    ''')
+
     conn.commit()
     conn.close()
-    
+
     return is_new_database
 
 

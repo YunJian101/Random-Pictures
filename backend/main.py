@@ -15,6 +15,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
 
 from .config import (
     HOST, PORT, STATIC_ROOT_DIR, FRONTEND_ROOT_DIR,
@@ -65,13 +66,32 @@ app = FastAPI(
 )
 
 # 添加CORS中间件
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=ALLOW_ORIGINS if ALLOW_ORIGINS != ['*'] else ['*'],
-    allow_credentials=True,
-    allow_methods=ALLOW_METHODS,
-    allow_headers=ALLOW_HEADERS,
-)
+# 注意：当使用credentials: 'include'时，不能使用通配符*作为allow_origins
+# 这里使用一个特殊的处理方式，允许所有域名的请求
+from fastapi.middleware.cors import CORSMiddleware
+
+# 检查是否需要使用通配符
+if '*' in ALLOW_ORIGINS:
+    # 如果配置了通配符，使用特殊处理
+    @app.middleware("http")
+    async def add_cors_headers(request, call_next):
+        response = await call_next(request)
+        origin = request.headers.get("Origin")
+        if origin:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+            response.headers["Access-Control-Allow-Methods"] = ", ".join(ALLOW_METHODS)
+            response.headers["Access-Control-Allow-Headers"] = ", ".join(ALLOW_HEADERS)
+        return response
+else:
+    # 否则使用正常的CORS中间件
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=ALLOW_ORIGINS,
+        allow_credentials=True,
+        allow_methods=ALLOW_METHODS,
+        allow_headers=ALLOW_HEADERS,
+    )
 
 # 添加日志中间件
 app.add_middleware(LoggingMiddleware)
@@ -79,7 +99,7 @@ app.add_middleware(LoggingMiddleware)
 # 注册异常处理器
 app.add_exception_handler(404, error_handlers.not_found_handler)
 app.add_exception_handler(500, error_handlers.internal_error_handler)
-app.add_exception_handler(422, error_handlers.validation_error_handler)
+app.add_exception_handler(RequestValidationError, error_handlers.validation_error_handler)
 
 # 挂载静态文件目录
 if os.path.exists(STATIC_ROOT_DIR):
@@ -95,49 +115,55 @@ app.get("/user-panel", response_class=None)(page.handle_user_panel)
 app.get("/favicon.ico")(page.handle_favicon)
 
 # API路由 - 图片
-app.get("/api/categories")(image.api_categories)
-app.get("/api/category/images")(image.api_category_images)
-app.get("/api/images")(image.api_all_images)
-app.get("/api/config")(image.api_config)
-app.get("/random")(image.handle_random_image)
-app.get("/image")(image.handle_image)
+app.get("/api/categories")(image.api_categories)  # 获取分类列表 - 所有人可使用
+app.get("/api/category/images")(image.api_category_images)  # 获取指定分类的图片 - 所有人可使用
+app.get("/api/images")(image.api_all_images)  # 获取所有图片列表 - 仅管理员可使用
+app.get("/api/image/{image_id}")(image.api_image_detail)  # 获取单个图片详情 - 所有人可使用
+app.put("/api/image/{image_id}")(image.api_update_image)  # 更新图片信息 - 仅管理员可使用
+app.delete("/api/image/{image_id}")(image.api_delete_image)  # 删除图片 - 仅管理员可使用
+app.get("/api/config")(image.api_config)  # 获取系统配置信息 - 所有人可使用
+app.get("/random")(image.handle_random_image)  # 获取随机图片 - 所有人可使用
+app.get("/image")(image.handle_image)  # 获取指定图片 - 所有人可使用
 
 # API路由 - 管理员分类管理
-app.post("/api/admin/categories")(admin.api_admin_create_category)
-app.put("/api/admin/categories/{category_id}")(admin.api_admin_update_category)
-app.delete("/api/admin/categories/{category_id}")(admin.api_admin_delete_category)
+app.post("/api/admin/categories")(admin.api_admin_create_category)  # 创建分类 - 仅管理员可使用
+app.put("/api/admin/categories/{category_id}")(admin.api_admin_update_category)  # 更新分类 - 仅管理员可使用
+app.delete("/api/admin/categories/{category_id}")(admin.api_admin_delete_category)  # 删除分类 - 仅管理员可使用
 
 # API路由 - 认证
-app.post("/api/register")(auth.api_register)
-app.post("/api/login")(auth.api_login)
-app.post("/api/logout")(auth.api_logout)
-app.get("/api/auth/verify")(auth.api_auth_verify)
+app.post("/api/register")(auth.api_register)  # 用户注册 - 所有人可使用
+app.post("/api/login")(auth.api_login)  # 用户登录 - 所有人可使用
+app.post("/api/logout")(auth.api_logout)  # 用户登出 - 仅登录用户可使用
+app.get("/api/auth/verify")(auth.api_auth_verify)  # 验证认证状态 - 所有人可使用
 
 # API路由 - 用户（合并后的统一路由）
-app.get("/api/users")(admin.api_admin_users)  # 获取用户列表（管理员）
-app.get("/api/users/{user_id}")(admin.api_admin_user_detail)  # 获取用户详情
-app.post("/api/users")(admin.api_admin_users_create)  # 创建用户
-app.put("/api/users/{user_id}")(admin.api_admin_user_update)  # 更新用户
-app.delete("/api/users/{user_id}")(admin.api_admin_user_delete)  # 删除用户
-app.put("/api/users/{user_id}/ban")(admin.api_admin_user_ban)  # 封禁用户（使用PUT）
-app.put("/api/users/{user_id}/unban")(admin.api_admin_user_unban)  # 解封用户（使用PUT）
-app.post("/api/create-admin")(admin.api_create_admin)
+app.get("/api/users")(admin.api_admin_users)  # 获取用户列表 - 仅管理员可使用
+app.get("/api/users/{user_id}")(admin.api_admin_user_detail)  # 获取用户详情 - 仅管理员可使用
+app.post("/api/users")(admin.api_admin_users_create)  # 创建用户 - 仅管理员可使用
+app.put("/api/users/{user_id}")(admin.api_admin_user_update)  # 更新用户 - 仅管理员可使用
+app.delete("/api/users/{user_id}")(admin.api_admin_user_delete)  # 删除用户 - 仅管理员可使用
+app.put("/api/users/{user_id}/ban")(admin.api_admin_user_ban)  # 封禁用户 - 仅管理员可使用
+app.put("/api/users/{user_id}/unban")(admin.api_admin_user_unban)  # 解封用户 - 仅管理员可使用
+app.post("/api/create-admin")(admin.api_create_admin)  # 创建管理员账号 - 仅初始设置时可使用
 
 # API路由 - 反馈
-app.get("/api/admin/feedbacks")(feedback.api_admin_feedbacks)
-app.get("/api/admin/feedbacks/{feedback_id}")(feedback.api_admin_feedback_detail)
-app.put("/api/admin/feedbacks/{feedback_id}/status")(feedback.api_admin_feedback_update_status)
-app.delete("/api/admin/feedbacks/{feedback_id}")(feedback.api_admin_feedback_delete)
-app.post("/api/feedbacks")(feedback.api_create_feedback)
+app.get("/api/admin/feedbacks")(feedback.api_admin_feedbacks)  # 获取反馈列表 - 仅管理员可使用
+app.get("/api/admin/feedbacks/{feedback_id}")(feedback.api_admin_feedback_detail)  # 获取反馈详情 - 仅管理员可使用
+app.put("/api/admin/feedbacks/{feedback_id}/status")(feedback.api_admin_feedback_update_status)  # 更新反馈状态 - 仅管理员可使用
+app.delete("/api/admin/feedbacks/{feedback_id}")(feedback.api_admin_feedback_delete)  # 删除反馈 - 仅管理员可使用
+app.post("/api/feedbacks")(feedback.api_create_feedback)  # 创建反馈 - 所有人可使用
 
-# API路由 - 上传（仅管理员可用）
-app.post("/api/admin/upload")(upload.api_upload_images)
+# API路由 - 上传
+app.post("/api/admin/upload")(upload.api_upload_images)  # 上传图片 - 仅管理员可使用
 
-# 测试路由
-@app.get("/test-500")
-async def test_500():
-    """测试500错误"""
-    raise Exception("这是一个测试异常")
+# API路由 - 系统更新
+app.get("/api/system/update")(admin.api_system_update)  # 获取系统更新信息 - 仅管理员可使用
+app.get("/api/system/backups")(admin.api_system_backups)  # 获取备份列表 - 仅管理员可使用
+app.get("/api/system/check-update")(admin.api_system_check_update)  # 检查是否有新版本 - 仅管理员可使用
+app.post("/api/system/execute-update")(admin.api_system_execute_update)  # 执行完整更新流程 - 仅管理员可使用
+app.post("/api/system/rollback")(admin.api_system_rollback)  # 从备份回滚 - 仅管理员可使用
+
+
 
 
 # ==================== 主程序入口 ====================
