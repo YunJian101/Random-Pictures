@@ -77,7 +77,7 @@ class UpdateService:
         # 必需的文件列表用于验证
         self.required_files = [
             "backend/main.py",
-            "backend/core/version.py",
+            "backend/__init__.py",
             "frontend/index.html",
             "Dockerfile",
             "requirements.txt"
@@ -687,7 +687,7 @@ class UpdateService:
             # 检查核心必须文件
             core_required_files = [
                 "backend/main.py",
-                "backend/core/version.py"
+                "backend/__init__.py"
             ]
 
             missing_core_files = []
@@ -702,7 +702,7 @@ class UpdateService:
                 return False
 
             # 验证版本文件格式
-            version_file = source_dir / "backend/core/version.py"
+            version_file = source_dir / "backend/__init__.py"
             if version_file.exists():
                 try:
                     with open(version_file, 'r', encoding='utf-8') as f:
