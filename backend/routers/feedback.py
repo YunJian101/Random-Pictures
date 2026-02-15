@@ -10,8 +10,8 @@ from fastapi import Query, HTTPException, Depends
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from ..dependencies import get_current_admin, get_current_user
-from ..database import get_db_connection
+from ..api.dependencies import get_current_admin, get_current_user
+from ..core.database import get_db_connection
 from psycopg2.extras import RealDictCursor
 
 

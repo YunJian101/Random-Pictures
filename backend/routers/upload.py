@@ -13,10 +13,10 @@ from datetime import datetime
 from fastapi import Depends, UploadFile, File, Form, HTTPException, Request
 from fastapi.responses import JSONResponse
 
-from ..dependencies import get_current_admin
-from ..config import IMG_ROOT_DIR
-from ..utils import validate_safe_path, get_client_ip
-from ..database import get_db_connection
+from ..api.dependencies import get_current_admin
+from ..core.config import IMG_ROOT_DIR
+from ..utils.utils import validate_safe_path, get_client_ip
+from ..core.database import get_db_connection
 
 
 def _get_image_resolution(file_path: str) -> tuple:

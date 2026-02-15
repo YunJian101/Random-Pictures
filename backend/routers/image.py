@@ -11,24 +11,24 @@ from fastapi import Query, Request, HTTPException, Form, Body, Depends
 from fastapi.responses import FileResponse, JSONResponse
 from urllib.parse import unquote
 from psycopg2.extras import RealDictCursor
-from ..dependencies import get_current_admin
+from ..api.dependencies import get_current_admin
 from ..handlers.error_handlers import create_error_response, get_base_url
 
-from ..config import IMG_ROOT_DIR, ICP_BEIAN_CODE, ICP_BEIAN_URL
-from ..database import get_db_connection
-from ..image_service import (
+from ..core.config import IMG_ROOT_DIR, ICP_BEIAN_CODE, ICP_BEIAN_URL
+from ..core.database import get_db_connection
+from ..services.image_service import (
     get_paginated_categories,
     get_paginated_category_images,
     get_random_image_in_category,
     get_random_image_in_all_categories
 )
-from ..utils import validate_safe_path, validate_image_file, get_mime_type, get_client_ip
+from ..utils.utils import validate_safe_path, validate_image_file, get_mime_type, get_client_ip
 
 
 async def api_categories(page: int = Query(1, ge=1, le=1000, description="页码")):
     """分类列表API - 从数据库读取"""
-    from ..database import get_db_connection
-    from ..config import HOME_PAGE_SIZE
+    from ..core.database import get_db_connection
+    from ..core.config import HOME_PAGE_SIZE
 
     with get_db_connection() as conn:
         from psycopg2.extras import RealDictCursor
@@ -250,9 +250,7 @@ async def handle_image(
 
 async def api_config():
     """配置信息API"""
-    from .. import __version__
     return JSONResponse(content={
-        "version": __version__,
         "icp_beian_code": ICP_BEIAN_CODE if ICP_BEIAN_CODE else "",
         "icp_beian_url": ICP_BEIAN_URL if ICP_BEIAN_URL else "https://beian.miit.gov.cn",
         "code": 200,
@@ -262,7 +260,7 @@ async def api_config():
 
 async def api_all_images(page: int = Query(1, ge=1, le=1000, description="页码"), category: str = Query("", description="分类名称"), current_user: dict = Depends(get_current_admin)):
     """获取所有图片列表API - 仅管理员可使用"""
-    from ..image_service import get_all_images
+    from ..services.image_service import get_all_images
     result = get_all_images(page, category)
     return JSONResponse(content=result)
 
@@ -437,7 +435,7 @@ async def api_update_image(request: Request, image_id: int, filename: str = Body
                 print(f"[INFO] 分类变更 - 从 '{original_category_name}' 变更为 '{new_category_name}'")
             
             # 构建新的文件路径
-            from ..config import IMG_ROOT_DIR
+            from ..core.config import IMG_ROOT_DIR
             
             # 提取原始文件名（不含路径）
             original_basename = os.path.basename(original_file_path)

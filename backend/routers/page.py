@@ -10,8 +10,8 @@ from fastapi import Depends, HTTPException
 from fastapi.responses import FileResponse, RedirectResponse, HTMLResponse
 from fastapi import Request as FastAPIRequest
 
-from ..config import FRONTEND_ROOT_DIR, FAVICON_URL
-from ..dependencies import get_current_user, get_current_admin, get_current_user_optional
+from ..core.config import FRONTEND_ROOT_DIR, FAVICON_URL
+from ..api.dependencies import get_current_user, get_current_admin, get_current_user_optional
 
 
 async def handle_index(request: FastAPIRequest, current_user: dict = Depends(get_current_user_optional)):

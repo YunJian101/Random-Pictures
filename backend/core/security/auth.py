@@ -11,8 +11,8 @@ import hashlib
 from datetime import datetime, timedelta
 from typing import Optional, Dict
 
-from .config import SECRET_KEY, TOKEN_EXPIRE_DAYS
-from .database import get_db_connection
+from ..config import SECRET_KEY, TOKEN_EXPIRE_DAYS
+from ..database import get_db_connection
 from psycopg2.extras import RealDictCursor
 
 

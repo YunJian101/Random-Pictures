@@ -11,9 +11,9 @@ from datetime import datetime
 from typing import List, Optional, Dict
 from urllib.parse import quote
 
-from .config import IMG_ROOT_DIR, HOME_PAGE_SIZE, CATEGORY_PAGE_SIZE
-from .utils import safe_listdir, get_all_images_in_dir, get_directory_modify_time
-from .cache import global_cache
+from ..core.config import IMG_ROOT_DIR, HOME_PAGE_SIZE, CATEGORY_PAGE_SIZE
+from ..utils.utils import safe_listdir, get_all_images_in_dir, get_directory_modify_time
+from ..utils.cache import global_cache
 
 
 def get_all_categories() -> List[str]:
@@ -62,7 +62,7 @@ def get_image_categories() -> Dict[str, List[dict]]:
     所有分类必须是数据库中存在的分类
     """
     try:
-        from .database import get_db_connection
+        from ..core.database import get_db_connection
         from psycopg2.extras import RealDictCursor
         
         categories = {}
@@ -131,7 +131,7 @@ def get_paginated_categories(page: int = 1) -> dict:
     所有分类必须是数据库中存在的分类
     """
     try:
-        from .database import get_db_connection
+        from ..core.database import get_db_connection
         from psycopg2.extras import RealDictCursor
         
         with get_db_connection() as conn:
@@ -223,7 +223,7 @@ def get_paginated_category_images(category_name: str, page: int = 1) -> dict:
     所有分类必须是数据库中存在的分类
     """
     try:
-        from .database import get_db_connection
+        from ..core.database import get_db_connection
         from psycopg2.extras import RealDictCursor
         
         with get_db_connection() as conn:
@@ -319,7 +319,7 @@ def get_random_image_in_category(category_name: str) -> Optional[dict]:
     所有分类必须是数据库中存在的分类
     """
     try:
-        from .database import get_db_connection
+        from ..core.database import get_db_connection
         from psycopg2.extras import RealDictCursor
         
         with get_db_connection() as conn:
@@ -378,7 +378,7 @@ def get_random_image_in_all_categories() -> Optional[dict]:
     全局随机:从数据库读取所有图片，随机返回一张
     """
     try:
-        from .database import get_db_connection
+        from ..core.database import get_db_connection
         from psycopg2.extras import RealDictCursor
         
         with get_db_connection() as conn:
@@ -441,7 +441,7 @@ def get_all_images(page: int = 1, category: str = '') -> dict:
     all_images = []
 
     try:
-        from .database import get_db_connection
+        from ..core.database import get_db_connection
         from urllib.parse import quote
 
         with get_db_connection() as conn:

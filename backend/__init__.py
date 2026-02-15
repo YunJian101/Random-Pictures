@@ -23,4 +23,5 @@ FastAPI Random Pictures API - 后端模块
 """
 
 __version__ = "1.0.0"
+__version_date__ = "2026-02-15"
 __author__ = "云笺"

@@ -8,7 +8,7 @@ from datetime import datetime
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from ..utils import get_client_ip
+from ..utils.utils import get_client_ip
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):

@@ -67,8 +67,12 @@ class UpdateService:
         self.ssl_verify = False  # 禁用SSL验证避免连接问题
         
         # 确保必要的目录存在
-        self.backup_dir.mkdir(parents=True, exist_ok=True)
-        self.temp_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            self.backup_dir.mkdir(parents=True, exist_ok=True)
+            self.temp_dir.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            logger.warning(f"创建目录失败: {e}")
+            # 即使目录创建失败，也继续执行，避免初始化失败
         
         # 必需的文件列表用于验证
         self.required_files = [
@@ -87,27 +91,24 @@ class UpdateService:
             str: 当前版本号
         """
         try:
-            from backend.core.version import __version__
+            from backend import __version__
             return __version__
         except ImportError:
-            logger.warning("无法导入版本信息，使用默认版本")
-            return "3.0.0"
+            logger.error("无法导入版本信息，更新功能无法使用")
+            raise HTTPException(status_code=500, detail="无法获取当前版本信息")
 
     async def get_latest_version(self, force_refresh: bool = False) -> dict:
         """
-        获取 GitHub 最新版本信息（带缓存和重试机制）
+        获取 GitHub 最新版本信息（总是从GitHub API获取）
 
         Args:
-            force_refresh: 是否强制刷新，忽略缓存
+            force_refresh: 是否强制刷新（总是为True）
             
         Returns:
             dict: 最新版本信息
         """
-        # 检查缓存
-        if (not force_refresh and self._cached_latest_version and self._cache_time and
-            time.time() - self._cache_time < self._cache_duration):
-            logger.info("使用缓存的版本信息")
-            return self._cached_latest_version
+        # 总是从GitHub API获取最新版本，不使用缓存
+        logger.info("从GitHub API获取最新版本信息")
 
         headers = {
             "Accept": "application/vnd.github.v3+json",
@@ -119,36 +120,42 @@ class UpdateService:
             headers["Authorization"] = f"Bearer {self.github_token}"
 
         # 实现增强的重试机制
+        import aiohttp
+        import asyncio
         for attempt in range(self.max_retries):
             try:
-                logger.info(f"请求 GitHub API (尝试 {attempt + 1}/{self.max_retries}): {self.github_api}/releases/latest")
+                logger.info(f"请求 GitHub API (尝试 {attempt + 1}/{self.max_retries}): {self.github_api}/releases")
                 
-                # 配置请求参数
-                request_kwargs = {
-                    "timeout": self.request_timeout,
-                    "headers": headers,
-                    "verify": self.ssl_verify
-                }
+                # 使用异步方式发送请求
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(
+                        f"{self.github_api}/releases",
+                        headers=headers,
+                        timeout=self.request_timeout,
+                        ssl=False  # 禁用SSL验证避免连接问题
+                    ) as response:
+                        logger.info(f"GitHub API 响应状态: {response.status}")
+                        
+                        if response.status == 401:
+                            logger.error("GitHub token 认证失败")
+                            raise HTTPException(status_code=401, detail="GitHub token 认证失败")
+                        elif response.status == 403:
+                            logger.error("GitHub API 速率限制")
+                            raise HTTPException(status_code=429, detail="GitHub API 速率限制，请稍后再试")
+                        elif response.status == 404:
+                            logger.error("仓库或版本不存在")
+                            raise HTTPException(status_code=404, detail="仓库或版本不存在")
+                        
+                        response.raise_for_status()
+                        releases = await response.json()
                 
-                response = requests.get(
-                    f"{self.github_api}/releases/latest",
-                    **request_kwargs
-                )
+                # 检查是否有发布版本
+                if not releases:
+                    logger.error("仓库没有发布版本")
+                    raise HTTPException(status_code=404, detail="仓库没有发布版本")
                 
-                logger.info(f"GitHub API 响应状态: {response.status_code}")
-                
-                if response.status_code == 401:
-                    logger.error("GitHub token 认证失败")
-                    raise HTTPException(status_code=401, detail="GitHub token 认证失败")
-                elif response.status_code == 403:
-                    logger.error("GitHub API 速率限制")
-                    raise HTTPException(status_code=429, detail="GitHub API 速率限制，请稍后再试")
-                elif response.status_code == 404:
-                    logger.error("仓库或版本不存在")
-                    raise HTTPException(status_code=404, detail="仓库或版本不存在")
-                
-                response.raise_for_status()
-                data = response.json()
+                # 取第一个版本（最新的）
+                data = releases[0]
                 
                 result = {
                     "tag_name": data.get("tag_name", "").replace("v", ""),
@@ -165,32 +172,14 @@ class UpdateService:
                 logger.info(f"获取最新版本成功: {result['tag_name']}")
                 return result
                 
-            except requests.exceptions.SSLError as e:
-                logger.warning(f"SSL错误 (尝试 {attempt + 1}/{self.max_retries}): {e}")
+            except aiohttp.ClientError as e:
+                logger.warning(f"网络错误 (尝试 {attempt + 1}/{self.max_retries}): {e}")
                 if attempt < self.max_retries - 1:
-                    # SSL错误时短暂等待后重试
-                    time.sleep(self.retry_delay * (attempt + 1))
+                    # 使用异步等待
+                    await asyncio.sleep(self.retry_delay * (attempt + 1))
                     continue
-                logger.error("SSL连接持续失败，请检查网络环境")
-                raise HTTPException(status_code=503, detail="SSL连接失败，请检查网络环境或稍后重试")
-                
-            except requests.exceptions.Timeout:
-                logger.warning(f"请求超时 (尝试 {attempt + 1}/{self.max_retries})")
-                if attempt < self.max_retries - 1:
-                    time.sleep(self.retry_delay * (2 ** attempt))  # 指数退避
-                    continue
-                raise HTTPException(status_code=504, detail="请求超时，请检查网络连接")
-                
-            except requests.exceptions.ConnectionError:
-                logger.warning(f"连接错误 (尝试 {attempt + 1}/{self.max_retries})")
-                if attempt < self.max_retries - 1:
-                    time.sleep(self.retry_delay * (2 ** attempt))
-                    continue
-                raise HTTPException(status_code=503, detail="无法连接到GitHub，请检查网络连接")
-                
-            except requests.exceptions.RequestException as e:
-                logger.error(f"请求异常: {e}")
-                raise HTTPException(status_code=500, detail=f"网络请求失败: {str(e)}")
+                logger.error("网络连接持续失败，请检查网络环境")
+                raise HTTPException(status_code=503, detail="网络连接失败，请检查网络环境或稍后重试")
                 
             except Exception as e:
                 logger.error(f"获取最新版本失败: {e}")
@@ -393,56 +382,48 @@ class UpdateService:
             if self.github_token:
                 headers["Authorization"] = f"token {self.github_token}"
 
+            import aiohttp
+            import asyncio
             for attempt in range(self.max_retries):
                 try:
                     logger.info(f"下载文件 (尝试 {attempt + 1}/{self.max_retries})")
-                    response = requests.get(
-                        url,
-                        headers=headers,
-                        timeout=self.request_timeout,
-                        stream=True,
-                        verify=self.ssl_verify
-                    )
-                    response.raise_for_status()
+                    async with aiohttp.ClientSession() as session:
+                        async with session.get(
+                            url,
+                            headers=headers,
+                            timeout=self.request_timeout,
+                            ssl=False
+                        ) as response:
+                            response.raise_for_status()
 
-                    # 下载文件
-                    total_size = None
-                    if 'content-length' in response.headers:
-                        total_size = int(response.headers['content-length'])
-                        logger.info(f"文件大小: {total_size} bytes")
+                            # 下载文件
+                            total_size = None
+                            if 'content-length' in response.headers:
+                                total_size = int(response.headers['content-length'])
+                                logger.info(f"文件大小: {total_size} bytes")
 
-                    downloaded_size = 0
-                    with open(target_path, "wb") as f:
-                        for chunk in response.iter_content(chunk_size=8192):
-                            if chunk:
-                                f.write(chunk)
-                                downloaded_size += len(chunk)
-                                if total_size and downloaded_size % (total_size // 5 or 1024*1024) == 0:
-                                    progress = (downloaded_size / total_size) * 100
-                                    logger.info(f"下载进度: {progress:.1f}%")
+                            downloaded_size = 0
+                            with open(target_path, "wb") as f:
+                                async for chunk in response.content.iter_chunked(8192):
+                                    if chunk:
+                                        f.write(chunk)
+                                        downloaded_size += len(chunk)
+                                        if total_size and downloaded_size % (total_size // 5 or 1024*1024) == 0:
+                                            progress = (downloaded_size / total_size) * 100
+                                            logger.info(f"下载进度: {progress:.1f}%")
 
                     logger.info(f"下载成功: {target_path} ({downloaded_size} bytes)")
                     return True
 
-                except requests.exceptions.SSLError as e:
-                    logger.warning(f"SSL错误 (尝试 {attempt + 1}/{self.max_retries}): {e}")
+                except aiohttp.ClientError as e:
+                    logger.warning(f"网络错误 (尝试 {attempt + 1}/{self.max_retries}): {e}")
                     if attempt < self.max_retries - 1:
-                        time.sleep(self.retry_delay * (attempt + 1))
-                        continue
-                except requests.exceptions.Timeout:
-                    logger.warning(f"下载超时 (尝试 {attempt + 1}/{self.max_retries})")
-                    if attempt < self.max_retries - 1:
-                        time.sleep(self.retry_delay * (2 ** attempt))
-                        continue
-                except requests.exceptions.ConnectionError:
-                    logger.warning(f"连接错误 (尝试 {attempt + 1}/{self.max_retries})")
-                    if attempt < self.max_retries - 1:
-                        time.sleep(self.retry_delay * (2 ** attempt))
+                        await asyncio.sleep(self.retry_delay * (attempt + 1))
                         continue
                 except Exception as e:
                     logger.warning(f"下载异常 (尝试 {attempt + 1}/{self.max_retries}): {e}")
                     if attempt < self.max_retries - 1:
-                        time.sleep(self.retry_delay)
+                        await asyncio.sleep(self.retry_delay)
                         continue
 
             return False
@@ -464,40 +445,37 @@ class UpdateService:
             bool: 下载是否成功
         """
         try:
+            import aiohttp
+            import asyncio
             for attempt in range(self.max_retries):
                 try:
                     logger.info(f"备用下载 (尝试 {attempt + 1}/{self.max_retries})")
-                    response = requests.get(
-                        url,
-                        headers=headers,
-                        timeout=self.request_timeout,
-                        stream=True,
-                        verify=self.ssl_verify
-                    )
-                    response.raise_for_status()
+                    async with aiohttp.ClientSession() as session:
+                        async with session.get(
+                            url,
+                            headers=headers,
+                            timeout=self.request_timeout,
+                            ssl=False
+                        ) as response:
+                            response.raise_for_status()
 
-                    with open(target_path, "wb") as f:
-                        for chunk in response.iter_content(chunk_size=8192):
-                            if chunk:
-                                f.write(chunk)
+                            with open(target_path, "wb") as f:
+                                async for chunk in response.content.iter_chunked(8192):
+                                    if chunk:
+                                        f.write(chunk)
 
                     logger.info("备用下载成功")
                     return True
 
-                except requests.exceptions.SSLError as e:
-                    logger.warning(f"SSL错误 (尝试 {attempt + 1}/{self.max_retries}): {e}")
+                except aiohttp.ClientError as e:
+                    logger.warning(f"网络错误 (尝试 {attempt + 1}/{self.max_retries}): {e}")
                     if attempt < self.max_retries - 1:
-                        time.sleep(self.retry_delay * (attempt + 1))
-                        continue
-                except requests.exceptions.Timeout:
-                    logger.warning(f"超时 (尝试 {attempt + 1}/{self.max_retries})")
-                    if attempt < self.max_retries - 1:
-                        time.sleep(self.retry_delay * (2 ** attempt))
+                        await asyncio.sleep(self.retry_delay * (attempt + 1))
                         continue
                 except Exception as e:
                     logger.warning(f"异常 (尝试 {attempt + 1}/{self.max_retries}): {e}")
                     if attempt < self.max_retries - 1:
-                        time.sleep(self.retry_delay)
+                        await asyncio.sleep(self.retry_delay)
                         continue
 
             return False
@@ -534,44 +512,28 @@ class UpdateService:
             if self.github_token:
                 headers["Authorization"] = f"Bearer {self.github_token}"
             
-            # 增强的请求配置
-            request_kwargs = {
-                "timeout": self.request_timeout,
-                "headers": headers,
-                "verify": self.ssl_verify
-            }
-            
             # 实现重试机制
+            import aiohttp
+            import asyncio
             for attempt in range(self.max_retries):
                 try:
-                    response = requests.get(
-                        f"{self.github_api}/releases/tags/v{tag_name}",
-                        **request_kwargs
-                    )
-                    response.raise_for_status()
-                    release_data = response.json()
+                    async with aiohttp.ClientSession() as session:
+                        async with session.get(
+                            f"{self.github_api}/releases/tags/v{tag_name}",
+                            headers=headers,
+                            timeout=self.request_timeout,
+                            ssl=False
+                        ) as response:
+                            response.raise_for_status()
+                            release_data = await response.json()
                     break  # 成功则跳出重试循环
                     
-                except requests.exceptions.SSLError as e:
-                    logger.warning(f"获取Release信息SSL错误 (尝试 {attempt + 1}/{self.max_retries}): {e}")
+                except aiohttp.ClientError as e:
+                    logger.warning(f"获取Release信息网络错误 (尝试 {attempt + 1}/{self.max_retries}): {e}")
                     if attempt < self.max_retries - 1:
-                        time.sleep(self.retry_delay * (attempt + 1))
+                        await asyncio.sleep(self.retry_delay * (attempt + 1))
                         continue
-                    raise HTTPException(status_code=503, detail=f"SSL连接失败: {str(e)}")
-                    
-                except requests.exceptions.Timeout:
-                    logger.warning(f"获取Release信息超时 (尝试 {attempt + 1}/{self.max_retries})")
-                    if attempt < self.max_retries - 1:
-                        time.sleep(self.retry_delay * (2 ** attempt))
-                        continue
-                    raise HTTPException(status_code=504, detail="获取Release信息超时")
-                    
-                except requests.exceptions.ConnectionError:
-                    logger.warning(f"获取Release信息连接错误 (尝试 {attempt + 1}/{self.max_retries})")
-                    if attempt < self.max_retries - 1:
-                        time.sleep(self.retry_delay * (2 ** attempt))
-                        continue
-                    raise HTTPException(status_code=503, detail="无法连接到GitHub获取Release信息")
+                    raise HTTPException(status_code=503, detail=f"网络连接失败: {str(e)}")
                     
                 except Exception as e:
                     logger.error(f"获取Release信息失败: {e}")
@@ -631,14 +593,17 @@ class UpdateService:
             if expected_hash and download_success:
                 try:
                     logger.info("正在验证文件完整性...")
-                    hash_response = requests.get(expected_hash, timeout=10, headers=headers)
-                    if hash_response.status_code == 200:
-                        expected_sha256 = hash_response.text.strip().split()[0]
-                        actual_sha256 = await self._calculate_file_hash(archive_path)
-                        if expected_sha256.lower() == actual_sha256.lower():
-                            logger.info("文件完整性验证通过")
-                        else:
-                            logger.warning("文件哈希不匹配，可能存在损坏")
+                    import aiohttp
+                    async with aiohttp.ClientSession() as session:
+                        async with session.get(expected_hash, timeout=10, headers=headers, ssl=False) as hash_response:
+                            if hash_response.status == 200:
+                                hash_content = await hash_response.text()
+                                expected_sha256 = hash_content.strip().split()[0]
+                                actual_sha256 = await self._calculate_file_hash(archive_path)
+                                if expected_sha256.lower() == actual_sha256.lower():
+                                    logger.info("文件完整性验证通过")
+                                else:
+                                    logger.warning("文件哈希不匹配，可能存在损坏")
                 except Exception as e:
                     logger.warning(f"文件完整性验证失败: {e}")
 
@@ -1002,91 +967,37 @@ class UpdateService:
 
     async def execute_update(self) -> dict:
         """
-        执行完整更新流程（增强版）
+        执行完整更新流程（独立进程）
         
         Returns:
             dict: 更新结果
         """
-        update_start_time = datetime.now()
-        temp_backup_path = None
-        
-        try:
-            logger.info("=" * 60)
-            logger.info("开始执行系统更新流程")
-            logger.info("=" * 60)
-            
-            # 1. 检查更新
-            logger.info("[步骤1/7] 检查更新...")
-            check_result = await self.check_update()
-            if not check_result["has_update"]:
-                logger.info("系统已是最新版本")
-                return {
-                    "success": True,
-                    "message": "已是最新版本",
-                    "current_version": check_result["current_version"],
-                    "duration": 0
-                }
+        # 启动独立进程
+        process = multiprocessing.Process(
+            target=_update_process,
+            args=(self.github_owner, self.github_repo, str(self.backup_dir), str(self.app_dir), str(self.temp_dir), self.github_token)
+        )
+        process.daemon = False
+        process.start()
 
-            latest_version = check_result["latest_version"]
-            logger.info(f"发现新版本: {check_result['current_version']} -> {latest_version}")
+        # 短暂等待
+        await asyncio.sleep(1)
 
-            # 2. 备份当前版本
-            logger.info("[步骤2/7] 创建备份...")
-            backup_path = await self.backup_current_version()
-            temp_backup_path = backup_path
-            logger.info(f"备份完成: {backup_path}")
-
-            # 3. 下载更新包
-            logger.info("[步骤3/7] 下载更新包...")
-            archive_path = await self.download_update(latest_version)
-            logger.info(f"下载完成: {archive_path}")
-
-            # 4. 解压更新包
-            logger.info("[步骤4/7] 解压更新包...")
-            source_dir = await self.extract_update(archive_path)
-            logger.info(f"解压完成: {source_dir}")
-
-            # 5. 验证更新文件
-            logger.info("[步骤5/7] 验证更新文件...")
-            if not await self.validate_update_files(source_dir):
-                raise HTTPException(status_code=500, detail="更新文件验证失败")
-
-            # 6. 应用更新
-            logger.info("[步骤6/7] 应用更新...")
-            await self.apply_update_safely(source_dir)
-            logger.info("更新应用完成")
-
-            # 7. 清理临时文件
-            logger.info("[步骤7/7] 清理临时文件...")
-            await self.cleanup_temp_files()
-            logger.info("临时文件清理完成")
-
-            update_duration = (datetime.now() - update_start_time).total_seconds()
-            
-            logger.info("=" * 60)
-            logger.info("系统更新成功完成!")
-            logger.info(f"从 v{check_result['current_version']} 更新到 v{latest_version}")
-            logger.info(f"耗时: {update_duration:.2f} 秒")
-            logger.info("=" * 60)
-
+        # 进程已快速完成，等待并返回结果
+        if not process.is_alive():
+            # 等待进程结束
+            process.join(timeout=5)
             return {
                 "success": True,
-                "message": f"更新成功，从 v{check_result['current_version']} 更新到 v{latest_version}",
-                "current_version": latest_version,
-                "duration": update_duration,
-                "backup_path": temp_backup_path
+                "message": "更新已启动，正在后台执行",
+                "current_version": await self.get_current_version()
             }
-            
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.error(f"更新过程中发生错误: {e}")
-            # 清理临时文件
-            try:
-                await self.cleanup_temp_files()
-            except:
-                pass
-            raise HTTPException(status_code=500, detail=f"更新失败: {str(e)}")
+
+        return {
+            "success": True,
+            "message": "更新已启动，正在后台独立执行",
+            "current_version": await self.get_current_version()
+        }
 
     async def get_backups(self) -> list:
         """
@@ -1125,6 +1036,371 @@ class UpdateService:
         except Exception as e:
             logger.error(f"获取备份列表失败: {e}")
             return []
+
+
+def _update_process(github_owner, github_repo, backup_dir, app_dir, temp_dir, github_token):
+    """
+    在独立进程中执行完整更新流程
+    
+    Args:
+        github_owner: GitHub 仓库所有者
+        github_repo: GitHub 仓库名称
+        backup_dir: 备份目录
+        app_dir: 应用目录
+        temp_dir: 临时目录
+        github_token: GitHub 访问令牌
+    """
+    import logging
+    import os
+    import sys
+    import time
+    import shutil
+    from pathlib import Path
+    import requests
+    import tarfile
+    import zipfile
+    import hashlib
+    from datetime import datetime
+    
+    # 配置日志
+    logger = logging.getLogger('update_process')
+    logger.setLevel(logging.INFO)
+    if not logger.handlers:
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+    
+    try:
+        logger.info("=" * 60)
+        logger.info("开始执行独立进程更新流程")
+        logger.info("=" * 60)
+        
+        # 转换路径
+        backup_dir = Path(backup_dir)
+        app_dir = Path(app_dir)
+        temp_dir = Path(temp_dir)
+        
+        # 确保目录存在
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        temp_dir.mkdir(parents=True, exist_ok=True)
+        
+        # GitHub API 配置
+        github_api = f"https://api.github.com/repos/{github_owner}/{github_repo}"
+        request_timeout = 30
+        max_retries = 5
+        retry_delay = 2
+        ssl_verify = False
+        
+        # 获取当前版本
+        def get_current_version():
+            try:
+                from backend import __version__
+                return __version__
+            except ImportError:
+                logger.error("无法导入版本信息")
+                return "unknown"
+        
+        current_version = get_current_version()
+        logger.info(f"当前版本: {current_version}")
+        
+        # 获取最新版本
+        def get_latest_version():
+            headers = {
+                "Accept": "application/vnd.github.v3+json",
+                "User-Agent": "RandomPictures-Updater/1.0"
+            }
+            if github_token:
+                headers["Authorization"] = f"Bearer {github_token}"
+            
+            for attempt in range(max_retries):
+                try:
+                    logger.info(f"请求 GitHub API (尝试 {attempt + 1}/{max_retries}): {github_api}/releases/latest")
+                    response = requests.get(
+                        f"{github_api}/releases/latest",
+                        headers=headers,
+                        timeout=request_timeout,
+                        verify=ssl_verify
+                    )
+                    response.raise_for_status()
+                    data = response.json()
+                    return data.get("tag_name", "").replace("v", "")
+                except Exception as e:
+                    logger.warning(f"获取最新版本失败 (尝试 {attempt + 1}/{max_retries}): {e}")
+                    if attempt < max_retries - 1:
+                        time.sleep(retry_delay * (attempt + 1))
+                    else:
+                        raise
+        
+        latest_version = get_latest_version()
+        logger.info(f"最新版本: {latest_version}")
+        
+        # 比较版本
+        def compare_versions(v1, v2):
+            def normalize(v):
+                import re
+                parts = re.split(r'[.-]', v.lower())
+                normalized = []
+                for part in parts:
+                    if part.isdigit():
+                        normalized.append(int(part))
+                    else:
+                        normalized.append(sum(ord(c) for c in part))
+                return normalized
+            n1, n2 = normalize(v1), normalize(v2)
+            max_len = max(len(n1), len(n2))
+            n1.extend([0] * (max_len - len(n1)))
+            n2.extend([0] * (max_len - len(n2)))
+            for a, b in zip(n1, n2):
+                if a > b:
+                    return 1
+                elif a < b:
+                    return -1
+            return 0
+        
+        if compare_versions(current_version, latest_version) >= 0:
+            logger.info("系统已是最新版本")
+            return
+        
+        logger.info(f"开始更新: {current_version} -> {latest_version}")
+        
+        # 创建备份
+        def create_backup():
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            backup_filename = f"backup_{current_version}_{timestamp}.tar.gz"
+            backup_path = backup_dir / backup_filename
+            
+            logger.info(f"开始创建备份: {backup_path}")
+            
+            # 创建临时备份目录
+            temp_backup_dir = temp_dir / f"backup_{timestamp}"
+            temp_backup_dir.mkdir(parents=True, exist_ok=True)
+            
+            # 要备份的项目
+            items_to_backup = [
+                "backend",
+                "frontend",
+                "Dockerfile",
+                "docker-compose.yml",
+                "requirements.txt"
+            ]
+            
+            # 复制文件到临时目录
+            for item in items_to_backup:
+                source = app_dir / item
+                target = temp_backup_dir / item
+                if source.exists():
+                    try:
+                        if source.is_file():
+                            shutil.copy2(source, target)
+                        else:
+                            shutil.copytree(source, target, dirs_exist_ok=True)
+                        logger.info(f"已备份: {item}")
+                    except Exception as e:
+                        logger.warning(f"备份 {item} 失败: {e}")
+            
+            # 创建压缩文件
+            with tarfile.open(backup_path, "w:gz") as tar:
+                for item in temp_backup_dir.iterdir():
+                    tar.add(item, arcname=item.name)
+            
+            # 清理临时备份目录
+            shutil.rmtree(temp_backup_dir)
+            logger.info(f"备份完成: {backup_path}")
+            return backup_path
+        
+        backup_path = create_backup()
+        
+        # 下载更新包
+        def download_update():
+            headers = {
+                "Accept": "application/vnd.github.v3+json",
+                "User-Agent": "RandomPictures-Updater/1.0"
+            }
+            if github_token:
+                headers["Authorization"] = f"Bearer {github_token}"
+            
+            # 获取release信息
+            for attempt in range(max_retries):
+                try:
+                    response = requests.get(
+                        f"{github_api}/releases/tags/v{latest_version}",
+                        headers=headers,
+                        timeout=request_timeout,
+                        verify=ssl_verify
+                    )
+                    response.raise_for_status()
+                    release_data = response.json()
+                    break
+                except Exception as e:
+                    logger.warning(f"获取release信息失败 (尝试 {attempt + 1}/{max_retries}): {e}")
+                    if attempt < max_retries - 1:
+                        time.sleep(retry_delay * (attempt + 1))
+                    else:
+                        raise
+            
+            # 查找下载链接
+            download_url = None
+            assets = release_data.get("assets", [])
+            for asset in assets:
+                if asset.get("name").endswith((".tar.gz", ".zip")):
+                    download_url = asset.get("browser_download_url")
+                    break
+            
+            # 如果没有资产，使用tarball链接
+            if not download_url:
+                download_url = f"https://api.github.com/repos/{github_owner}/{github_repo}/tarball/v{latest_version}"
+            
+            # 下载文件
+            archive_path = temp_dir / f"update_{latest_version}.tar.gz"
+            logger.info(f"开始下载: {download_url}")
+            
+            for attempt in range(max_retries):
+                try:
+                    response = requests.get(
+                        download_url,
+                        headers=headers,
+                        timeout=request_timeout,
+                        stream=True,
+                        verify=ssl_verify
+                    )
+                    response.raise_for_status()
+                    
+                    with open(archive_path, "wb") as f:
+                        for chunk in response.iter_content(chunk_size=8192):
+                            if chunk:
+                                f.write(chunk)
+                    
+                    logger.info(f"下载完成: {archive_path}")
+                    return archive_path
+                except Exception as e:
+                    logger.warning(f"下载失败 (尝试 {attempt + 1}/{max_retries}): {e}")
+                    if attempt < max_retries - 1:
+                        time.sleep(retry_delay * (attempt + 1))
+                    else:
+                        raise
+        
+        archive_path = download_update()
+        
+        # 解压更新包
+        def extract_update(archive_path):
+            extract_dir = temp_dir / "extracted"
+            extract_dir.mkdir(parents=True, exist_ok=True)
+            
+            logger.info(f"开始解压: {archive_path}")
+            
+            if archive_path.suffix == ".zip":
+                with zipfile.ZipFile(archive_path, "r") as zip_ref:
+                    zip_ref.extractall(extract_dir)
+            elif archive_path.name.endswith(".tar.gz") or archive_path.suffix == ".tgz":
+                with tarfile.open(archive_path, "r:gz") as tar_ref:
+                    tar_ref.extractall(extract_dir)
+            else:
+                logger.error(f"不支持的压缩包格式: {archive_path.name}")
+                raise Exception(f"不支持的压缩包格式: {archive_path.name}")
+            
+            logger.info(f"解压完成: {extract_dir}")
+            
+            # 查找项目根目录
+            extracted_items = list(extract_dir.iterdir())
+            if len(extracted_items) == 1 and extracted_items[0].is_dir():
+                return extracted_items[0]
+            else:
+                return extract_dir
+        
+        source_dir = extract_update(archive_path)
+        
+        # 验证更新文件
+        def validate_update_files(source_dir):
+            required_files = [
+                "backend/main.py",
+                "backend/core/version.py"
+            ]
+            
+            logger.info("开始验证更新文件...")
+            
+            for file_path in required_files:
+                full_path = source_dir / file_path
+                if not full_path.exists():
+                    logger.error(f"缺少必要文件: {file_path}")
+                    return False
+            
+            logger.info("更新文件验证通过")
+            return True
+        
+        if not validate_update_files(source_dir):
+            logger.error("更新文件验证失败")
+            return
+        
+        # 应用更新
+        def apply_update(source_dir):
+            logger.info("开始应用更新...")
+            
+            # 要更新的项目
+            items_to_update = [
+                "backend",
+                "frontend",
+                "Dockerfile",
+                "docker-compose.yml",
+                "requirements.txt"
+            ]
+            
+            for item in items_to_update:
+                source_item = source_dir / item
+                target_item = app_dir / item
+                
+                if source_item.exists():
+                    try:
+                        logger.info(f"更新: {item}")
+                        
+                        # 删除目标文件
+                        if target_item.exists():
+                            if target_item.is_file():
+                                target_item.unlink()
+                            else:
+                                shutil.rmtree(target_item)
+                        
+                        # 复制新文件
+                        if source_item.is_file():
+                            shutil.copy2(source_item, target_item)
+                        else:
+                            shutil.copytree(source_item, target_item, dirs_exist_ok=True)
+                        
+                        logger.info(f"更新完成: {item}")
+                    except Exception as e:
+                        logger.error(f"更新 {item} 失败: {e}")
+            
+            logger.info("更新应用完成")
+        
+        apply_update(source_dir)
+        
+        # 清理临时文件
+        def cleanup_temp_files():
+            try:
+                if temp_dir.exists():
+                    shutil.rmtree(temp_dir)
+                    logger.info("临时文件清理完成")
+            except Exception as e:
+                logger.warning(f"清理临时文件失败: {e}")
+        
+        cleanup_temp_files()
+        
+        logger.info("=" * 60)
+        logger.info("系统更新成功完成!")
+        logger.info(f"从 v{current_version} 更新到 v{latest_version}")
+        logger.info("=" * 60)
+        
+    except Exception as e:
+        logger.error(f"更新过程中发生错误: {e}")
+        # 即使出错也要清理临时文件
+        try:
+            if 'temp_dir' in locals() and temp_dir.exists():
+                shutil.rmtree(temp_dir)
+        except:
+            pass
+
+
+
 
 
 def _rollback_process(backup_path, app_dir, temp_dir, backup_dir, logger):

@@ -25,4 +25,4 @@ RUN mkdir -p data images
 EXPOSE 8081
 
 # 启动命令
-CMD ["python", "main.py"]
+CMD ["python", "-m", "backend.main"]

@@ -8,8 +8,8 @@ FastAPI依赖项 - 方案一：参数化依赖
 from typing import Optional
 from fastapi import Depends, HTTPException, Request, Cookie
 
-from .config import COOKIE_NAME
-from .auth import verify_session
+from ..core.config import COOKIE_NAME
+from ..core.security.auth import verify_session
 
 
 def _get_token_from_request(request: Request) -> Optional[str]:

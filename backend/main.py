@@ -17,11 +17,11 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 
-from .config import (
+from .core.config import (
     HOST, PORT, STATIC_ROOT_DIR, FRONTEND_ROOT_DIR,
     SITE_NAME, ALLOW_ORIGINS, ALLOW_METHODS, ALLOW_HEADERS
 )
-from .database import init_db
+from .core.database import init_db
 from .middlewares.logging import LoggingMiddleware
 from .handlers import error_handlers
 
@@ -58,12 +58,47 @@ async def lifespan(app: FastAPI):
 
 
 # ==================== 创建FastAPI应用 ====================
+from fastapi import Depends
+from .api.dependencies import get_current_admin
 app = FastAPI(
     title="随机图API",
     description="一个高性能的随机图片API服务",
     version="3.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
+    docs_url=None,  # 禁用默认的文档端点
+    redoc_url=None   # 禁用默认的 ReDoc 端点
 )
+
+# 添加受保护的文档路由
+from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
+from fastapi.openapi.utils import get_openapi
+
+# 受保护的 Swagger UI 文档
+@app.get("/docs", dependencies=[Depends(get_current_admin)])
+async def custom_swagger_ui_html():
+    return get_swagger_ui_html(
+        openapi_url="/openapi.json",
+        title="API文档 - 管理员专用",
+    )
+
+# 受保护的 ReDoc 文档
+@app.get("/redoc", dependencies=[Depends(get_current_admin)])
+async def custom_redoc_html():
+    return get_redoc_html(
+        openapi_url="/openapi.json",
+        title="API文档 - 管理员专用",
+        redoc_js_url="https://cdn.jsdelivr.net/npm/redoc@latest/bundles/redoc.standalone.js"
+    )
+
+# 受保护的 OpenAPI JSON 端点
+@app.get("/openapi.json", dependencies=[Depends(get_current_admin)])
+async def get_openapi_json():
+    return get_openapi(
+        title="随机图API",
+        version="3.0.0",
+        description="一个高性能的随机图片API服务",
+        routes=app.routes,
+    )
 
 # 添加CORS中间件
 # 注意：当使用credentials: 'include'时，不能使用通配符*作为allow_origins
@@ -108,10 +143,11 @@ if os.path.exists(STATIC_ROOT_DIR):
 
 # ==================== 注册路由 ====================
 # 页面路由 - 使用HTMLResponse以正确处理响应类型
-app.get("/", response_class=None)(page.handle_index)
-app.get("/login", response_class=None)(page.handle_login_page)
-app.get("/admin-panel", response_class=None)(page.handle_admin_panel)
-app.get("/user-panel", response_class=None)(page.handle_user_panel)
+from fastapi.responses import HTMLResponse
+app.get("/", response_class=HTMLResponse)(page.handle_index)
+app.get("/login", response_class=HTMLResponse)(page.handle_login_page)
+app.get("/admin-panel", response_class=HTMLResponse)(page.handle_admin_panel)
+app.get("/user-panel", response_class=HTMLResponse)(page.handle_user_panel)
 app.get("/favicon.ico")(page.handle_favicon)
 
 # API路由 - 图片
@@ -157,7 +193,7 @@ app.post("/api/feedbacks")(feedback.api_create_feedback)  # 创建反馈 - 所�
 app.post("/api/admin/upload")(upload.api_upload_images)  # 上传图片 - 仅管理员可使用
 
 # API路由 - 系统更新
-app.get("/api/system/update")(admin.api_system_update)  # 获取系统更新信息 - 仅管理员可使用
+app.get("/api/system/version")(admin.api_system_version)  # 获取本地版本信息 - 仅管理员可使用
 app.get("/api/system/backups")(admin.api_system_backups)  # 获取备份列表 - 仅管理员可使用
 app.get("/api/system/check-update")(admin.api_system_check_update)  # 检查是否有新版本 - 仅管理员可使用
 app.post("/api/system/execute-update")(admin.api_system_execute_update)  # 执行完整更新流程 - 仅管理员可使用
@@ -179,7 +215,7 @@ def run_server(host: str = HOST, port: int = PORT):
         sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
         sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
-    from .config import IMG_ROOT_DIR, CATEGORY_PAGE_SIZE
+    from .core.config import IMG_ROOT_DIR, CATEGORY_PAGE_SIZE
 
     print(f"\n🚀 {SITE_NAME} 启动成功！")
     print(f"🌐 访问地址: http://{host}:{port}")

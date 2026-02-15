@@ -12,7 +12,7 @@ from fastapi import Request, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.exceptions import RequestValidationError
 
-from ..config import FRONTEND_ROOT_DIR
+from ..core.config import FRONTEND_ROOT_DIR
 
 
 def get_error_id() -> str:
@@ -108,8 +108,8 @@ def create_error_response(request: Request, error_type: str, status_code: int, c
         HTMLResponse或JSONResponse对象
     """
     from fastapi.responses import HTMLResponse, JSONResponse
-    from ..utils import get_error_page
-    from ..utils import get_client_ip
+    from ..utils.utils import get_error_page
+    from ..utils.utils import get_client_ip
     
     # 生成唯一错误ID
     error_id = get_error_id()

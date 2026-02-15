@@ -8,9 +8,9 @@
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
 
-from ..config import COOKIE_NAME, COOKIE_MAX_AGE
-from ..auth import register_user, login_user, logout_user, verify_session
-from ..schemas import RegisterRequest, LoginRequest
+from ..core.config import COOKIE_NAME, COOKIE_MAX_AGE
+from ..core.security.auth import register_user, login_user, logout_user, verify_session
+from ..schemas.schemas import RegisterRequest, LoginRequest
 
 
 async def api_register(data: RegisterRequest, response: Response):

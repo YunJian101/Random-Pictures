@@ -1216,29 +1216,36 @@
         // 从后端加载配置信息
         async function loadConfig() {
             try {
-                const response = await fetch(`${BASE_URL}/api/config`);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const data = await response.json();
-                console.log('配置信息:', data);
-
-                // 更新版本显示
-                if (data.version) {
-                    const versionElement = document.getElementById('current-version');
-                    if (versionElement) {
-                        versionElement.textContent = 'v' + data.version;
+                // 从新的版本信息API获取版本信息
+                const versionResponse = await fetch('/api/system/version');
+                if (versionResponse.ok) {
+                    const versionData = await versionResponse.json();
+                    console.log('版本信息:', versionData);
+                    
+                    // 更新版本显示
+                    if (versionData.code === 200 && versionData.data.version) {
+                        const versionElement = document.getElementById('current-version');
+                        if (versionElement) {
+                            versionElement.textContent = 'v' + versionData.data.version;
+                        }
                     }
                 }
 
-                // 如果有备案号，显示备案信息
-                if (data.icp_beian_code) {
-                    const beianEl = document.getElementById('beian-info');
-                    const beianLink = beianEl.querySelector('a');
-                    if (beianLink) {
-                        beianLink.textContent = data.icp_beian_code;
-                        beianLink.href = data.icp_beian_url || 'https://beian.miit.gov.cn';
-                        beianEl.classList.remove('hidden');
+                // 继续从config API获取其他配置信息
+                const configResponse = await fetch(`${BASE_URL}/api/config`);
+                if (configResponse.ok) {
+                    const configData = await configResponse.json();
+                    console.log('配置信息:', configData);
+
+                    // 如果有备案号，显示备案信息
+                    if (configData.icp_beian_code) {
+                        const beianEl = document.getElementById('beian-info');
+                        const beianLink = beianEl.querySelector('a');
+                        if (beianLink) {
+                            beianLink.textContent = configData.icp_beian_code;
+                            beianLink.href = configData.icp_beian_url || 'https://beian.miit.gov.cn';
+                            beianEl.classList.remove('hidden');
+                        }
                     }
                 }
             } catch (error) {

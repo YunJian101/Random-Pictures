@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import List, Tuple
 from urllib.parse import unquote
 
-from .config import SUPPORTED_IMAGE_FORMATS, CACHE_EXPIRE_SECONDS
+from ..core.config import SUPPORTED_IMAGE_FORMATS, CACHE_EXPIRE_SECONDS
 from .cache import global_cache
 
 
