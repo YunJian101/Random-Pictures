@@ -1302,10 +1302,31 @@ def _update_process(github_owner, github_repo, backup_dir, app_dir, temp_dir, gi
             logger.info(f"解压完成: {extract_dir}")
             
             # 查找项目根目录
+            # 方法1: 检查解压目录本身是否包含根目录文件
+            def is_project_root(directory):
+                root_files = ["Dockerfile", "docker-compose.yml", "requirements.txt"]
+                return any((directory / file).exists() for file in root_files)
+            
+            # 检查解压目录本身
+            if is_project_root(extract_dir):
+                logger.info(f"识别项目根目录: {extract_dir}")
+                return extract_dir
+            
+            # 方法2: 检查解压目录的子目录
             extracted_items = list(extract_dir.iterdir())
+            for item in extracted_items:
+                if item.is_dir() and is_project_root(item):
+                    logger.info(f"识别项目根目录: {item}")
+                    return item
+            
+            # 方法3: 如果只有一个子目录，返回该子目录
             if len(extracted_items) == 1 and extracted_items[0].is_dir():
-                return extracted_items[0]
+                project_root = extracted_items[0]
+                logger.info(f"识别项目根目录: {project_root}")
+                return project_root
             else:
+                # 方法4: 返回解压目录作为根目录
+                logger.info("使用解压根目录作为项目根目录")
                 return extract_dir
         
         source_dir = extract_update(archive_path)
@@ -1314,7 +1335,7 @@ def _update_process(github_owner, github_repo, backup_dir, app_dir, temp_dir, gi
         def validate_update_files(source_dir):
             required_files = [
                 "backend/main.py",
-                "backend/core/version.py"
+                "backend/__init__.py"
             ]
             
             logger.info("开始验证更新文件...")
