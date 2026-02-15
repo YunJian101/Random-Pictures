@@ -1,3 +1,7 @@
+# =============================================================================
+# Docker Compose 配置文件
+# 用于部署和管理随机图API服务
+# =============================================================================
 services:
   # 随机图API核心服务
   random-pictures:
@@ -8,31 +12,31 @@ services:
     image: ghcr.io/yunjian101/random-pictures:latest
     container_name: random-pictures                 # 容器名称，便于管理
     ports:
-      - "8081:8081"
+      - "8081:8081"                                 # 端口映射：主机端口:容器端口
     volumes:
-      - ./:/app
-    restart: unless-stopped
+      - ./:/app                                     # 卷挂载：将当前目录挂载到容器的/app目录
+    restart: unless-stopped                         # 重启策略：除非手动停止，否则容器退出后自动重启
     environment:
-      - ENVIRONMENT=production
+      - ENVIRONMENT=production                      # 环境变量：设置运行环境为生产环境
       # ========== 基础配置 ==========
       - SITE_NAME=随机图API                          # 站点名称，显示在页面标题和logo
       - IMG_ROOT_DIR=/app/images                    # 图片根目录（固定，无需修改）
       - PORT=8081                                   # 容器内部端口（固定，无需修改）
       - PUID=1000                                   # 容器用户ID（默认1000兼容大多数Linux）
       - PGID=1000                                   # 容器组ID（默认1000兼容大多数Linux）
-      - DATABASE_URL=postgresql://postgres:postgres@192.168.11.3:5432/random_pictures  #数据库类型
+      - DATABASE_URL=postgresql://postgres:postgres@192.168.11.3:5432/random_pictures  # 数据库连接URL：格式为 postgresql://用户名:密码@主机:端口/数据库名
       
       # ========== 站点个性化配置 ==========
       # 以下配置留空则不显示对应元素
-      - FAVICON_URL=https://shifeiyu.cn/upload/%E7%AB%99%E7%82%B9logo.png                                # 站点图标URL，支持本地或远程图片
-      - ICP_BEIAN_CODE=京ICP备1234XXX号                             # ICP备案号，如"京ICP备12345678号"
-      - ICP_BEIAN_URL=https://beian.miit.gov.cn                              # 备案信息链接，如"https://beian.miit.gov.cn"
+      - FAVICON_URL=https://shifeiyu.cn/upload/%E7%AB%99%E7%82%B9logo.png  # 站点图标URL，支持本地或远程图片
+      - ICP_BEIAN_CODE=京ICP备1234XXX号                                   # ICP备案号，如"京ICP备12345678号"
+      - ICP_BEIAN_URL=https://beian.miit.gov.cn                            # 备案信息链接，如"https://beian.miit.gov.cn"
       
       # ========== 导航栏按钮配置 ==========
       # 以下配置留空则不显示对应按钮
       - NAV_HOME_URL=/                              # 首页链接（默认即可）
       - NAV_BLOG_URL=https://blog.shifeiyu.cn                               # 博客链接，填写后显示"博客"按钮
-      - NAV_GITHUB_URL=https://github.com/YunJian101/Random-Pictures                             # GitHub链接，填写后显示"开源地址"按钮
+      - NAV_GITHUB_URL=https://github.com/YunJian101/Random-Pictures       # GitHub链接，填写后显示"开源地址"按钮
       - NAV_CUSTOM_TEXT=                            # 自定义按钮文本，如"关于我们"
       - NAV_CUSTOM_URL=                             # 自定义按钮链接，与上面文本配对使用
       
