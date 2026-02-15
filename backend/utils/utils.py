@@ -19,6 +19,13 @@ from .cache import global_cache
 def validate_safe_path(base_path: str, target_path: str) -> bool:
     """
     验证路径是否安全,防止路径遍历攻击
+    
+    Args:
+        base_path: 基础路径，目标路径应该在这个路径内
+        target_path: 需要验证的目标路径
+        
+    Returns:
+        bool: 路径是否安全
     """
     try:
         # 1. 基础路径规范化
@@ -70,6 +77,60 @@ def validate_safe_path(base_path: str, target_path: str) -> bool:
         return True
     except Exception:
         return False
+
+
+def validate_local_path(path: str) -> tuple[bool, str]:
+    """
+    验证本地路径是否安全,防止路径遍历攻击
+    
+    Args:
+        path: 需要验证的本地路径
+        
+    Returns:
+        tuple[bool, str]: (是否安全, 错误信息)
+    """
+    try:
+        # 1. 检查路径是否为空
+        if not path:
+            return True, ""
+
+        # 2. 解析URL编码的路径
+        decoded_path = path
+        for _ in range(3):
+            decoded_path = unquote(decoded_path)
+
+        # 3. 检查路径遍历模式
+        dangerous_patterns = [
+            '..', '%2e%2e', '%2e.', '.%2e', '%252e%252e',
+            '..\\', '%2e%2e\\', '\\.\\', '%2e%2e%5c',
+        ]
+        decoded_lower = decoded_path.lower()
+        for pattern in dangerous_patterns:
+            if pattern.lower() in decoded_lower:
+                return False, "本地路径不能包含路径遍历字符（../）"
+
+        # 4. 检查空字节
+        if '\x00' in decoded_path:
+            return False, "本地路径不能包含空字节"
+
+        return True, ""
+    except Exception as e:
+        return False, f"路径验证失败: {str(e)}"
+
+
+def is_remote_url(url: str) -> bool:
+    """
+    检查字符串是否为远程URL
+    
+    Args:
+        url: 需要检查的字符串
+        
+    Returns:
+        bool: 是否为远程URL
+    """
+    import re
+    url_pattern = r'^https?://[^/$.?#]+[^ ]*$'
+    return bool(re.match(url_pattern, url))
 
 
 def validate_image_file(file_path: str) -> bool:
@@ -274,8 +335,11 @@ def get_error_page(error_type: str, context: dict = None) -> str:
     Returns:
         错误页面HTML内容，如果页面不存在则返回空字符串
     """
-    error_page_path = os.path.join(os.path.dirname(__file__), "..", "frontend", "Status_Code", f"{error_type}.html")
+    # 使用容器路径构建错误页面路径
+    # 从项目根目录开始构建绝对路径
+    error_page_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "Status_Code", f"{error_type}.html"))
     if not os.path.exists(error_page_path):
+        print(f"[ERROR] 错误页面不存在: {error_page_path}")
         return ""
     
     try:

@@ -10,7 +10,8 @@ from fastapi import Depends, HTTPException
 from fastapi.responses import FileResponse, RedirectResponse, HTMLResponse
 from fastapi import Request as FastAPIRequest
 
-from ..core.config import FRONTEND_ROOT_DIR, FAVICON_URL
+from ..core.config import FRONTEND_ROOT_DIR
+from ..core.database import get_db_connection
 from ..api.dependencies import get_current_user, get_current_admin, get_current_user_optional
 
 
@@ -53,9 +54,48 @@ async def handle_user_panel(request: FastAPIRequest, current_user: dict = Depend
 
 async def handle_favicon():
     """处理favicon请求"""
-    if FAVICON_URL:
-        return RedirectResponse(url=FAVICON_URL, status_code=302)
+    from ..utils.utils import validate_local_path, is_remote_url
+    
+    # 从数据库获取favicon_url配置
+    favicon_url = ''
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT config_value FROM system_configs WHERE config_key = %s', ('favicon_url',))
+            result = cursor.fetchone()
+            if result:
+                favicon_url = result[0]
+    except Exception as e:
+        print(f"[ERROR] 获取favicon配置失败: {str(e)}")
 
+    if favicon_url:
+        # 检查是否为远程URL
+        if is_remote_url(favicon_url):
+            return RedirectResponse(url=favicon_url, status_code=302)
+        else:
+            # 本地路径验证
+            is_valid, error_msg = validate_local_path(favicon_url)
+            if not is_valid:
+                print(f"[ERROR] 无效的favicon本地路径: {error_msg}")
+                # 验证失败，使用默认favicon
+            else:
+                # 本地路径处理
+                # 如果是相对路径，从前端静态目录开始查找
+                if not favicon_url.startswith('/'):
+                    favicon_path = os.path.join(FRONTEND_ROOT_DIR, favicon_url)
+                else:
+                    # 如果是绝对路径，尝试从前端静态目录开始查找
+                    # 移除开头的/，然后从前端静态目录开始构建路径
+                    favicon_path = os.path.join(FRONTEND_ROOT_DIR, favicon_url.lstrip('/'))
+                
+                # 如果指定的路径不存在，尝试在static目录中查找
+                if not os.path.exists(favicon_path):
+                    favicon_path = os.path.join(FRONTEND_ROOT_DIR, 'static', favicon_url.lstrip('/'))
+                
+                if os.path.exists(favicon_path):
+                    return FileResponse(favicon_path)
+
+    # 默认行为：尝试使用static目录中的favicon.ico
     favicon_path = os.path.join(FRONTEND_ROOT_DIR, 'static', 'favicon.ico')
     if os.path.exists(favicon_path):
         return FileResponse(favicon_path)

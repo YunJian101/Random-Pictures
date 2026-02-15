@@ -19,9 +19,9 @@ from fastapi.exceptions import RequestValidationError
 
 from .core.config import (
     HOST, PORT, STATIC_ROOT_DIR, FRONTEND_ROOT_DIR,
-    SITE_NAME, ALLOW_ORIGINS, ALLOW_METHODS, ALLOW_HEADERS
+    ALLOW_ORIGINS, ALLOW_METHODS, ALLOW_HEADERS
 )
-from .core.database import init_db
+from .core.database import init_db, set_shutting_down
 from .middlewares.logging import LoggingMiddleware
 from .handlers import error_handlers
 
@@ -30,30 +30,21 @@ from .routers import page, image, auth, user, admin, feedback, upload
 
 
 
+# ==================== 初始化代码 ====================
+# 确保目录存在
+Path(FRONTEND_ROOT_DIR).mkdir(parents=True, exist_ok=True)
+Path(STATIC_ROOT_DIR).mkdir(parents=True, exist_ok=True)
+
 # ==================== 应用生命周期 ====================
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期管理"""
-    # 启动时初始化
-    print(f"\n{'=' * 50}")
-    print(f"🚀 {SITE_NAME} 启动中...")
-    print(f"{'=' * 50}")
-
-    # 确保目录存在
-    Path(FRONTEND_ROOT_DIR).mkdir(parents=True, exist_ok=True)
-    Path(STATIC_ROOT_DIR).mkdir(parents=True, exist_ok=True)
-
-    # 初始化数据库
-    is_new_database = init_db()
-    if is_new_database:
-        print("✅ 数据库不存在，已创建并初始化")
-    else:
-        print("✅ 数据库已存在，跳过初始化")
-
     yield
 
     # 关闭时清理
     print("\n🔄 正在关闭服务...")
+    # 设置应用正在关闭
+    set_shutting_down()
     print("✅ 服务已关闭")
 
 
@@ -157,7 +148,7 @@ app.get("/api/images")(image.api_all_images)  # 获取所有图片列表 - 仅�
 app.get("/api/image/{image_id}")(image.api_image_detail)  # 获取单个图片详情 - 所有人可使用
 app.put("/api/image/{image_id}")(image.api_update_image)  # 更新图片信息 - 仅管理员可使用
 app.delete("/api/image/{image_id}")(image.api_delete_image)  # 删除图片 - 仅管理员可使用
-app.get("/api/config")(image.api_config)  # 获取系统配置信息 - 所有人可使用
+
 app.get("/random")(image.handle_random_image)  # 获取随机图片 - 所有人可使用
 app.get("/image")(image.handle_image)  # 获取指定图片 - 所有人可使用
 
@@ -199,6 +190,13 @@ app.get("/api/system/check-update")(admin.api_system_check_update)  # 检查是�
 app.post("/api/system/execute-update")(admin.api_system_execute_update)  # 执行完整更新流程 - 仅管理员可使用
 app.post("/api/system/rollback")(admin.api_system_rollback)  # 从备份回滚 - 仅管理员可使用
 
+# API路由 - 系统配置
+app.get("/api/admin/system/config")(admin.api_admin_get_system_config)  # 获取系统配置 - 仅管理员可使用
+app.put("/api/admin/system/config")(admin.api_admin_update_system_config)  # 更新系统配置 - 仅管理员可使用
+app.post("/api/admin/system/config/reset")(admin.api_admin_reset_system_config)  # 重置系统配置为默认值 - 仅管理员可使用
+app.get("/api/system/timezone")(admin.api_get_system_timezone)  # 获取系统时区配置 - 公共接口
+app.get("/api/system/info")(admin.api_get_system_info)  # 获取系统基本信息 - 公共接口
+
 
 
 
@@ -215,9 +213,25 @@ def run_server(host: str = HOST, port: int = PORT):
         sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
         sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
+    # 启动时初始化
+    print(f"\n{'=' * 50}")
+    print(f"🚀 随机图API 启动中...")
+    print(f"{'=' * 50}")
+
+    print(" 正在连接数据库...")
+
+    try:
+        is_new_database = init_db()
+        if is_new_database:
+            print("✅ 数据库不存在，已创建并初始化")
+        else:
+            print("✅ 数据库已存在，跳过初始化")
+    except Exception as e:
+        print(f"❌ 数据库初始化失败: {e}")
+
     from .core.config import IMG_ROOT_DIR, CATEGORY_PAGE_SIZE
 
-    print(f"\n🚀 {SITE_NAME} 启动成功！")
+    print(f"\n🚀 随机图API 启动成功！")
     print(f"🌐 访问地址: http://{host}:{port}")
     print(f"📁 图片目录: {os.path.abspath(IMG_ROOT_DIR)}")
     print(f"📚 API文档: http://{host}:{port}/docs")
@@ -227,10 +241,17 @@ def run_server(host: str = HOST, port: int = PORT):
     print(f"  - 图片直链缓存7天，随机接口禁用缓存保证随机性")
     print(f"  - 分类内图片分页：每页最多显示{CATEGORY_PAGE_SIZE}张图片")
     print(f"  - 完整跨域支持，兼容所有前端调用")
+    print(f"  - 热重载功能已启用，文件变更会自动更新")
     print(f"\n⚠️  按 Ctrl+C 停止服务器")
 
     import uvicorn
-    uvicorn.run(app, host=host, port=port, log_level="info")
+    uvicorn.run(
+        "backend.main:app", 
+        host=host, 
+        port=port, 
+        log_level="info",
+        reload=True  # 启用热重载
+    )
 
 
 if __name__ == '__main__':

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>随机图片API - 全功能平台</title>
+<title>加载中...</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <!-- 引入Font Awesome图标 - 多CDN竞争加载 -->
 <script>
@@ -370,7 +370,24 @@
 </head>
 <body class="min-h-screen pb-20">
 
-<!-- 顶部导航 -->
+<!-- 获取系统基本信息，包括站点名称 -->
+  <script>
+    // 从系统配置中获取站点名称并更新页面标题和导航栏
+    function updateSiteNameFromConfig(config) {
+      if (config && config.site_name) {
+        const siteName = config.site_name.value;
+        document.title = siteName + ' - 管理后台';
+        // 更新导航栏中的站点名称
+        const navSiteNameElement = document.querySelector('span.text-gradient');
+        if (navSiteNameElement) {
+          navSiteNameElement.textContent = siteName;
+        }
+        console.log('✅ 从系统配置更新站点名称成功:', siteName);
+      }
+    }
+  </script>
+
+  <!-- 顶部导航 -->
 <div class="fixed top-0 left-0 right-0 bg-white shadow-sm z-50">
   <div class="flex items-center justify-between px-4 h-16 max-w-7xl mx-auto">
     <div class="flex items-center gap-3 cursor-pointer" onclick="window.location.href='/'" title="返回首页">
@@ -647,60 +664,31 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label class="text-sm text-gray-700 mb-1 block">站点名称</label>
-              <input type="text" value="随机图API" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
+              <input type="text" id="siteName" value="随机图API" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
             </div>
             <div>
               <label class="text-sm text-gray-700 mb-1 block">站点域名</label>
-              <input type="text" value="https://api.example.com" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
+              <input type="text" id="siteDomain" value="https://api.example.com" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
             </div>
             <div>
-              <label class="text-sm text-gray-700 mb-1 block">管理员邮箱</label>
-              <input type="email" value="admin@example.com" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
+              <label class="text-sm text-gray-700 mb-1 block">ICP备案号</label>
+              <input type="text" id="icpBeian" value="京ICP备1234XXX号" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
+            </div>
+            <div>
+              <label class="text-sm text-gray-700 mb-1 block">备案信息链接</label>
+              <input type="text" id="beianLink" value="https://beian.miit.gov.cn" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
             </div>
             <div>
               <label class="text-sm text-gray-700 mb-1 block">时区设置</label>
-              <select class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
-                <option selected>Asia/Shanghai (UTC+8)</option>
-                <option>America/New_York (UTC-5)</option>
-                <option>Europe/London (UTC+0)</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <!-- API设置 -->
-        <div>
-          <h3 class="text-sm font-semibold text-gray-700 mb-3 pb-2 border-b border-gray-100">API设置</h3>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="text-sm text-gray-700 mb-1 block">随机图接口</label>
-              <input type="text" value="/random" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50" readonly>
-            </div>
-            <div>
-              <label class="text-sm text-gray-700 mb-1 block">按分类获取接口</label>
-              <input type="text" value="/image?category={name}" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50" readonly>
-            </div>
-            <div>
-              <label class="text-sm text-gray-700 mb-1 block">请求频率限制</label>
-              <select class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
-                <option>无限制</option>
-                <option selected>每IP每分钟 60 次</option>
-                <option>每IP每小时 1000 次</option>
+              <select id="timezone" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
+                <option value="Asia/Shanghai">Asia/Shanghai (UTC+8)</option>
+                <option value="America/New_York">America/New_York (UTC-5)</option>
+                <option value="Europe/London">Europe/London (UTC+0)</option>
               </select>
             </div>
             <div>
-              <label class="text-sm text-gray-700 mb-1 block">返回格式</label>
-              <select class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
-                <option selected>JSON</option>
-                <option>图片直链 (302重定向)</option>
-                <option>HTML嵌入</option>
-              </select>
-            </div>
-          </div>
-          <div class="mt-4 p-3 bg-blue-50 rounded-lg">
-            <div class="text-xs font-medium text-blue-700 mb-1">API使用示例</div>
-            <div class="text-xs text-blue-600 font-mono bg-white p-2 rounded">
-              curl https://api.example.com/random
+              <label class="text-sm text-gray-700 mb-1 block">站点图标地址</label>
+              <input type="text" id="faviconUrl" placeholder="例如：static/favicon.ico 或 https://example.com/favicon.ico" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm">
             </div>
           </div>
         </div>
@@ -715,7 +703,17 @@
                 <div class="text-xs text-gray-400">记录所有API请求日志</div>
               </div>
               <label class="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" checked class="sr-only peer">
+                <input type="checkbox" id="enableAccessLog" class="sr-only peer">
+                <div class="w-11 h-6 bg-gray-200 peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+              </label>
+            </div>
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="text-sm font-medium">显示备案信息</div>
+                <div class="text-xs text-gray-400">页脚显示备案信息</div>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="showBeianInfo" class="sr-only peer">
                 <div class="w-11 h-6 bg-gray-200 peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
               </label>
             </div>
@@ -725,7 +723,7 @@
                 <div class="text-xs text-gray-400">防止恶意请求访问服务器其他目录</div>
               </div>
               <label class="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" checked class="sr-only peer">
+                <input type="checkbox" id="enablePathTraversalProtection" class="sr-only peer">
                 <div class="w-11 h-6 bg-gray-200 peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
               </label>
             </div>
@@ -735,7 +733,7 @@
                 <div class="text-xs text-gray-400">仅允许指定域名引用图片</div>
               </div>
               <label class="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" class="sr-only peer">
+                <input type="checkbox" id="enableHotlinkProtection" class="sr-only peer">
                 <div class="w-11 h-6 bg-gray-200 peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
               </label>
             </div>
@@ -745,7 +743,7 @@
                 <div class="text-xs text-gray-400">封禁恶意IP访问</div>
               </div>
               <label class="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" checked class="sr-only peer">
+                <input type="checkbox" id="enableIpBlacklist" class="sr-only peer">
                 <div class="w-11 h-6 bg-gray-200 peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
               </label>
             </div>
@@ -753,7 +751,7 @@
         </div>
 
         <div class="flex justify-end gap-3 pt-4">
-          <button class="btn btn-light px-4 py-2">重置默认</button>
+          <button class="btn btn-light px-4 py-2" id="resetDefaultBtn">重置默认</button>
           <button class="btn btn-primary px-4 py-2" id="saveSettingsBtn">
             <i class="fa fa-save mr-1"></i> 保存设置
           </button>
@@ -875,6 +873,12 @@
 
 <script>
   document.addEventListener('DOMContentLoaded', function() {
+    // 获取系统时区配置
+    getSystemTimezone();
+    
+    // 获取系统基本信息，包括站点名称
+    getSystemInfo();
+    
     // 初始化默认激活第一个菜单
     document.getElementById('menuImgManage').classList.add('active');
     // 默认显示图片管理页面
@@ -1320,8 +1324,8 @@ function renderUsersFromAPI(users) {
           ${user.role === 'admin' ? '管理员' : '普通用户'}
         </span>
       </td>
-      <td class="py-3 px-2 text-gray-500">${new Date(user.created_at).toLocaleDateString('zh-CN')}</td>
-      <td class="py-3 px-2 text-gray-500">${user.last_login && user.last_login.trim() ? new Date(user.last_login).toLocaleString('zh-CN') : '-'}</td>
+      <td class="py-3 px-2 text-gray-500">${formatDateWithTimezone(user.created_at)}</td>
+      <td class="py-3 px-2 text-gray-500">${user.last_login && user.last_login.trim() ? formatTimeWithTimezone(user.last_login) : '-'}</td>
       <td class="py-3 px-2">
         <span class="px-2 py-0.5 ${user.is_banned ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'} text-xs rounded-full">
           ${user.is_banned ? '已封禁' : '正常'}
@@ -1405,8 +1409,8 @@ async function viewUserDetail(userId) {
         document.getElementById('detailUserEmail').textContent = user.email || '-';
         document.getElementById('detailUserId').textContent = `#${user.id}`;
         document.getElementById('detailUserType').textContent = user.role === 'admin' ? '管理员' : (user.role === 'vip' ? 'VIP用户' : '普通用户');
-        document.getElementById('detailRegisterTime').textContent = user.created_at ? new Date(user.created_at).toLocaleDateString('zh-CN') : '-';
-        document.getElementById('detailLastLoginIP').textContent = user.last_login ? new Date(user.last_login).toLocaleString('zh-CN') : '-';
+        document.getElementById('detailRegisterTime').textContent = user.created_at ? formatDateWithTimezone(user.created_at) : '-';
+        document.getElementById('detailLastLoginIP').textContent = user.last_login ? formatTimeWithTimezone(user.last_login) : '-';
 
       // 设置状态徽章
       const statusBadge = document.getElementById('detailUserStatusBadge');
@@ -1540,6 +1544,21 @@ document.addEventListener('DOMContentLoaded', function() {
         mainFileInput.click();
       }
     });
+  }
+
+  // 获取系统配置
+  getSystemConfig();
+
+  // 保存设置按钮
+  const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+  if (saveSettingsBtn) {
+    saveSettingsBtn.addEventListener('click', saveSystemConfig);
+  }
+
+  // 重置默认按钮
+  const resetDefaultBtn = document.getElementById('resetDefaultBtn');
+  if (resetDefaultBtn) {
+    resetDefaultBtn.addEventListener('click', resetToDefaultSettings);
   }
 
   const mainFileInput = document.getElementById('mainFileInput');
@@ -2286,56 +2305,7 @@ document.addEventListener('DOMContentLoaded', function() {
         <label class="text-sm text-gray-700 mb-1 block">分类描述</label>
         <textarea class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm h-20" placeholder="请输入分类描述..." id="categoryDesc"></textarea>
       </div>
-      <div>
-        <label class="text-sm text-gray-700 mb-1 block">图标颜色</label>
-        <div class="flex gap-2 flex-wrap">
-          <label class="cursor-pointer">
-            <input type="radio" name="categoryColor" value="from-pink-500 to-pink-400" class="hidden peer">
-            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-pink-500 to-pink-400 peer-checked:ring-2 peer-checked:ring-pink-500 peer-checked:ring-offset-2"></div>
-          </label>
-          <label class="cursor-pointer">
-            <input type="radio" name="categoryColor" value="from-blue-500 to-blue-400" class="hidden peer">
-            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-400 peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:ring-offset-2"></div>
-          </label>
-          <label class="cursor-pointer">
-            <input type="radio" name="categoryColor" value="from-green-500 to-green-400" class="hidden peer">
-            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-green-500 to-green-400 peer-checked:ring-2 peer-checked:ring-green-500 peer-checked:ring-offset-2"></div>
-          </label>
-          <label class="cursor-pointer">
-            <input type="radio" name="categoryColor" value="from-purple-500 to-purple-400" class="hidden peer">
-            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-purple-400 peer-checked:ring-2 peer-checked:ring-purple-500 peer-checked:ring-offset-2"></div>
-          </label>
-          <label class="cursor-pointer">
-            <input type="radio" name="categoryColor" value="from-orange-500 to-orange-400" class="hidden peer">
-            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-400 peer-checked:ring-2 peer-checked:ring-orange-500 peer-checked:ring-offset-2"></div>
-          </label>
-          <label class="cursor-pointer">
-            <input type="radio" name="categoryColor" value="from-red-500 to-red-400" class="hidden peer">
-            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-red-500 to-red-400 peer-checked:ring-2 peer-checked:ring-red-500 peer-checked:ring-offset-2"></div>
-          </label>
-          <label class="cursor-pointer">
-            <input type="radio" name="categoryColor" value="from-cyan-500 to-cyan-400" class="hidden peer">
-            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-cyan-400 peer-checked:ring-2 peer-checked:ring-cyan-500 peer-checked:ring-offset-2"></div>
-          </label>
-          <label class="cursor-pointer">
-            <input type="radio" name="categoryColor" value="from-indigo-500 to-indigo-400" class="hidden peer">
-            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-400 peer-checked:ring-2 peer-checked:ring-indigo-500 peer-checked:ring-offset-2"></div>
-          </label>
-        </div>
-      </div>
-      <div>
-        <label class="text-sm text-gray-700 mb-1 block">图标</label>
-        <select class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" id="categoryIcon">
-          <option value="fa-star">⭐ 星星</option>
-          <option value="fa-user">👤 用户</option>
-          <option value="fa-leaf">🍃 叶子</option>
-          <option value="fa-picture-o">🖼️ 图片</option>
-          <option value="fa-heart">❤️ 心形</option>
-          <option value="fa-cloud">☁️ 云朵</option>
-          <option value="fa-sun">☀️ 太阳</option>
-          <option value="fa-moon">🌙 月亮</option>
-        </select>
-      </div>
+
       <div class="flex items-center gap-2">
         <input type="checkbox" id="categoryEnabled" checked class="rounded">
         <label for="categoryEnabled" class="text-sm text-gray-700">启用该分类</label>
@@ -2594,6 +2564,224 @@ document.addEventListener('DOMContentLoaded', function() {
 <script>
   // 基础API URL
   const API_BASE_URL = 'api';
+
+  // 系统时区配置
+  let systemTimezone = 'Asia/Shanghai'; // 默认时区
+
+  // 获取系统时区配置
+  async function getSystemTimezone() {
+    try {
+      const response = await fetch('/api/system/timezone');
+      const data = await response.json();
+      if (data.code === 200 && data.data && data.data.timezone) {
+        systemTimezone = data.data.timezone;
+        console.log('✅ 系统时区获取成功:', systemTimezone);
+      }
+    } catch (error) {
+      console.error('❌ 获取系统时区失败:', error);
+      // 使用默认时区
+    }
+  }
+
+  // 获取系统基本信息，包括站点名称
+  async function getSystemInfo() {
+    try {
+      const response = await fetch('/api/system/info');
+      const data = await response.json();
+      if (data.code === 200 && data.data && data.data.site_name) {
+        document.title = data.data.site_name + ' - 管理后台';
+        console.log('✅ 系统基本信息获取成功:', data.data.site_name);
+      }
+    } catch (error) {
+      console.error('❌ 获取系统基本信息失败:', error);
+      // 使用默认标题
+    }
+  }
+
+  // 获取系统配置
+  async function getSystemConfig() {
+    try {
+      const response = await fetch('/api/admin/system/config');
+      const data = await response.json();
+      if (data.code === 200 && data.data) {
+        const config = data.data;
+        
+        // 更新页面标题和导航栏中的站点名称
+        updateSiteNameFromConfig(config);
+        
+        // 填充基本设置
+        if (config.site_name) {
+          document.getElementById('siteName').value = config.site_name.value;
+        }
+        if (config.site_domain) {
+          document.getElementById('siteDomain').value = config.site_domain.value;
+        }
+        if (config.icp_beian) {
+          document.getElementById('icpBeian').value = config.icp_beian.value;
+        }
+        if (config.beian_link) {
+          document.getElementById('beianLink').value = config.beian_link.value;
+        }
+        if (config.timezone) {
+          document.getElementById('timezone').value = config.timezone.value;
+        }
+        if (config.favicon_url) {
+          document.getElementById('faviconUrl').value = config.favicon_url.value;
+        }
+        
+        // 填充安全设置
+        if (config.enable_access_log) {
+          document.getElementById('enableAccessLog').checked = config.enable_access_log.value === 'true';
+        }
+        if (config.show_beian_info) {
+          document.getElementById('showBeianInfo').checked = config.show_beian_info.value === 'true';
+        }
+        if (config.enable_path_traversal_protection) {
+          document.getElementById('enablePathTraversalProtection').checked = config.enable_path_traversal_protection.value === 'true';
+        }
+        if (config.enable_hotlink_protection) {
+          document.getElementById('enableHotlinkProtection').checked = config.enable_hotlink_protection.value === 'true';
+        }
+        if (config.enable_ip_blacklist) {
+          document.getElementById('enableIpBlacklist').checked = config.enable_ip_blacklist.value === 'true';
+        }
+        
+        console.log('✅ 系统配置获取成功');
+      }
+    } catch (error) {
+      console.error('❌ 获取系统配置失败:', error);
+    }
+  }
+
+  // 保存系统配置
+  async function saveSystemConfig() {
+    try {
+      // 构建配置数据
+      const configs = [
+        // 基本设置
+        { key: 'site_name', value: document.getElementById('siteName').value },
+        { key: 'site_domain', value: document.getElementById('siteDomain').value },
+        { key: 'icp_beian', value: document.getElementById('icpBeian').value },
+        { key: 'beian_link', value: document.getElementById('beianLink').value },
+        { key: 'timezone', value: document.getElementById('timezone').value },
+        { key: 'favicon_url', value: document.getElementById('faviconUrl').value },
+        
+        // 安全设置
+        { key: 'enable_access_log', value: document.getElementById('enableAccessLog').checked ? 'true' : 'false' },
+        { key: 'show_beian_info', value: document.getElementById('showBeianInfo').checked ? 'true' : 'false' },
+        { key: 'enable_path_traversal_protection', value: document.getElementById('enablePathTraversalProtection').checked ? 'true' : 'false' },
+        { key: 'enable_hotlink_protection', value: document.getElementById('enableHotlinkProtection').checked ? 'true' : 'false' },
+        { key: 'enable_ip_blacklist', value: document.getElementById('enableIpBlacklist').checked ? 'true' : 'false' }
+      ];
+      
+      // 逐个保存配置
+      let allSuccess = true;
+      for (const config of configs) {
+        const response = await fetch('/api/admin/system/config', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(config)
+        });
+        
+        const data = await response.json();
+        if (data.code !== 200) {
+          allSuccess = false;
+          console.error(`❌ 保存配置 ${config.key} 失败:`, data.msg);
+        }
+      }
+      
+      if (allSuccess) {
+        showToast('设置保存成功', 'success');
+        console.log('✅ 所有系统配置保存成功');
+      } else {
+        showToast('部分设置保存失败', 'error');
+      }
+    } catch (error) {
+      console.error('❌ 保存系统配置失败:', error);
+      showToast('保存设置失败', 'error');
+    }
+  }
+
+  // 重置为默认设置
+  async function resetToDefaultSettings() {
+    try {
+      const response = await fetch('/api/admin/system/config/reset', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      const data = await response.json();
+      if (data.code === 200) {
+        // 重置成功后，重新获取系统配置并更新表单
+        await getSystemConfig();
+        showToast('已重置为默认设置', 'success');
+        console.log('✅ 系统配置已重置为默认值');
+      } else {
+        showToast('重置默认设置失败', 'error');
+        console.error('❌ 重置系统配置失败:', data.msg);
+      }
+    } catch (error) {
+      console.error('❌ 重置系统配置失败:', error);
+      showToast('重置默认设置失败', 'error');
+    }
+  }
+
+  // 根据时区格式化时间
+  function formatTimeWithTimezone(dateString, options = {}) {
+    if (!dateString) return '-';
+    
+    try {
+      // 处理非标准时间格式
+      let normalizedDateString = dateString;
+      
+      // 如果是 "YYYY-MM-DD HH:MM:SS" 格式，转换为 "YYYY-MM-DDTHH:MM:SS" 格式
+      if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(dateString)) {
+        normalizedDateString = dateString.replace(' ', 'T');
+      }
+      
+      // 如果是 "YYYY-MM-DD" 格式，添加时间部分
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+        normalizedDateString = dateString + 'T00:00:00';
+      }
+      
+      const date = new Date(normalizedDateString);
+      // 确保时间是有效的
+      if (isNaN(date.getTime())) {
+        console.error('❌ 无效的时间字符串:', dateString);
+        return dateString;
+      }
+      
+      const defaultOptions = {
+        timeZone: systemTimezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      };
+      
+      const mergedOptions = { ...defaultOptions, ...options };
+      return new Intl.DateTimeFormat('zh-CN', mergedOptions).format(date);
+    } catch (error) {
+      console.error('❌ 时间格式化失败:', error);
+      return dateString;
+    }
+  }
+
+  // 根据时区格式化日期
+  function formatDateWithTimezone(dateString) {
+    return formatTimeWithTimezone(dateString, {
+      timeZone: systemTimezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+  }
 
   // 从后端API获取最新版本信息和更新日志
   async function loadGitHubVersionInfo() {
@@ -2885,7 +3073,7 @@ document.addEventListener('DOMContentLoaded', function() {
         <td class="py-3 px-2">${img.category}</td>
         <td class="py-3 px-2">${formatFileSize(img.size_bytes)}</td>
         <td class="py-3 px-2">${img.resolution}</td>
-        <td class="py-3 px-2 text-gray-500">${img.modified_time}</td>
+        <td class="py-3 px-2 text-gray-500">${formatTimeWithTimezone(img.modified_time)}</td>
       </tr>
     `).join('');
 
@@ -2927,11 +3115,11 @@ document.addEventListener('DOMContentLoaded', function() {
               document.getElementById('imgDetailFormat').textContent = imgData.format;
               document.getElementById('imgDetailCategory').textContent = imgData.category_name;
               document.getElementById('imgDetailMd5').textContent = imgData.md5;
-              document.getElementById('imgDetailUploadTime').textContent = new Date(imgData.upload_time).toLocaleString('zh-CN');
+              document.getElementById('imgDetailUploadTime').textContent = formatTimeWithTimezone(imgData.upload_time);
               document.getElementById('imgDetailUploader').textContent = imgData.uploader;
               document.getElementById('imgDetailUploadIp').textContent = imgData.upload_ip;
               document.getElementById('imgDetailViewCount').textContent = imgData.view_count;
-              document.getElementById('imgDetailLastViewed').textContent = imgData.last_viewed_at ? new Date(imgData.last_viewed_at).toLocaleString('zh-CN') : '从未访问';
+              document.getElementById('imgDetailLastViewed').textContent = imgData.last_viewed_at ? formatTimeWithTimezone(imgData.last_viewed_at) : '从未访问';
             } else {
               showToast('获取图片详情失败');
             }
@@ -3080,7 +3268,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     tbody.innerHTML = feedbacks.map(feedback => {
       const statusInfo = statusMap[feedback.status] || statusMap['pending'];
-      const createdTime = new Date(feedback.created_at).toLocaleString('zh-CN');
+      const createdTime = formatTimeWithTimezone(feedback.created_at);
       const username = feedback.username || '未知用户';
 
       return `
@@ -3225,11 +3413,11 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('imgDetailFormat').textContent = imgData.format;
             document.getElementById('imgDetailCategory').textContent = imgData.category_name;
             document.getElementById('imgDetailMd5').textContent = imgData.md5;
-            document.getElementById('imgDetailUploadTime').textContent = new Date(imgData.upload_time).toLocaleString('zh-CN');
+            document.getElementById('imgDetailUploadTime').textContent = formatTimeWithTimezone(imgData.upload_time);
             document.getElementById('imgDetailUploader').textContent = imgData.uploader;
             document.getElementById('imgDetailUploadIp').textContent = imgData.upload_ip;
             document.getElementById('imgDetailViewCount').textContent = imgData.view_count;
-            document.getElementById('imgDetailLastViewed').textContent = imgData.last_viewed_at ? new Date(imgData.last_viewed_at).toLocaleString('zh-CN') : '从未访问';
+            document.getElementById('imgDetailLastViewed').textContent = imgData.last_viewed_at ? formatTimeWithTimezone(imgData.last_viewed_at) : '从未访问';
           } else {
             showToast('获取图片详情失败');
           }

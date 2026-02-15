@@ -101,28 +101,8 @@ def get_image_categories() -> Dict[str, List[dict]]:
         return categories
     except Exception as e:
         print(f"[ERROR] 从数据库获取分类失败: {str(e)}")
-        # 发生错误时回退到文件系统扫描，但不包含根目录分类
-        categories = {}
-        
-        # 处理子文件夹分类
-        if os.path.isdir(IMG_ROOT_DIR):
-            for dir_name in safe_listdir(IMG_ROOT_DIR):
-                dir_path = os.path.join(IMG_ROOT_DIR, dir_name)
-                if os.path.isdir(dir_path):
-                    dir_images = get_all_images_in_dir(dir_path)
-                    img_list = []
-                    for img_path in dir_images:
-                        rel_path = os.path.relpath(img_path, IMG_ROOT_DIR)
-                        img_list.append({
-                            "name": os.path.basename(img_path),
-                            "url": f"/image?path={quote(rel_path)}",
-                            "path": rel_path
-                        })
-
-                    if img_list:
-                        categories[dir_name] = img_list
-
-        return categories
+        # 不再使用文件系统回退，直接返回空字典
+        return {}
 
 
 def get_paginated_categories(page: int = 1) -> dict:
@@ -196,23 +176,12 @@ def get_paginated_categories(page: int = 1) -> dict:
             }
     except Exception as e:
         print(f"[ERROR] 从数据库获取分页分类失败: {str(e)}")
-        # 发生错误时回退到原逻辑
-        all_categories = get_image_categories()
-        category_list = list(all_categories.items())
-
-        total_categories = len(category_list)
-        total_pages = (total_categories + HOME_PAGE_SIZE - 1) // HOME_PAGE_SIZE
-
-        page = max(1, min(page, total_pages))
-
-        start = (page - 1) * HOME_PAGE_SIZE
-        end = start + HOME_PAGE_SIZE
-
+        # 不再使用文件系统回退，直接返回空数据
         return {
-            "categories": dict(category_list[start:end]),
-            "current_page": page,
-            "total_pages": total_pages,
-            "total_categories": total_categories,
+            "categories": {},
+            "current_page": 1,
+            "total_pages": 0,
+            "total_categories": 0,
             "items_per_page": HOME_PAGE_SIZE
         }
 
@@ -282,33 +251,13 @@ def get_paginated_category_images(category_name: str, page: int = 1) -> dict:
             }
     except Exception as e:
         print(f"[ERROR] 从数据库获取分类图片失败: {str(e)}")
-        # 发生错误时回退到文件系统扫描，但不支持根目录分类
-        all_images = []
-        
-        dir_path = os.path.join(IMG_ROOT_DIR, category_name)
-        if os.path.isdir(dir_path):
-            dir_images = get_all_images_in_dir(dir_path)
-            for img_path in dir_images:
-                rel_path = os.path.relpath(img_path, IMG_ROOT_DIR)
-                all_images.append({
-                    "name": os.path.basename(img_path),
-                    "url": f"/image?path={quote(rel_path)}",
-                    "path": rel_path
-                })
-        
-        total_images = len(all_images)
-        total_pages = (total_images + CATEGORY_PAGE_SIZE - 1) // CATEGORY_PAGE_SIZE
-        page = max(1, min(page, total_pages))
-        
-        start = (page - 1) * CATEGORY_PAGE_SIZE
-        end = start + CATEGORY_PAGE_SIZE
-        
+        # 不再使用文件系统回退，直接返回空数据
         return {
             "category_name": category_name,
-            "images": all_images[start:end],
-            "current_page": page,
-            "total_pages": total_pages,
-            "total_images": total_images,
+            "images": [],
+            "current_page": 1,
+            "total_pages": 0,
+            "total_images": 0,
             "page_size": CATEGORY_PAGE_SIZE
         }
 
@@ -355,22 +304,8 @@ def get_random_image_in_category(category_name: str) -> Optional[dict]:
             }
     except Exception as e:
         print(f"[ERROR] 从数据库获取随机图片失败: {str(e)}")
-        # 发生错误时回退到文件系统扫描，但仍然要求分类目录存在
-        dir_path = os.path.join(IMG_ROOT_DIR, category_name)
-        if not os.path.isdir(dir_path):
-            return None
-
-        dir_images = get_all_images_in_dir(dir_path)
-        if not dir_images:
-            return {"error": "empty"}
-
-        random_path = random.choice(dir_images)
-        rel_path = os.path.relpath(random_path, IMG_ROOT_DIR)
-        return {
-            "name": os.path.basename(random_path),
-            "url": f"/image?path={quote(rel_path)}",
-            "path": rel_path
-        }
+        # 不再使用文件系统回退，直接返回None
+        return None
 
 
 def get_random_image_in_all_categories() -> Optional[dict]:
@@ -404,33 +339,8 @@ def get_random_image_in_all_categories() -> Optional[dict]:
             }
     except Exception as e:
         print(f"[ERROR] 从数据库获取全局随机图片失败: {str(e)}")
-        # 发生错误时回退到文件系统扫描
-        all_img_paths = []
-
-        # 收集根目录图片
-        if os.path.isdir(IMG_ROOT_DIR):
-            for file_name in safe_listdir(IMG_ROOT_DIR):
-                file_path = os.path.join(IMG_ROOT_DIR, file_name)
-                if os.path.isfile(file_path) and file_name.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp')):
-                    all_img_paths.append(file_path)
-
-        # 收集子分类图片
-        if os.path.isdir(IMG_ROOT_DIR):
-            for dir_name in safe_listdir(IMG_ROOT_DIR):
-                dir_path = os.path.join(IMG_ROOT_DIR, dir_name)
-                if os.path.isdir(dir_path):
-                    all_img_paths.extend(get_all_images_in_dir(dir_path))
-
-        if not all_img_paths:
-            return None
-
-        random_path = random.choice(all_img_paths)
-        rel_path = os.path.relpath(random_path, IMG_ROOT_DIR)
-        return {
-            "name": os.path.basename(random_path),
-            "url": f"/image?path={quote(rel_path)}",
-            "path": rel_path
-        }
+        # 不再使用文件系统回退，直接返回None
+        return None
 
 
 def get_all_images(page: int = 1, category: str = '') -> dict:
@@ -503,8 +413,14 @@ def get_all_images(page: int = 1, category: str = '') -> dict:
                 height = img['height'] or 0
                 resolution = f"{width}×{height}"
 
-                # 格式化创建时间
-                modified_time = img['created_at'].strftime('%Y-%m-%d') if img['created_at'] else ""
+                # 使用完整的创建时间
+                if img['created_at']:
+                    try:
+                        modified_time = img['created_at'].isoformat()
+                    except:
+                        modified_time = str(img['created_at'])
+                else:
+                    modified_time = ""
 
                 all_images.append({
                     "id": img['id'],
@@ -519,46 +435,8 @@ def get_all_images(page: int = 1, category: str = '') -> dict:
 
     except Exception as e:
         print(f"[ERROR] 从数据库读取图片列表失败: {str(e)}")
-        # 如果数据库读取失败，回退到文件系统扫描
+        # 不再使用文件系统回退，直接返回空列表
         all_images = []
-        categories_data = get_image_categories()
-
-        for category_name, images in categories_data.items():
-            for img in images:
-                file_path = os.path.join(IMG_ROOT_DIR, img["path"])
-                file_size = 0
-                file_resolution = "0x0"
-                modified_time = ""
-
-                if os.path.exists(file_path):
-                    file_size = os.path.getsize(file_path)
-                    modified_time = datetime.fromtimestamp(os.path.getmtime(file_path)).strftime('%Y-%m-%d')
-
-                    try:
-                        from PIL import Image
-                        with Image.open(file_path) as img_obj:
-                            file_resolution = f"{img_obj.width}×{img_obj.height}"
-                    except:
-                        pass
-
-                # 计算文件大小显示
-                if file_size < 1024:
-                    size_str = f"{file_size}B"
-                elif file_size < 1024 * 1024:
-                    size_str = f"{file_size // 1024}KB"
-                else:
-                    size_str = f"{file_size // (1024 * 1024)}MB"
-
-                all_images.append({
-                    "id": len(all_images) + 1,
-                    "name": img["name"],
-                    "category": category_name,
-                    "path": img["path"],
-                    "url": img["url"],
-                    "size_bytes": file_size,
-                    "resolution": file_resolution,
-                    "modified_time": modified_time
-                })
 
     # 分页处理
     total_images = len(all_images)

@@ -14,7 +14,7 @@ from psycopg2.extras import RealDictCursor
 from ..api.dependencies import get_current_admin
 from ..handlers.error_handlers import create_error_response, get_base_url
 
-from ..core.config import IMG_ROOT_DIR, ICP_BEIAN_CODE, ICP_BEIAN_URL
+from ..core.config import IMG_ROOT_DIR
 from ..core.database import get_db_connection
 from ..services.image_service import (
     get_paginated_categories,
@@ -248,14 +248,7 @@ async def handle_image(
     )
 
 
-async def api_config():
-    """配置信息API"""
-    return JSONResponse(content={
-        "icp_beian_code": ICP_BEIAN_CODE if ICP_BEIAN_CODE else "",
-        "icp_beian_url": ICP_BEIAN_URL if ICP_BEIAN_URL else "https://beian.miit.gov.cn",
-        "code": 200,
-        "msg": "success"
-    })
+
 
 
 async def api_all_images(page: int = Query(1, ge=1, le=1000, description="页码"), category: str = Query("", description="分类名称"), current_user: dict = Depends(get_current_admin)):
@@ -380,15 +373,15 @@ async def api_update_image(request: Request, image_id: int, filename: str = Body
             original_category_name = image[4]
             
             # 校验文件名，避免路径攻击
-            import re
+            from ..utils.utils import validate_local_path
             
             # 检测路径穿透攻击
-            path_traversal_patterns = ["../", "..\\", "/", "\\"]
-            has_path_traversal = any(pattern in filename for pattern in path_traversal_patterns)
+            is_valid, error_msg = validate_local_path(filename)
+            has_path_traversal = not is_valid
             
             if has_path_traversal:
                 print(f"[ERROR] 检测到路径穿透攻击尝试 | 用户: {username} | IP: {client_ip} | 文件名: {filename}")
-                print(f"[ERROR] 攻击详情: 文件名包含路径穿透模式")
+                print(f"[ERROR] 攻击详情: {error_msg}")
                 # 记录详细的错误日志
                 import traceback
                 print(f"[ERROR] 路径穿透攻击检测堆栈: {traceback.format_exc()}")

@@ -29,9 +29,42 @@ def get_base_url(request: Request) -> str:
 
 
 def is_html_request(request: Request) -> bool:
-    """判断是否为HTML请求"""
+    """判断是否为HTML请求（浏览器直接访问）"""
+    # 1. 检查是否为AJAX请求（传统XHR）
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return False
+    
+    # 2. 检查是否为现代Fetch API请求（由网页自动发起）
+    sec_fetch_mode = request.headers.get('Sec-Fetch-Mode', '')
+    sec_fetch_dest = request.headers.get('Sec-Fetch-Dest', '')
+    sec_fetch_site = request.headers.get('Sec-Fetch-Site', '')
+    
+    # 现代网页API请求特征
+    is_modern_api_request = (
+        sec_fetch_mode in ['cors', 'same-origin'] and
+        sec_fetch_dest in ['empty', 'api'] and
+        sec_fetch_site in ['same-origin', 'cross-site']
+    )
+    
+    if is_modern_api_request:
+        return False
+    
+    # 3. 检查请求头信息
     accept_header = request.headers.get('Accept', '')
-    return 'text/html' in accept_header or accept_header == '*/*'
+    user_agent = request.headers.get('User-Agent', '')
+    
+    # 4. 判断是否为浏览器用户代理
+    is_browser = any(browser in user_agent.lower() for browser in 
+                    ['mozilla', 'chrome', 'safari', 'edge', 'opera'])
+    
+    # 5. 判断是否请求HTML
+    is_html_accept = 'text/html' in accept_header or accept_header == '*/*'
+    
+    # 6. 综合判断：浏览器直接访问返回HTML，其他访问返回JSON
+    if is_browser and is_html_accept:
+        return True
+    
+    return False
 
 
 def render_error_page(template_path: str, context: dict) -> str:

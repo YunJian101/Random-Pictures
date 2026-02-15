@@ -34,9 +34,6 @@
 git clone https://github.com/YunJian101/Random-Pictures
 cd Random-Pictures
 
-# 创建图片目录
-mkdir -p images
-
 # 启动服务
 docker compose up -d
 
@@ -98,44 +95,45 @@ Random-Pictures/
 
 ### 4.1 docker-compose.yml配置
 
-完整的环境变量配置如下：
+完整的配置如下：
 
 ```yaml
 services:
+  # 随机图API核心服务
   random-pictures:
-    image: ghcr.io/yunjian101/random-pictures:latest  
-    container_name: random-pictures
-    restart: always
-    volumes:
-      - ./images:/app/images  # 挂载图片目录
+    # 构建配置
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ghcr.io/yunjian101/random-pictures:latest
+    container_name: random-pictures                 # 容器名称，便于管理
     ports:
-      - "8081:8081"
+      - "8081:8081"                                 # 端口映射：主机端口:容器端口
+    volumes:
+    #通常情况下挂在/app/images文件夹到本地就行，不用挂载/app
+    # - ./images:/app/images
+      - ./:/app
+    restart: unless-stopped
+    # 重启策略：除非手动停止，否则容器退出后自动重启
     environment:
-      # 基础配置
-      - SITE_NAME=随机图API
-      - IMG_ROOT_DIR=/app/images
-      - PORT=8081
-      
-      # 站点个性化配置
-      - FAVICON_URL=
-      - ICP_BEIAN_CODE=
-      - ICP_BEIAN_URL=
-      
-      # 导航栏按钮配置
-      - NAV_HOME_URL=/
-      - NAV_BLOG_URL=
-      - NAV_GITHUB_URL=
-      - NAV_CUSTOM_TEXT=
-      - NAV_CUSTOM_URL=
-      
-      # 文本内容配置
-      - WELCOME_MESSAGE=欢迎使用随机图API
-      - COPYRIGHT_NOTICE=本站所有图片均为用户上传，仅作学习所有，若有侵权，请与我联系我将及时删除！
-      
-      # 性能配置
-      - CATEGORY_PAGE_SIZE=6
-      - HOME_PAGE_SIZE=6
+      # ========== 基础配置 ==========
+      - DATABASE_URL=postgresql://postgres:postgres@192.168.11.3:5432/random_pictures  
+      # 数据库连接URL：格式为 postgresql://用户名:密码@主机:端口/数据库名
 ```
+
+**配置说明：**
+
+- **构建配置**：使用项目根目录的Dockerfile构建镜像
+- **卷挂载**：默认挂载整个项目目录到容器的/app目录，便于开发和调试
+- **端口映射**：将容器的8081端口映射到主机的8081端口
+- **数据库配置**：需要配置正确的PostgreSQL数据库连接URL
+- **重启策略**：容器退出后自动重启，除非手动停止
+
+**注意事项：**
+
+- 首次部署时，系统会自动初始化数据库结构
+- 所有环境变量配置已迁移到数据库中，通过管理后台进行配置
+- 性能相关配置（如分页大小）已设置为合理的默认值
 
 ## 🔌 API接口使用
 

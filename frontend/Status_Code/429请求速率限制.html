@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>429 - 请求过于频繁 | 随机图片API</title>
+    <title>429 - 请求过于频繁 | 加载中...</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -79,10 +79,43 @@
             height: 100%;
             background: #6366f1;
             border-radius: 4px;
-            width: {{progress}}%;
+            width: 0%;
             transition: width 1s linear;
         }
     </style>
+    <script>
+        // 获取系统基本信息，包括站点名称
+        async function getSystemInfo() {
+            try {
+                const response = await fetch('/api/system/info');
+                const data = await response.json();
+                if (data.code === 200 && data.data && data.data.site_name) {
+                    const siteName = data.data.site_name;
+                    // 更新页面标题
+                    document.title = `429 - 请求过于频繁 | ${siteName}`;
+                    // 更新页面中的站点名称
+                    const siteNameElements = document.querySelectorAll('h1.text-gradient');
+                    siteNameElements.forEach(element => {
+                        element.textContent = siteName;
+                    });
+                    // 更新页脚中的站点名称
+                    const footerElements = document.querySelectorAll('footer p');
+                    footerElements.forEach(element => {
+                        if (element.textContent.includes('© 2026')) {
+                            element.textContent = `© 2026 ${siteName} - 稳定运行2000+天`;
+                        }
+                    });
+                    console.log('✅ 系统基本信息获取成功:', siteName);
+                }
+            } catch (error) {
+                console.error('❌ 获取系统基本信息失败:', error);
+                // 使用默认标题
+            }
+        }
+
+        // 页面加载完成后获取系统信息
+        window.addEventListener('DOMContentLoaded', getSystemInfo);
+    </script>
 </head>
 <body class="bg-gradient min-h-screen flex flex-col items-center justify-center p-4">
     <!-- 背景装饰 -->
@@ -144,24 +177,54 @@
 
     <script>
         // 简单的倒计时逻辑
-        let waitTime = {{wait_time}};
-        const countdownText = document.getElementById('countdown-text');
-        const refreshBtn = document.getElementById('refresh-btn');
-        const progressBar = document.querySelector('.countdown-progress');
-        
-        const countdown = setInterval(() => {
-            waitTime--;
-            const progress = (waitTime / {{wait_time}}) * 100;
-            progressBar.style.width = `${100 - progress}%`;
-            countdownText.textContent = `剩余 ${waitTime} 秒`;
-            
-            if (waitTime <= 0) {
-                clearInterval(countdown);
-                countdownText.textContent = "冷却完成！";
-                refreshBtn.disabled = false;
-                refreshBtn.addEventListener('click', () => window.location.reload());
+        (function() {
+            // 尝试获取wait_time值，如果没有则使用默认值10
+            let waitTime = 10;
+            try {
+                // 从DOM中获取wait_time值
+                const waitTimeElement = document.getElementById('countdown-text');
+                if (waitTimeElement) {
+                    const text = waitTimeElement.textContent;
+                    const match = text.match(/剩余 (\d+) 秒/);
+                    if (match && match[1]) {
+                        waitTime = parseInt(match[1], 10);
+                    }
+                }
+            } catch (error) {
+                console.error('获取wait_time失败:', error);
             }
-        }, 1000);
+            
+            const countdownText = document.getElementById('countdown-text');
+            const refreshBtn = document.getElementById('refresh-btn');
+            const progressBar = document.querySelector('.countdown-progress');
+            
+            // 初始化进度条
+            if (progressBar) {
+                progressBar.style.width = '0%';
+            }
+            
+            const countdown = setInterval(() => {
+                waitTime--;
+                const progress = (waitTime / 10) * 100; // 使用默认值10作为分母
+                if (progressBar) {
+                    progressBar.style.width = `${100 - progress}%`;
+                }
+                if (countdownText) {
+                    countdownText.textContent = `剩余 ${waitTime} 秒`;
+                }
+                
+                if (waitTime <= 0) {
+                    clearInterval(countdown);
+                    if (countdownText) {
+                        countdownText.textContent = "冷却完成！";
+                    }
+                    if (refreshBtn) {
+                        refreshBtn.disabled = false;
+                        refreshBtn.addEventListener('click', () => window.location.reload());
+                    }
+                }
+            }, 1000);
+        })();
     </script>
 </body>
 </html>

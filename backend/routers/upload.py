@@ -45,22 +45,37 @@ def _get_image_resolution(file_path: str) -> tuple:
         return (0, 0)
 
 
-def _get_category_id(category_name: str) -> Optional[int]:
+def _get_category_id(category_id: str) -> Optional[int]:
     """
-    根据分类名称获取分类ID
+    根据分类ID获取分类ID，仅支持数字ID
 
     Args:
-        category_name: 分类名称
+        category_id: 分类ID（数字字符串）
 
     Returns:
-        int: 分类ID，如果分类不存在返回None
+        int: 分类ID，如果分类不存在或参数无效返回None
     """
     try:
+        # 验证参数是否为有效的数字
+        if not category_id.isdigit():
+            print(f"[ERROR] 分类ID格式无效: {category_id}")
+            return None
+        
+        # 转换为整数
+        category_id_int = int(category_id)
+        
+        # 查询数据库
         with get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('SELECT id FROM categories WHERE name = %s', (category_name,))
+            cursor.execute('SELECT id FROM categories WHERE id = %s', (category_id_int,))
             result = cursor.fetchone()
-            return result[0] if result else None
+            
+            # 检查分类是否存在
+            if not result:
+                print(f"[ERROR] 分类不存在: ID={category_id_int}")
+                return None
+            
+            return result[0]
     except Exception as e:
         print(f"[ERROR] 获取分类ID失败: {str(e)}")
         return None
@@ -100,19 +115,26 @@ async def api_upload_images(
         # 支持的图片格式
         allowed_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
 
-        # 验证分类名称安全性
-        if not validate_safe_path(IMG_ROOT_DIR, category):
-            raise HTTPException(status_code=422, detail="非法的分类名称")
-
         # 获取分类ID
         category_id = _get_category_id(category)
 
+        # 验证分类ID是否有效
+        if not category_id:
+            raise HTTPException(status_code=400, detail="分类不存在或无效")
+
+        # 获取分类名称用于创建目录
+        category_name = None
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT name FROM categories WHERE id = %s', (category_id,))
+            result = cursor.fetchone()
+            if not result:
+                raise HTTPException(status_code=400, detail="分类不存在")
+            category_name = result[0]
+
         # 创建分类目录（如果不存在）
-        if category == "根目录":
-            target_dir = IMG_ROOT_DIR
-        else:
-            target_dir = os.path.join(IMG_ROOT_DIR, category)
-            os.makedirs(target_dir, exist_ok=True)
+        target_dir = os.path.join(IMG_ROOT_DIR, category_name)
+        os.makedirs(target_dir, exist_ok=True)
 
         # 检查目录是否存在且可写
         if not os.path.exists(target_dir):
@@ -282,6 +304,15 @@ def _sanitize_filename(filename: str) -> str:
     Returns:
         str: 安全的文件名
     """
+    # 导入工具函数
+    from ..utils.utils import validate_local_path
+    
+    # 检测路径遍历字符
+    is_valid, _ = validate_local_path(filename)
+    if not is_valid:
+        # 如果包含路径遍历字符，使用默认名称
+        return 'safe_file'
+    
     # 获取文件名和扩展名
     name, ext = os.path.splitext(filename)
 

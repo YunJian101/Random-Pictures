@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>随机图片API - 全功能平台</title>
+    <title>加载中...</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- 引入Font Awesome图标 - 多CDN竞争加载 -->
     <script>
@@ -42,6 +42,30 @@
     })();
     </script>
     <script>
+        // 获取系统基本信息，包括站点名称
+        async function getSystemInfo() {
+            try {
+                const response = await fetch('/api/system/info');
+                const data = await response.json();
+                if (data.code === 200 && data.data && data.data.site_name) {
+                    const siteName = data.data.site_name;
+                    document.title = siteName + ' - 全功能平台';
+                    // 更新页面中的站点名称
+                    const siteNameElement = document.querySelector('h1.text-gradient');
+                    if (siteNameElement) {
+                        siteNameElement.textContent = siteName;
+                    }
+                    console.log('✅ 系统基本信息获取成功:', siteName);
+                }
+            } catch (error) {
+                console.error('❌ 获取系统基本信息失败:', error);
+                // 使用默认标题
+            }
+        }
+
+        // 页面加载完成后获取系统信息
+        getSystemInfo();
+
         tailwind.config = {
             darkMode: 'class',
             theme: {

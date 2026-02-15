@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>随机图片API - 首页</title>
+    <title>加载中...</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- 多CDN竞争加载 Font Awesome 4.7.0 -->
     <script>
@@ -225,6 +225,31 @@
             --secondary: #10b981;
         }
     </style>
+    <script>
+        // 获取系统基本信息，包括站点名称
+        async function getSystemInfo() {
+            try {
+                const response = await fetch('/api/system/info');
+                const data = await response.json();
+                if (data.code === 200 && data.data && data.data.site_name) {
+                    const siteName = data.data.site_name;
+                    document.title = siteName + ' - 用户后台';
+                    // 更新导航栏中的站点名称
+                    const navSiteNameElement = document.querySelector('a.text-gradient');
+                    if (navSiteNameElement) {
+                        navSiteNameElement.textContent = siteName;
+                    }
+                    console.log('✅ 系统基本信息获取成功:', siteName);
+                }
+            } catch (error) {
+                console.error('❌ 获取系统基本信息失败:', error);
+                // 使用默认标题
+            }
+        }
+
+        // 页面加载完成后获取系统信息
+        window.addEventListener('DOMContentLoaded', getSystemInfo);
+    </script>
 </head>
 <body class="min-h-screen bg-white dark:bg-dark-200 text-dark-200 dark:text-light-100 transition-colors duration-300">
     <!-- 背景装饰 -->
@@ -890,7 +915,25 @@ echo "&lt;img src='{$imgUrl}' alt='随机图片'&gt;";
 
     <!-- 交互逻辑脚本（新增反馈相关交互） -->
     <script>
+        // 获取系统基本信息，包括站点名称
+        async function getSystemInfo() {
+            try {
+                const response = await fetch('/api/system/info');
+                const data = await response.json();
+                if (data.code === 200 && data.data && data.data.site_name) {
+                    document.title = data.data.site_name + ' - 用户后台';
+                    console.log('✅ 系统基本信息获取成功:', data.data.site_name);
+                }
+            } catch (error) {
+                console.error('❌ 获取系统基本信息失败:', error);
+                // 使用默认标题
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
+            // 获取系统基本信息，更新页面标题
+            getSystemInfo();
+            
             // 1. 从后端获取分类数据
             const fetchCategories = async () => {
                 try {

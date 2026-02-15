@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>404 - 分类不存在 | 随机图片API</title>
+    <title>404 - 分类不存在 | 加载中...</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -72,12 +72,44 @@
     <script>
         function showCategories() {
             localStorage.setItem('openModule', 'categories');
-            window.location.href = '{{BASE_URL}}/';
+            window.location.href = window.location.origin + '/';
         }
         function showFeedback() {
             localStorage.setItem('openModule', 'feedback');
-            window.location.href = '{{BASE_URL}}/';
+            window.location.href = window.location.origin + '/';
         }
+
+        // 获取系统基本信息，包括站点名称
+        async function getSystemInfo() {
+            try {
+                const response = await fetch('/api/system/info');
+                const data = await response.json();
+                if (data.code === 200 && data.data && data.data.site_name) {
+                    const siteName = data.data.site_name;
+                    // 更新页面标题
+                    document.title = `404 - 分类不存在 | ${siteName}`;
+                    // 更新页面中的站点名称
+                    const siteNameElements = document.querySelectorAll('h1.text-gradient');
+                    siteNameElements.forEach(element => {
+                        element.textContent = siteName;
+                    });
+                    // 更新页脚中的站点名称
+                    const footerElements = document.querySelectorAll('footer p');
+                    footerElements.forEach(element => {
+                        if (element.textContent.includes('© 2026')) {
+                            element.textContent = `© 2026 ${siteName} - 稳定运行2000+天`;
+                        }
+                    });
+                    console.log('✅ 系统基本信息获取成功:', siteName);
+                }
+            } catch (error) {
+                console.error('❌ 获取系统基本信息失败:', error);
+                // 使用默认标题
+            }
+        }
+
+        // 页面加载完成后获取系统信息
+        window.addEventListener('DOMContentLoaded', getSystemInfo);
     </script>
 </head>
 <body class="bg-gradient min-h-screen flex flex-col items-center justify-center p-4">

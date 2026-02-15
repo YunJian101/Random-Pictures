@@ -1,6 +1,6 @@
 # =============================================================================
 # Docker Compose 配置文件
-# 用于部署和管理随机图API服务
+# 用于部署和随机图API服务
 # =============================================================================
 services:
   # 随机图API核心服务
@@ -14,76 +14,12 @@ services:
     ports:
       - "8081:8081"                                 # 端口映射：主机端口:容器端口
     volumes:
-      - ./:/app                                     # 卷挂载：将当前目录挂载到容器的/app目录
-    restart: unless-stopped                         # 重启策略：除非手动停止，否则容器退出后自动重启
+    #通常情况下挂在/app/images文件夹到本地就行，不用挂载/app
+    # - ./images:/app/images
+      - ./:/app
+    restart: unless-stopped
+    # 重启策略：除非手动停止，否则容器退出后自动重启
     environment:
-      - ENVIRONMENT=production                      # 环境变量：设置运行环境为生产环境
       # ========== 基础配置 ==========
-      - SITE_NAME=随机图API                          # 站点名称，显示在页面标题和logo
-      - IMG_ROOT_DIR=/app/images                    # 图片根目录（固定，无需修改）
-      - PORT=8081                                   # 容器内部端口（固定，无需修改）
-      - PUID=1000                                   # 容器用户ID（默认1000兼容大多数Linux）
-      - PGID=1000                                   # 容器组ID（默认1000兼容大多数Linux）
-      - DATABASE_URL=postgresql://postgres:postgres@192.168.11.3:5432/random_pictures  # 数据库连接URL：格式为 postgresql://用户名:密码@主机:端口/数据库名
-      
-      # ========== 站点个性化配置 ==========
-      # 以下配置留空则不显示对应元素
-      - FAVICON_URL=https://shifeiyu.cn/upload/%E7%AB%99%E7%82%B9logo.png  # 站点图标URL，支持本地或远程图片
-      - ICP_BEIAN_CODE=京ICP备1234XXX号                                   # ICP备案号，如"京ICP备12345678号"
-      - ICP_BEIAN_URL=https://beian.miit.gov.cn                            # 备案信息链接，如"https://beian.miit.gov.cn"
-      
-      # ========== 导航栏按钮配置 ==========
-      # 以下配置留空则不显示对应按钮
-      - NAV_HOME_URL=/                              # 首页链接（默认即可）
-      - NAV_BLOG_URL=https://blog.shifeiyu.cn                               # 博客链接，填写后显示"博客"按钮
-      - NAV_GITHUB_URL=https://github.com/YunJian101/Random-Pictures       # GitHub链接，填写后显示"开源地址"按钮
-      - NAV_CUSTOM_TEXT=                            # 自定义按钮文本，如"关于我们"
-      - NAV_CUSTOM_URL=                             # 自定义按钮链接，与上面文本配对使用
-      
-      # ========== 文本内容配置 ==========
-      # 首页和详情页的文本内容，支持自定义
-      - WELCOME_MESSAGE=欢迎使用是飞鱼随机图API     # 首页欢迎语
-      - COPYRIGHT_NOTICE=本站所有图片均为用户上传，仅作学习所有，若有侵权，请与我联系我将及时删除！  # 版权声明
-      
-      # ========== 性能配置（可选修改） ==========
-      # 建议设置为3的倍数（每行固定显示3个，确保布局整齐）
-      - CATEGORY_PAGE_SIZE=6                        # 分类详情页每页显示图片数量（推荐3/6/9/12等）
-      - HOME_PAGE_SIZE=6                            # 首页每页显示分类数量（推荐3/6/9/12等）
-
-# =============================================================================
-# 使用示例：
-#
-# 1. 最小化部署（新手推荐）：
-#    docker compose up -d
-#
-# 2. 自定义配置示例：
-#    environment:
-#      - SITE_NAME=我的专属图库
-#      - FAVICON_URL=https://example.com/favicon.ico
-#      - NAV_BLOG_URL=https://blog.example.com
-#      - NAV_GITHUB_URL=https://github.com/my-repo
-#      - NAV_CUSTOM_TEXT=联系我们
-#      - NAV_CUSTOM_URL=https://example.com/contact
-#      - WELCOME_MESSAGE=欢迎使用我的个人图片库
-#      - COPYRIGHT_NOTICE=本图库所有图片版权归个人所有
-#      - ICP_BEIAN_CODE=京ICP备12345678号
-#
-# 3. 更换端口示例：
-#    ports:
-#      - "80:8081"
-#
-# 4. 常用命令：
-#    - 启动：docker compose up -d
-#    - 停止：docker compose down
-#    - 查看状态：docker compose ps
-#    - 查看日志：docker compose logs -f
-#    - 重启：docker compose restart
-#
-# 注意事项：
-# - 确保 images 目录存在，否则会自动创建空目录
-# - 支持实时文件同步，添加/删除图片无需重启服务
-# - 镜像内置权限修复，无需手动修改文件权限
-# - 后端已模块化拆分到 backend 文件夹
-# - 前端UI和HTML代码保持不变
-# =============================================================================
-    
+      - DATABASE_URL=postgresql://postgres:postgres@192.168.11.3:5432/random_pictures  
+      # 数据库连接URL：格式为 postgresql://用户名:密码@主机:端口/数据库名

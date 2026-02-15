@@ -508,6 +508,184 @@ async def api_system_execute_update(current_user: dict = Depends(get_current_adm
         }, status_code=500)
 
 
+async def api_admin_get_system_config(current_user: dict = Depends(get_current_admin)):
+    """管理员获取系统配置API"""
+    from ..core.database import get_db_connection
+    from psycopg2.extras import RealDictCursor
+
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+            # 查询所有系统配置
+            cursor.execute('SELECT config_key, config_value, description FROM system_configs')
+            configs = cursor.fetchall()
+
+            # 构建配置字典
+            config_dict = {}
+            for config in configs:
+                config_dict[config['config_key']] = {
+                    'value': config['config_value'],
+                    'description': config['description']
+                }
+
+            return JSONResponse(content={
+                'code': 200,
+                'msg': '获取系统配置成功',
+                'data': config_dict
+            })
+    except Exception as e:
+        print(f"[ERROR] 获取系统配置时发生错误: {str(e)}")
+        return JSONResponse(content={
+            'code': 500,
+            'msg': '获取系统配置时发生错误'
+        }, status_code=500)
+
+
+def validate_config_value(config_key: str, config_value: str) -> tuple[bool, str]:
+    """
+    验证配置值的有效性
+    
+    Args:
+        config_key: 配置键
+        config_value: 配置值
+        
+    Returns:
+        (is_valid, error_message): 验证结果和错误信息
+    """
+    # 通用验证：配置值不能为空
+    if config_value is None:
+        return False, "配置值不能为空"
+    
+    # 转换为字符串
+    config_value = str(config_value)
+    
+    # 导入工具函数
+    from ..utils.utils import validate_local_path, is_remote_url
+    
+    # 根据配置键进行特定验证
+    if config_key == 'site_name':
+        if len(config_value) == 0:
+            return False, "站点名称不能为空"
+        if len(config_value) > 50:
+            return False, "站点名称长度不能超过50个字符"
+    elif config_key == 'site_domain':
+        if config_value:
+            if not is_remote_url(config_value):
+                return False, "站点域名必须是有效的URL格式"
+    elif config_key == 'favicon_url':
+        if config_value:
+            # 检查是否为URL
+            if not is_remote_url(config_value):
+                # 本地路径验证
+                is_valid, error_msg = validate_local_path(config_value)
+                if not is_valid:
+                    return False, error_msg
+                # 确保路径是相对路径，不包含绝对路径标志
+                if config_value.startswith('/'):
+                    # 允许以/开头的路径，但会在处理时转换为相对路径
+                    pass
+    elif config_key == 'icp_beian':
+        if len(config_value) > 50:
+            return False, "ICP备案号长度不能超过50个字符"
+    elif config_key == 'beian_link':
+        if config_value:
+            if not is_remote_url(config_value):
+                return False, "备案信息链接必须是有效的URL格式"
+    elif config_key == 'timezone':
+        if not config_value:
+            return False, "时区设置不能为空"
+        # 简化时区验证，避免依赖pytz模块
+        # 只验证基本格式，不进行完整的时区名称验证
+        import re
+        timezone_pattern = r'^[A-Za-z_]+/[A-Za-z_]+$'
+        if not re.match(timezone_pattern, config_value):
+            return False, "请输入有效的时区名称格式，如 Asia/Shanghai"
+    elif config_key in ['enable_access_log', 'show_beian_info', 'enable_path_traversal_protection', 'enable_hotlink_protection', 'enable_ip_blacklist']:
+        if config_value not in ['true', 'false']:
+            return False, "该配置必须设置为 'true' 或 'false'"
+    
+    return True, ""
+
+async def api_admin_update_system_config(request: Request, current_user: dict = Depends(get_current_admin)):
+    """管理员更新系统配置API"""
+    from ..core.database import get_db_connection
+
+    try:
+        data = await request.json()
+        config_key = data.get('key')
+        config_value = data.get('value')
+
+        if not config_key:
+            return JSONResponse(content={
+                'code': 400,
+                'msg': '配置键不能为空'
+            }, status_code=400)
+
+        # 验证配置值
+        is_valid, error_msg = validate_config_value(config_key, config_value)
+        if not is_valid:
+            return JSONResponse(content={
+                'code': 400,
+                'msg': error_msg
+            }, status_code=400)
+
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+
+            # 检查配置是否存在
+            cursor.execute('SELECT id FROM system_configs WHERE config_key = %s', (config_key,))
+            if not cursor.fetchone():
+                return JSONResponse(content={
+                    'code': 404,
+                    'msg': '配置不存在'
+                }, status_code=404)
+
+            # 更新配置
+            cursor.execute('''
+                UPDATE system_configs 
+                SET config_value = %s, updated_at = CURRENT_TIMESTAMP 
+                WHERE config_key = %s
+            ''', (config_value, config_key))
+
+            return JSONResponse(content={
+                'code': 200,
+                'msg': '配置更新成功'
+            })
+    except Exception as e:
+        print(f"[ERROR] 更新系统配置时发生错误: {str(e)}")
+        return JSONResponse(content={
+            'code': 500,
+            'msg': '更新系统配置时发生错误'
+        }, status_code=500)
+
+
+async def api_admin_reset_system_config(current_user: dict = Depends(get_current_admin)):
+    """管理员重置系统配置为默认值API"""
+    from ..core.database import get_db_connection
+
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+
+            # 重置所有配置为默认值（将 default_value 复制到 config_value）
+            cursor.execute('''
+                UPDATE system_configs 
+                SET config_value = default_value, updated_at = CURRENT_TIMESTAMP
+            ''')
+
+            return JSONResponse(content={
+                'code': 200,
+                'msg': '系统配置已重置为默认值'
+            })
+    except Exception as e:
+        print(f"[ERROR] 重置系统配置时发生错误: {str(e)}")
+        return JSONResponse(content={
+            'code': 500,
+            'msg': '重置系统配置时发生错误'
+        }, status_code=500)
+
+
 async def api_system_rollback(request: Request, current_user: dict = Depends(get_current_admin)):
     """系统回滚API"""
     try:
@@ -534,3 +712,106 @@ async def api_system_rollback(request: Request, current_user: dict = Depends(get
             'code': 500,
             'msg': f'执行回滚失败: {str(e)}'
         }, status_code=500)
+
+
+async def api_get_system_timezone():
+    """获取系统时区配置API（公共接口）"""
+    from ..core.database import get_db_connection
+
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+
+            # 查询时区配置
+            cursor.execute('SELECT config_value FROM system_configs WHERE config_key = %s', ('timezone',))
+            result = cursor.fetchone()
+
+            if result:
+                timezone = result[0]
+            else:
+                # 如果没有配置，使用默认值
+                timezone = 'Asia/Shanghai'
+
+            return JSONResponse(content={
+                'code': 200,
+                'msg': '获取系统时区成功',
+                'data': {
+                    'timezone': timezone
+                }
+            })
+    except Exception as e:
+        print(f"[ERROR] 获取系统时区时发生错误: {str(e)}")
+        # 发生错误时返回默认时区
+        return JSONResponse(content={
+            'code': 200,
+            'msg': '获取系统时区失败，使用默认时区',
+            'data': {
+                'timezone': 'Asia/Shanghai'
+            }
+        })
+
+
+async def api_get_system_info():
+    """获取系统基本信息API（公共接口）"""
+    from ..core.database import get_db_connection
+
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+
+            # 查询站点名称配置
+            cursor.execute('SELECT config_value FROM system_configs WHERE config_key = %s', ('site_name',))
+            site_name_result = cursor.fetchone()
+
+            if site_name_result:
+                site_name = site_name_result[0]
+            else:
+                # 如果没有配置，使用默认值
+                site_name = '随机图API'
+
+            # 查询ICP备案信息
+            cursor.execute('SELECT config_value FROM system_configs WHERE config_key = %s', ('icp_beian',))
+            icp_beian_result = cursor.fetchone()
+            icp_beian_code = icp_beian_result[0] if icp_beian_result else ''
+
+            cursor.execute('SELECT config_value FROM system_configs WHERE config_key = %s', ('beian_link',))
+            beian_link_result = cursor.fetchone()
+            icp_beian_url = beian_link_result[0] if beian_link_result else 'https://beian.miit.gov.cn'
+
+            # 查询是否显示备案信息
+            cursor.execute('SELECT config_value FROM system_configs WHERE config_key = %s', ('show_beian_info',))
+            show_beian_result = cursor.fetchone()
+            show_beian_info = show_beian_result[0] if show_beian_result else 'false'
+            
+            # 查询站点图标地址
+            cursor.execute('SELECT config_value FROM system_configs WHERE config_key = %s', ('favicon_url',))
+            favicon_result = cursor.fetchone()
+            favicon_url = favicon_result[0] if favicon_result else ''
+
+            # 构建响应数据
+            response_data = {
+                'site_name': site_name,
+                'favicon_url': favicon_url
+            }
+            
+            # 只有当显示备案信息开关开启时，才返回备案信息
+            if show_beian_info == 'true':
+                response_data['icp_beian_code'] = icp_beian_code
+                response_data['icp_beian_url'] = icp_beian_url
+                response_data['show_beian_info'] = show_beian_info
+            
+            return JSONResponse(content={
+                'code': 200,
+                'msg': '获取系统基本信息成功',
+                'data': response_data
+            })
+    except Exception as e:
+        print(f"[ERROR] 获取系统基本信息时发生错误: {str(e)}")
+        # 发生错误时返回默认值
+        return JSONResponse(content={
+            'code': 200,
+            'msg': '获取系统基本信息失败，使用默认值',
+            'data': {
+                'site_name': '随机图API'
+            }
+        })

@@ -141,7 +141,7 @@ def login_user(account: str, password: str) -> dict:
             cursor.execute('''
                 INSERT INTO sessions (token, user_id, username, expires_at)
                 VALUES (%s, %s, %s, %s)
-            ''', (token, user_id, username, expires_at.strftime('%Y-%m-%d %H:%M:%S')))
+            ''', (token, user_id, username, expires_at))
 
             # 更新最后登录时间
             cursor.execute('''
@@ -193,10 +193,11 @@ def verify_session(token: str) -> dict:
             user_id, username, expires_at, email, role, status = session.values()
             # 确保expires_at是datetime对象
             if isinstance(expires_at, str):
-                expires_at = datetime.strptime(expires_at, '%Y-%m-%d %H:%M:%S')
+                # 解析带时区的时间格式
+                expires_at = datetime.fromisoformat(expires_at)
 
             # 检查是否过期
-            if datetime.now() > expires_at:
+            if datetime.now().astimezone() > expires_at:
                 cursor.execute('DELETE FROM sessions WHERE token = %s', (token,))
                 return {'code': 401, 'msg': 'session已过期'}
 
@@ -280,30 +281,27 @@ def get_user_by_id(user_id: int) -> Optional[dict]:
             last_login = user.get('last_login')
             status = user.get('status')
 
-            # 格式化 created_at 为字符串
+            # 将datetime对象转换为ISO 8601格式的字符串
             if created_at:
-                if isinstance(created_at, str):
-                    created_at_str = created_at
-                else:
-                    created_at_str = created_at.strftime('%Y-%m-%d %H:%M:%S')
+                try:
+                    created_at_str = created_at.isoformat()
+                except:
+                    created_at_str = str(created_at)
             else:
                 created_at_str = ''
 
             # 判断用户状态
             display_status = '封禁' if status == 'banned' else ('活跃' if last_login else '未登录')
 
-            # 格式化注册时间
-            try:
-                register_date = created_at_str.split()[0] if created_at_str else ''
-            except:
-                register_date = str(created_at) if created_at else ''
+            # 直接使用完整的注册时间
+            register_date = created_at_str if created_at_str else ''
 
-            # 最后登录时间 - 完整的日期时间格式
+            # 将datetime对象转换为ISO 8601格式的字符串
             if last_login:
-                if isinstance(last_login, str):
-                    last_login_str = last_login
-                else:
-                    last_login_str = last_login.strftime('%Y-%m-%d %H:%M:%S')
+                try:
+                    last_login_str = last_login.isoformat()
+                except:
+                    last_login_str = str(last_login)
             else:
                 last_login_str = ''
 
@@ -351,27 +349,26 @@ def get_all_users() -> list:
                 last_login = user.get('last_login')
                 status = user.get('status')
 
-                # 格式化 created_at 为字符串
+                # 将datetime对象转换为ISO 8601格式的字符串
                 if created_at:
-                    if isinstance(created_at, str):
-                        created_at_str = created_at
-                    else:
-                        created_at_str = created_at.strftime('%Y-%m-%d %H:%M:%S')
+                    try:
+                        created_at_str = created_at.isoformat()
+                    except:
+                        created_at_str = str(created_at)
                 else:
                     created_at_str = ''
 
                 display_status = '封禁' if status == 'banned' else ('活跃' if last_login else '未登录')
 
-                try:
-                    register_date = created_at_str.split()[0] if created_at_str else ''
-                except:
-                    register_date = str(created_at) if created_at else ''
+                # 直接使用完整的注册时间
+                register_date = created_at_str if created_at_str else ''
 
+                # 将datetime对象转换为ISO 8601格式的字符串
                 if last_login:
-                    if isinstance(last_login, str):
-                        last_login_time = last_login
-                    else:
-                        last_login_time = last_login.strftime('%Y-%m-%d %H:%M:%S')
+                    try:
+                        last_login_time = last_login.isoformat()
+                    except:
+                        last_login_time = str(last_login)
                 else:
                     last_login_time = '-'
 

@@ -56,41 +56,12 @@ STATIC_ROOT_DIR = os.getenv('STATIC_ROOT_DIR', '/app/frontend/static')
 FRONTEND_ROOT_DIR = os.getenv('FRONTEND_ROOT_DIR', '/app/frontend')
 
 
-# ==================== 站点个性化配置 ====================
-# 站点名称
-SITE_NAME = os.getenv('SITE_NAME', '随机图API')
-
-# 站点图标URL
-FAVICON_URL = os.getenv('FAVICON_URL', '')
-
-# ICP备案信息
-ICP_BEIAN_CODE = os.getenv('ICP_BEIAN_CODE', '')
-ICP_BEIAN_URL = os.getenv('ICP_BEIAN_URL', 'https://beian.miit.gov.cn')
-
-
-# ==================== 导航栏配置 ====================
-# 导航栏各按钮的链接配置
-NAV_HOME_URL = os.getenv('NAV_HOME_URL', '/')
-NAV_BLOG_URL = os.getenv('NAV_BLOG_URL', '')
-NAV_GITHUB_URL = os.getenv('NAV_GITHUB_URL', '')
-NAV_CUSTOM_TEXT = os.getenv('NAV_CUSTOM_TEXT', '')
-NAV_CUSTOM_URL = os.getenv('NAV_CUSTOM_URL', '')
-
-
-# ==================== 页面内容配置 ====================
-# 首页欢迎语
-WELCOME_MESSAGE = os.getenv('WELCOME_MESSAGE', '欢迎使用是飞鱼随机图API')
-
-# 版权声明信息
-COPYRIGHT_NOTICE = os.getenv('COPYRIGHT_NOTICE', '本站所有图片均为用户上传，仅作学习所有，若有侵权，请与我联系我将及时删除！')
-
-
 # ==================== 分页配置 ====================
 # 分类详情页每页显示图片数量
-CATEGORY_PAGE_SIZE = int(os.getenv('CATEGORY_PAGE_SIZE', 9))
+CATEGORY_PAGE_SIZE = int(os.getenv('CATEGORY_PAGE_SIZE', 6))
 
 # 首页每页显示分类数量
-HOME_PAGE_SIZE = int(os.getenv('HOME_PAGE_SIZE', 9))
+HOME_PAGE_SIZE = int(os.getenv('HOME_PAGE_SIZE', 6))
 
 
 # ==================== 缓存配置 ====================
