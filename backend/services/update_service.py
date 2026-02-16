@@ -268,7 +268,7 @@ class UpdateService:
 
             # 创建临时工作目录
             temp_dir = self.temp_dir / f"backup_{timestamp}"
-            temp_dir.mkdir(parents=True, exist_ok=True)
+            await asyncio.to_thread(temp_dir.mkdir, parents=True, exist_ok=True)
 
             # 要备份的文件和目录（只备份实际存在的）
             items_to_backup = [
@@ -288,9 +288,9 @@ class UpdateService:
                     target = temp_dir / item
                     try:
                         if source.is_file():
-                            shutil.copy2(source, target)
+                            await asyncio.to_thread(shutil.copy2, source, target)
                         else:
-                            shutil.copytree(source, target, dirs_exist_ok=True)
+                            await asyncio.to_thread(shutil.copytree, source, target, dirs_exist_ok=True)
                         backed_up_items.append(item)
                         logger.debug(f"已准备: {item}")
                     except Exception as e:
@@ -309,23 +309,29 @@ class UpdateService:
             metadata_file = temp_dir / "backup_metadata.json"
             try:
                 import json
-                with open(metadata_file, 'w', encoding='utf-8') as f:
-                    json.dump(metadata, f, indent=2, ensure_ascii=False)
+                await asyncio.to_thread(
+                    lambda: json.dump(metadata, open(metadata_file, 'w', encoding='utf-8'), indent=2, ensure_ascii=False)
+                )
                 logger.debug("备份元数据已创建")
             except Exception as e:
                 logger.warning(f"创建备份元数据失败: {e}")
 
             # 创建压缩文件
             logger.info(f"正在创建压缩文件: {backup_path}")
+            await asyncio.to_thread(
+                lambda:
+                tarfile.open(backup_path, "w:gz")
+            )
             with tarfile.open(backup_path, "w:gz") as tar:
                 for item in temp_dir.iterdir():
                     tar.add(item, arcname=item.name)
 
             # 清理临时目录
-            shutil.rmtree(temp_dir)
+            await asyncio.to_thread(shutil.rmtree, temp_dir)
 
             # 计算压缩文件大小
-            backup_size = backup_path.stat().st_size
+            backup_size = await asyncio.to_thread(backup_path.stat)
+            backup_size = backup_size.st_size
             logger.info(f"压缩备份创建完成: {backup_path}")
             logger.info(f"备份项目: {len(backed_up_items)}, 大小: {backup_size/1024/1024:.2f} MB")
 
@@ -336,7 +342,7 @@ class UpdateService:
             # 清理临时目录
             if 'temp_dir' in locals() and temp_dir.exists():
                 try:
-                    shutil.rmtree(temp_dir)
+                    await asyncio.to_thread(shutil.rmtree, temp_dir)
                 except:
                     pass
             raise HTTPException(status_code=500, detail=f"备份失败: {str(e)}")
@@ -351,12 +357,15 @@ class UpdateService:
         Returns:
             str: SHA256哈希值
         """
-        hash_sha256 = hashlib.sha256()
-        try:
+        async def calculate_hash():
+            hash_sha256 = hashlib.sha256()
             with open(file_path, "rb") as f:
                 for chunk in iter(lambda: f.read(4096), b""):
                     hash_sha256.update(chunk)
             return hash_sha256.hexdigest()
+        
+        try:
+            return await asyncio.to_thread(calculate_hash)
         except Exception as e:
             logger.warning(f"计算文件哈希失败 {file_path}: {e}")
             return ""
@@ -627,27 +636,35 @@ class UpdateService:
         """
         try:
             extract_dir = self.temp_dir / "extracted"
-            extract_dir.mkdir(parents=True, exist_ok=True)
+            await asyncio.to_thread(extract_dir.mkdir, parents=True, exist_ok=True)
 
             logger.info(f"开始解压: {archive_path}")
             logger.info(f"解压目标目录: {extract_dir}")
 
-            if archive_path.suffix == ".zip":
+            async def extract_zip():
                 with zipfile.ZipFile(archive_path, "r") as zip_ref:
                     zip_ref.extractall(extract_dir)
-                    logger.info(f"ZIP文件解压完成，包含 {len(zip_ref.namelist())} 个文件")
-            elif archive_path.name.endswith(".tar.gz") or archive_path.suffix == ".tgz":
+                    return len(zip_ref.namelist())
+
+            async def extract_tar():
                 with tarfile.open(archive_path, "r:gz") as tar_ref:
                     members = tar_ref.getmembers()
                     tar_ref.extractall(extract_dir)
-                    logger.info(f"TAR.GZ文件解压完成，包含 {len(members)} 个文件")
+                    return len(members)
+
+            if archive_path.suffix == ".zip":
+                file_count = await asyncio.to_thread(extract_zip)
+                logger.info(f"ZIP文件解压完成，包含 {file_count} 个文件")
+            elif archive_path.name.endswith(".tar.gz") or archive_path.suffix == ".tgz":
+                file_count = await asyncio.to_thread(extract_tar)
+                logger.info(f"TAR.GZ文件解压完成，包含 {file_count} 个文件")
             else:
                 raise HTTPException(status_code=500, detail=f"不支持的压缩包格式: {archive_path.name}")
 
             logger.info(f"解压完成: {extract_dir}")
 
             # 查找解压后的项目根目录
-            extracted_items = list(extract_dir.iterdir())
+            extracted_items = await asyncio.to_thread(lambda: list(extract_dir.iterdir()))
             if not extracted_items:
                 raise HTTPException(status_code=500, detail="解压后目录为空")
 
@@ -693,7 +710,7 @@ class UpdateService:
             missing_core_files = []
             for file_path in core_required_files:
                 full_path = source_dir / file_path
-                if not full_path.exists():
+                if not await asyncio.to_thread(full_path.exists):
                     missing_core_files.append(file_path)
                     logger.error(f"缺少核心文件: {file_path}")
 
@@ -703,19 +720,22 @@ class UpdateService:
 
             # 验证版本文件格式
             version_file = source_dir / "backend/__init__.py"
-            if version_file.exists():
+            if await asyncio.to_thread(version_file.exists):
                 try:
-                    with open(version_file, 'r', encoding='utf-8') as f:
-                        content = f.read()
-                        if "__version__" not in content:
-                            logger.error("版本文件格式不正确")
-                            return False
-                        # 验证版本号格式
-                        import re
-                        version_match = re.search(r'__version__\s*=\s*["\']([^"\']+)["\']', content)
-                        if version_match:
-                            version = version_match.group(1)
-                            logger.info(f"检测到新版本号: {version}")
+                    async def read_version_file():
+                        with open(version_file, 'r', encoding='utf-8') as f:
+                            return f.read()
+                    
+                    content = await asyncio.to_thread(read_version_file)
+                    if "__version__" not in content:
+                        logger.error("版本文件格式不正确")
+                        return False
+                    # 验证版本号格式
+                    import re
+                    version_match = re.search(r'__version__\s*=\s*["\']([^"\']+)["\']', content)
+                    if version_match:
+                        version = version_match.group(1)
+                        logger.info(f"检测到新版本号: {version}")
                 except Exception as e:
                     logger.error(f"读取版本文件失败: {e}")
                     return False
@@ -724,7 +744,7 @@ class UpdateService:
             critical_dirs = ["backend", "frontend"]
             for dir_name in critical_dirs:
                 dir_path = source_dir / dir_name
-                if not dir_path.exists() or not dir_path.is_dir():
+                if not await asyncio.to_thread(dir_path.exists) or not await asyncio.to_thread(dir_path.is_dir):
                     logger.error(f"关键目录缺失或不是目录: {dir_name}")
                     return False
 
@@ -761,7 +781,7 @@ class UpdateService:
 
             # 创建临时备份目录用于本次更新的快速回滚
             temp_backup_dir = self.temp_dir / "temp_backup"
-            temp_backup_dir.mkdir(parents=True, exist_ok=True)
+            await asyncio.to_thread(temp_backup_dir.mkdir, parents=True, exist_ok=True)
 
             logger.info("开始准备原子性更新...")
             
@@ -771,12 +791,12 @@ class UpdateService:
                 source = self.app_dir / item
                 backup_target = temp_backup_dir / item
                 
-                if source.exists():
+                if await asyncio.to_thread(source.exists):
                     try:
-                        if source.is_file():
-                            shutil.copy2(source, backup_target)
+                        if await asyncio.to_thread(source.is_file):
+                            await asyncio.to_thread(shutil.copy2, source, backup_target)
                         else:
-                            shutil.copytree(source, backup_target, dirs_exist_ok=True)
+                            await asyncio.to_thread(shutil.copytree, source, backup_target, dirs_exist_ok=True)
                         logger.debug(f"已备份: {item}")
                     except Exception as e:
                         logger.error(f"备份 {item} 失败: {e}")
@@ -787,7 +807,7 @@ class UpdateService:
             for item in items_to_update:
                 backup_source = temp_backup_dir / item
                 original_source = self.app_dir / item
-                if original_source.exists() and not backup_source.exists():
+                if await asyncio.to_thread(original_source.exists) and not await asyncio.to_thread(backup_source.exists):
                     error_msg = f"临时备份验证失败: {item}"
                     logger.error(error_msg)
                     # 清理不完整的临时备份
@@ -801,15 +821,15 @@ class UpdateService:
                 new_source = source_dir / item
                 target = self.app_dir / item
 
-                if new_source.exists():
+                if await asyncio.to_thread(new_source.exists):
                     try:
                         logger.info(f"正在更新: {item}")
 
-                        if new_source.is_file():
+                        if await asyncio.to_thread(new_source.is_file):
                             # 文件：直接覆盖
-                            if target.exists():
-                                target.unlink()
-                            shutil.copy2(new_source, target)
+                            if await asyncio.to_thread(target.exists):
+                                await asyncio.to_thread(target.unlink)
+                            await asyncio.to_thread(shutil.copy2, new_source, target)
                             logger.info(f"更新完成文件: {item}")
                         else:
                             # 目录：逐个文件覆盖
@@ -817,7 +837,7 @@ class UpdateService:
                             dir_updated = 0
 
                             for src_file in new_source.rglob('*'):
-                                if not src_file.is_file():
+                                if not await asyncio.to_thread(src_file.is_file):
                                     continue
 
                                 # 跳过 Python 缓存文件
@@ -829,10 +849,10 @@ class UpdateService:
                                 dst_file = target / rel_path
 
                                 # 创建目标目录
-                                dst_file.parent.mkdir(parents=True, exist_ok=True)
+                                await asyncio.to_thread(dst_file.parent.mkdir, parents=True, exist_ok=True)
 
                                 # 覆盖文件
-                                shutil.copy2(src_file, dst_file)
+                                await asyncio.to_thread(shutil.copy2, src_file, dst_file)
                                 dir_updated += 1
 
                             logger.info(f"更新完成目录 {item}: {dir_updated} 个文件")
@@ -869,8 +889,8 @@ class UpdateService:
             temp_backup_dir: 临时备份目录
         """
         try:
-            if temp_backup_dir.exists():
-                shutil.rmtree(temp_backup_dir)
+            if await asyncio.to_thread(temp_backup_dir.exists):
+                await asyncio.to_thread(shutil.rmtree, temp_backup_dir)
                 logger.debug("临时备份目录已清理")
         except Exception as e:
             logger.warning(f"清理临时备份失败: {e}")
@@ -883,7 +903,7 @@ class UpdateService:
             temp_backup_dir: 临时备份目录
         """
         try:
-            if temp_backup_dir.exists():
+            if await asyncio.to_thread(temp_backup_dir.exists):
                 items_to_restore = ["backend", "frontend", "Dockerfile", "docker-compose.yml", "requirements.txt"]
                 
                 logger.info("开始从临时备份回滚...")
@@ -891,19 +911,19 @@ class UpdateService:
                     backup_source = temp_backup_dir / item
                     target = self.app_dir / item
                     
-                    if backup_source.exists():
+                    if await asyncio.to_thread(backup_source.exists):
                         # 删除当前文件
-                        if target.exists():
-                            if target.is_file():
-                                target.unlink()
+                        if await asyncio.to_thread(target.exists):
+                            if await asyncio.to_thread(target.is_file):
+                                await asyncio.to_thread(target.unlink)
                             else:
-                                shutil.rmtree(target)
+                                await asyncio.to_thread(shutil.rmtree, target)
                         
                         # 恢复临时备份
-                        if backup_source.is_file():
-                            shutil.copy2(backup_source, target)
+                        if await asyncio.to_thread(backup_source.is_file):
+                            await asyncio.to_thread(shutil.copy2, backup_source, target)
                         else:
-                            shutil.copytree(backup_source, target, dirs_exist_ok=True)
+                            await asyncio.to_thread(shutil.copytree, backup_source, target, dirs_exist_ok=True)
                         logger.debug(f"已回滚: {item}")
                 
                 logger.info("回滚完成")
@@ -957,8 +977,8 @@ class UpdateService:
         清理临时文件
         """
         try:
-            if self.temp_dir.exists():
-                shutil.rmtree(self.temp_dir)
+            if await asyncio.to_thread(self.temp_dir.exists):
+                await asyncio.to_thread(shutil.rmtree, self.temp_dir)
                 logger.info("临时文件清理完成")
             else:
                 logger.debug("临时目录不存在，无需清理")
@@ -1008,9 +1028,9 @@ class UpdateService:
         """
         try:
             backups = []
-            if self.backup_dir.exists():
+            if await asyncio.to_thread(self.backup_dir.exists):
                 for backup_file in self.backup_dir.iterdir():
-                    if backup_file.is_file() and backup_file.name.endswith('.tar.gz'):
+                    if await asyncio.to_thread(backup_file.is_file) and backup_file.name.endswith('.tar.gz'):
                         # 解析备份文件名获取版本和时间
                         import re
                         match = re.search(r'backup_(.*?)_(\d{8}_\d{6})\.tar\.gz', backup_file.name)
@@ -1019,12 +1039,13 @@ class UpdateService:
                             timestamp_str = match.group(2)
                             try:
                                 timestamp = datetime.strptime(timestamp_str, '%Y%m%d_%H%M%S')
+                                stat = await asyncio.to_thread(backup_file.stat)
                                 backup_info = {
                                     "filename": backup_file.name,
                                     "path": str(backup_file),
                                     "version": version,
                                     "timestamp": timestamp.strftime('%Y-%m-%d %H:%M:%S'),
-                                    "size": backup_file.stat().st_size
+                                    "size": stat.st_size
                                 }
                                 backups.append(backup_info)
                             except Exception as e:

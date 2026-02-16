@@ -1257,13 +1257,13 @@
     // 添加到页面
     document.body.appendChild(toast);
     
-    // 3秒后移除
+    // 延长显示时间到5秒后移除
     setTimeout(() => {
       toast.style.animation = 'slideIn 0.3s ease reverse';
       setTimeout(() => {
         document.body.removeChild(toast);
       }, 300);
-    }, 3000);
+    }, 5000);
   }
 
 // ==================== 用户管理功能 ====================
@@ -3595,9 +3595,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const toastText = document.getElementById('toastText');
     toastText.textContent = text;
     toast.style.display = 'flex';
+    // 延长显示时间到5秒
     setTimeout(() => {
       toast.style.display = 'none';
-    }, 3000);
+    }, 5000);
   }
 
   // 格式化文件大小函数
@@ -4327,7 +4328,19 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             setTimeout(() => {
-              showToast(`上传成功！新增${result.data.uploaded_count}张图片`);
+              // 检查是否有失败的文件
+              if (result.data.failed_count > 0) {
+                // 显示包含失败信息的提示
+                let errorMessage = `上传完成！成功${result.data.uploaded_count}张，失败${result.data.failed_count}张。\n失败文件：`;
+                result.data.failed_files.forEach(file => {
+                  errorMessage += `\n- ${file.filename}：${file.error}`;
+                });
+                showToast(errorMessage);
+              } else {
+                // 全部成功
+                showToast(`上传成功！新增${result.data.uploaded_count}张图片`);
+              }
+              
               if (progressArea) {
                 progressArea.style.display = 'none';
               }
@@ -4610,7 +4623,18 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (result.code === 200) {
           // 上传成功
-          showToast(`上传成功！新增${result.data.uploaded_count}张图片`);
+          // 检查是否有失败的文件
+          if (result.data.failed_count > 0) {
+            // 显示包含失败信息的提示
+            let errorMessage = `上传完成！成功${result.data.uploaded_count}张，失败${result.data.failed_count}张。\n失败文件：`;
+            result.data.failed_files.forEach(file => {
+              errorMessage += `\n- ${file.filename}：${file.error}`;
+            });
+            showToast(errorMessage);
+          } else {
+            // 全部成功
+            showToast(`上传成功！新增${result.data.uploaded_count}张图片`);
+          }
           
           // 重置文件输入元素
           fileInput.value = '';

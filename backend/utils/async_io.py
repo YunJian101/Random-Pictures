@@ -134,8 +134,14 @@ async def async_open_write(path: str, content: str, encoding: str = None) -> Non
         content: 要写入的内容
         encoding: 编码格式，None表示二进制写入
     """
-    async with aiofiles.open(path, 'w', encoding=encoding) as f:
-        await f.write(content)
+    if encoding is None:
+        # 二进制模式写入
+        async with aiofiles.open(path, 'wb') as f:
+            await f.write(content)
+    else:
+        # 文本模式写入
+        async with aiofiles.open(path, 'w', encoding=encoding) as f:
+            await f.write(content)
 
 
 async def async_open_append(path: str, content: str, encoding: str = None) -> None:
@@ -147,8 +153,14 @@ async def async_open_append(path: str, content: str, encoding: str = None) -> No
         content: 要追加的内容
         encoding: 编码格式，None表示二进制追加
     """
-    async with aiofiles.open(path, 'a', encoding=encoding) as f:
-        await f.write(content)
+    if encoding is None:
+        # 二进制模式追加
+        async with aiofiles.open(path, 'ab') as f:
+            await f.write(content)
+    else:
+        # 文本模式追加
+        async with aiofiles.open(path, 'a', encoding=encoding) as f:
+            await f.write(content)
 
 
 async def async_listdir(path: str) -> list:

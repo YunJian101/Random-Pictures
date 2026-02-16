@@ -11,7 +11,6 @@ from fastapi.responses import FileResponse, RedirectResponse, HTMLResponse
 from fastapi import Request as FastAPIRequest
 
 from ..core.config import FRONTEND_ROOT_DIR
-from ..core.database import get_db_connection
 from ..api.dependencies import get_current_user, get_current_admin, get_current_user_optional
 
 
@@ -55,16 +54,15 @@ async def handle_user_panel(request: FastAPIRequest, current_user: dict = Depend
 async def handle_favicon():
     """处理favicon请求"""
     from ..utils.utils import validate_local_path, is_remote_url
+    from ..core.database import get_async_db_connection
     
     # 从数据库获取favicon_url配置
     favicon_url = ''
     try:
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute('SELECT config_value FROM system_configs WHERE config_key = %s', ('favicon_url',))
-            result = cursor.fetchone()
+        async with get_async_db_connection() as conn:
+            result = await conn.fetchrow('SELECT config_value FROM system_configs WHERE config_key = $1', ('favicon_url',))
             if result:
-                favicon_url = result[0]
+                favicon_url = result['config_value']
     except Exception as e:
         print(f"[ERROR] 获取favicon配置失败: {str(e)}")
 

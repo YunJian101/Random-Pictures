@@ -24,7 +24,7 @@ from ..schemas.schemas import UserCreateRequest, UserUpdateRequest, CreateAdminR
 
 async def api_admin_users(request: Request, current_user: dict = Depends(get_current_admin)):
     """管理员获取用户列表API"""
-    users = get_all_users()
+    users = await get_all_users()
 
     formatted_users = []
     for user in users:
@@ -48,7 +48,7 @@ async def api_admin_users(request: Request, current_user: dict = Depends(get_cur
 
 async def api_admin_user_detail(user_id: int, current_user: dict = Depends(get_current_admin)):
     """管理员获取用户详情API"""
-    user = get_user_by_id(user_id)
+    user = await get_user_by_id(user_id)
 
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
@@ -73,14 +73,14 @@ async def api_admin_user_detail(user_id: int, current_user: dict = Depends(get_c
 
 async def api_admin_users_create(data: UserCreateRequest, current_user: dict = Depends(get_current_admin)):
     """管理员创建用户API"""
-    result = register_user(data.username, data.email or '', data.password)
+    result = await register_user(data.username, data.email or '', data.password)
     status_code = 200 if result['code'] == 200 else 400
     return JSONResponse(content=result, status_code=status_code)
 
 
 async def api_admin_user_update(user_id: int, data: UserUpdateRequest, current_user: dict = Depends(get_current_admin)):
     """管理员更新用户信息API"""
-    result = update_user_info(user_id, data.username, data.email)
+    result = await update_user_info(user_id, data.username, data.email)
     status_code = 200 if result['code'] == 200 else 400
     return JSONResponse(content=result, status_code=status_code)
 
@@ -94,21 +94,21 @@ async def api_admin_user_ban(user_id: int, request: Request = None, current_user
             reason = body.get('reason')
         except:
             pass
-    result = ban_user(user_id, reason=reason)
+    result = await ban_user(user_id, reason=reason)
     status_code = 200 if result['code'] == 200 else 400
     return JSONResponse(content=result, status_code=status_code)
 
 
 async def api_admin_user_unban(user_id: int, current_user: dict = Depends(get_current_admin)):
     """管理员解封用户API"""
-    result = unban_user(user_id)
+    result = await unban_user(user_id)
     status_code = 200 if result['code'] == 200 else 400
     return JSONResponse(content=result, status_code=status_code)
 
 
 async def api_admin_user_delete(user_id: int, current_user: dict = Depends(get_current_admin)):
     """管理员删除用户API"""
-    result = delete_user(user_id)
+    result = await delete_user(user_id)
     status_code = 200 if result['code'] == 200 else 400
     return JSONResponse(content=result, status_code=status_code)
 
@@ -116,13 +116,11 @@ async def api_admin_user_delete(user_id: int, current_user: dict = Depends(get_c
 async def api_create_admin(data: CreateAdminRequest):
     """创建管理员用户API（仅用于初始化）"""
     # 检查是否已存在管理员
-    from backend.core.database import get_db_connection
+    from backend.core.database import get_async_db_connection
     
     try:
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute('SELECT COUNT(*) FROM users WHERE role = %s', ('admin',))
-            admin_count = cursor.fetchone()[0]
+        async with get_async_db_connection() as conn:
+            admin_count = await conn.fetchval('SELECT COUNT(*) FROM users WHERE role = $1', 'admin')
             
             if admin_count > 0:
                 return JSONResponse(content={
@@ -137,11 +135,11 @@ async def api_create_admin(data: CreateAdminRequest):
         }, status_code=500)
 
     # 继续原有逻辑
-    result = register_user(data.username, data.email or '', data.password)
+    result = await register_user(data.username, data.email or '', data.password)
 
     if result['code'] == 200:
         user_id = result['data']['id']
-        update_result = update_user_role(user_id, 'admin')
+        update_result = await update_user_role(user_id, 'admin')
         if update_result['code'] == 200:
             result['msg'] = '管理员用户创建成功'
             result['data']['role'] = 'admin'
@@ -155,7 +153,7 @@ async def api_create_admin(data: CreateAdminRequest):
 # 分类管理API
 async def api_admin_create_category(request: Request, current_user: dict = Depends(get_current_admin)):
     """管理员创建分类API"""
-    from ..core.database import get_db_connection
+    from ..core.database import get_async_db_connection
     
     try:
         data = await request.json()
@@ -168,36 +166,32 @@ async def api_admin_create_category(request: Request, current_user: dict = Depen
                 'msg': '分类名称不能为空'
             }, status_code=400)
         
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            
+        async with get_async_db_connection() as conn:
             # 检查分类名称是否已存在
-            cursor.execute('SELECT id FROM categories WHERE name = %s', (name,))
-            if cursor.fetchone():
+            existing = await conn.fetchrow('SELECT id FROM categories WHERE name = $1', name)
+            if existing:
                 return JSONResponse(content={
                     'code': 400,
                     'msg': '分类名称已存在'
                 }, status_code=400)
             
             # 创建分类
-            cursor.execute('''
+            category = await conn.fetchrow('''
                 INSERT INTO categories (name, description) 
-                VALUES (%s, %s) 
+                VALUES ($1, $2) 
                 RETURNING id, name, description, status, created_at, updated_at
-            ''', (name, description))
-            
-            category = cursor.fetchone()
+            ''', name, description)
             
             return JSONResponse(content={
                 'code': 200,
                 'msg': '分类创建成功',
                 'data': {
-                    'id': category[0],
-                    'name': category[1],
-                    'description': category[2],
-                    'status': category[3],
-                    'created_at': category[4].isoformat(),
-                    'updated_at': category[5].isoformat()
+                    'id': category['id'],
+                    'name': category['name'],
+                    'description': category['description'],
+                    'status': category['status'],
+                    'created_at': category['created_at'].isoformat(),
+                    'updated_at': category['updated_at'].isoformat()
                 }
             })
     except Exception as e:
@@ -210,7 +204,7 @@ async def api_admin_create_category(request: Request, current_user: dict = Depen
 
 async def api_admin_update_category(category_id: int, request: Request, current_user: dict = Depends(get_current_admin)):
     """管理员更新分类API"""
-    from ..core.database import get_db_connection
+    from ..core.database import get_async_db_connection
     
     try:
         data = await request.json()
@@ -218,12 +212,10 @@ async def api_admin_update_category(category_id: int, request: Request, current_
         description = data.get('description')
         status = data.get('status')
         
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            
+        async with get_async_db_connection() as conn:
             # 检查分类是否存在
-            cursor.execute('SELECT id FROM categories WHERE id = %s', (category_id,))
-            if not cursor.fetchone():
+            existing = await conn.fetchrow('SELECT id FROM categories WHERE id = $1', category_id)
+            if not existing:
                 return JSONResponse(content={
                     'code': 404,
                     'msg': '分类不存在'
@@ -231,8 +223,8 @@ async def api_admin_update_category(category_id: int, request: Request, current_
             
             # 检查分类名称是否已被其他分类使用
             if name:
-                cursor.execute('SELECT id FROM categories WHERE name = %s AND id != %s', (name, category_id))
-                if cursor.fetchone():
+                existing_name = await conn.fetchrow('SELECT id FROM categories WHERE name = $1 AND id != $2', name, category_id)
+                if existing_name:
                     return JSONResponse(content={
                         'code': 400,
                         'msg': '分类名称已存在'
@@ -241,40 +233,42 @@ async def api_admin_update_category(category_id: int, request: Request, current_
             # 构建更新语句
             update_fields = []
             update_values = []
+            param_index = 1
             
             if name is not None:
-                update_fields.append('name = %s')
+                update_fields.append(f'name = ${param_index}')
                 update_values.append(name)
+                param_index += 1
             if description is not None:
-                update_fields.append('description = %s')
+                update_fields.append(f'description = ${param_index}')
                 update_values.append(description)
+                param_index += 1
             if status is not None:
-                update_fields.append('status = %s')
+                update_fields.append(f'status = ${param_index}')
                 update_values.append(status)
+                param_index += 1
             
             update_fields.append('updated_at = CURRENT_TIMESTAMP')
             update_values.append(category_id)
             
             # 执行更新
-            cursor.execute(f'''
+            category = await conn.fetchrow(f'''
                 UPDATE categories 
                 SET {', '.join(update_fields)} 
-                WHERE id = %s 
+                WHERE id = ${param_index} 
                 RETURNING id, name, description, status, created_at, updated_at
-            ''', update_values)
-            
-            category = cursor.fetchone()
+            ''', *update_values)
             
             return JSONResponse(content={
                 'code': 200,
                 'msg': '分类更新成功',
                 'data': {
-                    'id': category[0],
-                    'name': category[1],
-                    'description': category[2],
-                    'status': category[3],
-                    'created_at': category[4].isoformat(),
-                    'updated_at': category[5].isoformat()
+                    'id': category['id'],
+                    'name': category['name'],
+                    'description': category['description'],
+                    'status': category['status'],
+                    'created_at': category['created_at'].isoformat(),
+                    'updated_at': category['updated_at'].isoformat()
                 }
             })
     except Exception as e:
@@ -287,31 +281,28 @@ async def api_admin_update_category(category_id: int, request: Request, current_
 
 async def api_admin_delete_category(category_id: int, current_user: dict = Depends(get_current_admin)):
     """管理员删除分类API"""
-    from ..core.database import get_db_connection
+    from ..core.database import get_async_db_connection
 
     try:
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-
+        async with get_async_db_connection() as conn:
             # 检查分类是否存在
-            cursor.execute('SELECT id FROM categories WHERE id = %s', (category_id,))
-            if not cursor.fetchone():
+            existing = await conn.fetchrow('SELECT id FROM categories WHERE id = $1', category_id)
+            if not existing:
                 return JSONResponse(content={
                     'code': 404,
                     'msg': '分类不存在'
                 }, status_code=404)
 
             # 查询该分类下的图片数量
-            cursor.execute('SELECT COUNT(*) FROM images WHERE category_id = %s', (category_id,))
-            image_count = cursor.fetchone()[0]
+            image_count = await conn.fetchval('SELECT COUNT(*) FROM images WHERE category_id = $1', category_id)
 
             # 更新该分类下的图片，将 category_id 设为 NULL
             if image_count > 0:
-                cursor.execute('UPDATE images SET category_id = NULL WHERE category_id = %s', (category_id,))
+                await conn.execute('UPDATE images SET category_id = NULL WHERE category_id = $1', category_id)
                 print(f"[INFO] 已将分类 {category_id} 下的 {image_count} 张图片移至未分类状态")
 
             # 删除分类
-            cursor.execute('DELETE FROM categories WHERE id = %s', (category_id,))
+            await conn.execute('DELETE FROM categories WHERE id = $1', category_id)
 
             return JSONResponse(content={
                 'code': 200,
@@ -510,16 +501,12 @@ async def api_system_execute_update(current_user: dict = Depends(get_current_adm
 
 async def api_admin_get_system_config(current_user: dict = Depends(get_current_admin)):
     """管理员获取系统配置API"""
-    from ..core.database import get_db_connection
-    from psycopg2.extras import RealDictCursor
+    from ..core.database import get_async_db_connection
 
     try:
-        with get_db_connection() as conn:
-            cursor = conn.cursor(cursor_factory=RealDictCursor)
-
+        async with get_async_db_connection() as conn:
             # 查询所有系统配置
-            cursor.execute('SELECT config_key, config_value, description FROM system_configs')
-            configs = cursor.fetchall()
+            configs = await conn.fetch('SELECT config_key, config_value, description FROM system_configs')
 
             # 构建配置字典
             config_dict = {}
@@ -609,7 +596,7 @@ def validate_config_value(config_key: str, config_value: str) -> tuple[bool, str
 
 async def api_admin_update_system_config(request: Request, current_user: dict = Depends(get_current_admin)):
     """管理员更新系统配置API"""
-    from ..core.database import get_db_connection
+    from ..core.database import get_async_db_connection
 
     try:
         data = await request.json()
@@ -630,23 +617,26 @@ async def api_admin_update_system_config(request: Request, current_user: dict = 
                 'msg': error_msg
             }, status_code=400)
 
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-
+        async with get_async_db_connection() as conn:
             # 检查配置是否存在
-            cursor.execute('SELECT id FROM system_configs WHERE config_key = %s', (config_key,))
-            if not cursor.fetchone():
+            existing = await conn.fetchrow('SELECT id FROM system_configs WHERE config_key = $1', config_key)
+            if not existing:
                 return JSONResponse(content={
                     'code': 404,
                     'msg': '配置不存在'
                 }, status_code=404)
 
             # 更新配置
-            cursor.execute('''
+            await conn.execute('''
                 UPDATE system_configs 
-                SET config_value = %s, updated_at = CURRENT_TIMESTAMP 
-                WHERE config_key = %s
-            ''', (config_value, config_key))
+                SET config_value = $1, updated_at = CURRENT_TIMESTAMP 
+                WHERE config_key = $2
+            ''', config_value, config_key)
+
+            # 清除缓存，确保下次获取系统信息时从数据库读取最新值
+            global _config_cache, _cache_expiry
+            _config_cache = {}
+            _cache_expiry = 0
 
             return JSONResponse(content={
                 'code': 200,
@@ -662,17 +652,20 @@ async def api_admin_update_system_config(request: Request, current_user: dict = 
 
 async def api_admin_reset_system_config(current_user: dict = Depends(get_current_admin)):
     """管理员重置系统配置为默认值API"""
-    from ..core.database import get_db_connection
+    from ..core.database import get_async_db_connection
 
     try:
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-
+        async with get_async_db_connection() as conn:
             # 重置所有配置为默认值（将 default_value 复制到 config_value）
-            cursor.execute('''
+            await conn.execute('''
                 UPDATE system_configs 
                 SET config_value = default_value, updated_at = CURRENT_TIMESTAMP
             ''')
+
+            # 清除缓存，确保下次获取系统信息时从数据库读取最新值
+            global _config_cache, _cache_expiry
+            _config_cache = {}
+            _cache_expiry = 0
 
             return JSONResponse(content={
                 'code': 200,
@@ -720,7 +713,7 @@ _cache_expiry = 0
 
 async def api_get_system_timezone():
     """获取系统时区配置API（公共接口）"""
-    from ..core.database import get_db_connection
+    from ..core.database import get_async_db_connection
 
     try:
         # 尝试从缓存获取
@@ -737,15 +730,12 @@ async def api_get_system_timezone():
                 }
             })
 
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-
+        async with get_async_db_connection() as conn:
             # 查询时区配置
-            cursor.execute('SELECT config_value FROM system_configs WHERE config_key = %s', ('timezone',))
-            result = cursor.fetchone()
+            result = await conn.fetchval('SELECT config_value FROM system_configs WHERE config_key = $1', 'timezone')
 
             if result:
-                timezone = result[0]
+                timezone = result
             else:
                 # 如果没有配置，使用默认值
                 timezone = 'Asia/Shanghai'
@@ -775,7 +765,7 @@ async def api_get_system_timezone():
 
 async def api_get_system_info():
     """获取系统基本信息API（公共接口）"""
-    from ..core.database import get_db_connection
+    from ..core.database import get_async_db_connection
 
     try:
         # 尝试从缓存获取
@@ -802,20 +792,16 @@ async def api_get_system_info():
                 'data': response_data
             })
 
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-
+        async with get_async_db_connection() as conn:
             # 一次查询获取所有需要的配置
-            cursor.execute('''
+            results = await conn.fetch('''
                 SELECT config_key, config_value 
                 FROM system_configs 
-                WHERE config_key IN (%s, %s, %s, %s, %s, %s)
-            ''', ('site_name', 'timezone', 'icp_beian', 'beian_link', 'show_beian_info', 'favicon_url'))
-            
-            results = cursor.fetchall()
+                WHERE config_key IN ($1, $2, $3, $4, $5, $6)
+            ''', 'site_name', 'timezone', 'icp_beian', 'beian_link', 'show_beian_info', 'favicon_url')
             
             # 构建配置字典
-            configs = {key: value for key, value in results}
+            configs = {row['config_key']: row['config_value'] for row in results}
             
             # 获取配置值，使用默认值
             site_name = configs.get('site_name', '随机图API')
@@ -870,14 +856,14 @@ async def api_admin_batch_action(request: Request, current_user: dict = Depends(
     """管理员批量操作API
     支持下载、移动、删除选中的图片
     """
-    from ..core.database import get_db_connection
     from ..core.config import IMG_ROOT_DIR
-    from ..utils.async_io import async_exists, async_getsize, async_remove, async_joinpath
+    from ..utils.async_io import async_exists, async_getsize, async_remove, async_joinpath, async_makedirs
     from ..core.database import get_async_db_connection
     import os
     import zipfile
     import tempfile
     import shutil
+    import asyncio
 
     try:
         # 解析请求体
@@ -909,19 +895,24 @@ async def api_admin_batch_action(request: Request, current_user: dict = Depends(
         valid_image_ids = []
         failed_items = []
 
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-
+        async with get_async_db_connection() as conn:
             for img_id in image_ids:
                 try:
-                    cursor.execute('SELECT id FROM images WHERE id = %s', (img_id,))
-                    if cursor.fetchone():
-                        valid_image_ids.append(img_id)
+                    # 将图片ID转换为整数
+                    img_id_int = int(img_id)
+                    exists = await conn.fetchrow('SELECT id FROM images WHERE id = $1', img_id_int)
+                    if exists:
+                        valid_image_ids.append(img_id_int)
                     else:
                         failed_items.append({
                             'id': img_id,
                             'error': '图片不存在'
                         })
+                except ValueError:
+                    failed_items.append({
+                        'id': img_id,
+                        'error': '无效的图片ID格式'
+                    })
                 except Exception as e:
                     failed_items.append({
                         'id': img_id,
@@ -950,8 +941,8 @@ async def api_admin_batch_action(request: Request, current_user: dict = Depends(
             try:
                 # 异步获取图片信息
                 async with get_async_db_connection() as conn:
-                    # 构建查询语句
-                    placeholders = ','.join(['%s'] * len(valid_image_ids))
+                    # 构建查询语句，使用asyncpg的参数占位符格式
+                    placeholders = ','.join([f'${i+1}' for i in range(len(valid_image_ids))])
                     query = f'SELECT id, file_path, filename FROM images WHERE id IN ({placeholders})'
                     
                     # 执行查询
@@ -961,8 +952,6 @@ async def api_admin_batch_action(request: Request, current_user: dict = Depends(
                 image_map = {img['id']: {'file_path': img['file_path'], 'filename': img['filename']} for img in image_results}
                 
                 # 使用线程池执行zipfile操作，避免阻塞事件循环
-                import asyncio
-                
                 async def create_zip():
                     """在后台线程中创建ZIP文件"""
                     def _create_zip():
@@ -1051,10 +1040,25 @@ async def api_admin_batch_action(request: Request, current_user: dict = Depends(
                     }
                 }, status_code=400)
 
+            # 将分类ID转换为整数
+            try:
+                category_id_int = int(category_id)
+            except ValueError:
+                return JSONResponse(content={
+                    'code': 400,
+                    'msg': '无效的分类ID格式',
+                    'data': {
+                        'action': action,
+                        'processed_count': 0,
+                        'failed_count': len(valid_image_ids),
+                        'failed_items': [{'id': img_id, 'error': '无效的分类ID格式'} for img_id in valid_image_ids]
+                    }
+                }, status_code=400)
+
             # 检查分类是否存在
             category_name = None
             async with get_async_db_connection() as conn:
-                result = await conn.fetchrow('SELECT name FROM categories WHERE id = $1', category_id)
+                result = await conn.fetchrow('SELECT name FROM categories WHERE id = $1', category_id_int)
                 if not result:
                     return JSONResponse(content={
                         'code': 400,
@@ -1075,6 +1079,7 @@ async def api_admin_batch_action(request: Request, current_user: dict = Depends(
             # 移动图片
             moved_count = 0
             move_failed_items = []
+            move_success_items = []
 
             # 异步移动单个图片的函数
             async def move_single_image(img_id):
@@ -1097,7 +1102,7 @@ async def api_admin_batch_action(request: Request, current_user: dict = Depends(
 
                                 # 更新数据库
                                 await conn.execute('UPDATE images SET category_id = $1, file_path = $2 WHERE id = $3', 
-                                                 category_id, new_file_path, img_id)
+                                                 category_id_int, new_file_path, img_id)
 
                                 return True, None
                             else:
@@ -1116,16 +1121,26 @@ async def api_admin_batch_action(request: Request, current_user: dict = Depends(
                 img_id = valid_image_ids[i]
                 if success:
                     moved_count += 1
+                    move_success_items.append({'id': img_id, 'message': '移动成功'})
                 else:
                     move_failed_items.append({'id': img_id, 'error': error})
 
+            # 构建响应消息
+            if move_success_items and move_failed_items:
+                msg = f'部分移动成功，共处理 {moved_count} 张图片，失败 {len(move_failed_items)} 张'
+            elif move_success_items:
+                msg = f'移动成功，共处理 {moved_count} 张图片'
+            else:
+                msg = f'移动失败，共 {len(move_failed_items)} 张图片'
+
             return JSONResponse(content={
-                'code': 200,
-                'msg': f'移动成功，共处理 {moved_count} 张图片',
+                'code': 200 if move_success_items else 400,
+                'msg': msg,
                 'data': {
                     'action': action,
                     'processed_count': moved_count,
                     'failed_count': len(move_failed_items),
+                    'success_items': move_success_items,
                     'failed_items': move_failed_items
                 }
             })
@@ -1134,6 +1149,7 @@ async def api_admin_batch_action(request: Request, current_user: dict = Depends(
             # 删除图片
             deleted_count = 0
             delete_failed_items = []
+            delete_success_items = []
 
             # 异步删除单个图片的函数
             async def delete_single_image(img_id):
@@ -1167,16 +1183,26 @@ async def api_admin_batch_action(request: Request, current_user: dict = Depends(
                 img_id = valid_image_ids[i]
                 if success:
                     deleted_count += 1
+                    delete_success_items.append({'id': img_id, 'message': '删除成功'})
                 else:
                     delete_failed_items.append({'id': img_id, 'error': error})
 
+            # 构建响应消息
+            if delete_success_items and delete_failed_items:
+                msg = f'部分删除成功，共处理 {deleted_count} 张图片，失败 {len(delete_failed_items)} 张'
+            elif delete_success_items:
+                msg = f'删除成功，共处理 {deleted_count} 张图片'
+            else:
+                msg = f'删除失败，共 {len(delete_failed_items)} 张图片'
+
             return JSONResponse(content={
-                'code': 200,
-                'msg': f'删除成功，共处理 {deleted_count} 张图片',
+                'code': 200 if delete_success_items else 400,
+                'msg': msg,
                 'data': {
                     'action': action,
                     'processed_count': deleted_count,
                     'failed_count': len(delete_failed_items),
+                    'success_items': delete_success_items,
                     'failed_items': delete_failed_items
                 }
             })

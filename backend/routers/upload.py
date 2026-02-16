@@ -17,7 +17,7 @@ from ..api.dependencies import get_current_admin
 from ..core.config import IMG_ROOT_DIR
 from ..utils.async_io import async_exists, async_makedirs, async_open_write
 from ..utils.utils import validate_safe_path, get_client_ip
-from ..core.database import get_db_connection
+from ..core.database import get_async_db_connection
 
 
 def _get_image_resolution(file_path: str) -> tuple:
@@ -46,7 +46,7 @@ def _get_image_resolution(file_path: str) -> tuple:
         return (0, 0)
 
 
-def _get_category_id(category_id: str) -> Optional[int]:
+async def _get_category_id(category_id: str) -> Optional[int]:
     """
     根据分类ID获取分类ID，仅支持数字ID
 
@@ -66,17 +66,15 @@ def _get_category_id(category_id: str) -> Optional[int]:
         category_id_int = int(category_id)
         
         # 查询数据库
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute('SELECT id FROM categories WHERE id = %s', (category_id_int,))
-            result = cursor.fetchone()
+        async with get_async_db_connection() as conn:
+            result = await conn.fetchrow('SELECT id FROM categories WHERE id = $1', category_id_int)
             
             # 检查分类是否存在
             if not result:
                 print(f"[ERROR] 分类不存在: ID={category_id_int}")
                 return None
             
-            return result[0]
+            return result['id']
     except Exception as e:
         print(f"[ERROR] 获取分类ID失败: {str(e)}")
         return None
@@ -117,7 +115,7 @@ async def api_upload_images(
         allowed_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
 
         # 获取分类ID
-        category_id = _get_category_id(category)
+        category_id = await _get_category_id(category)
 
         # 验证分类ID是否有效
         if not category_id:
@@ -125,13 +123,11 @@ async def api_upload_images(
 
         # 获取分类名称用于创建目录
         category_name = None
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute('SELECT name FROM categories WHERE id = %s', (category_id,))
-            result = cursor.fetchone()
+        async with get_async_db_connection() as conn:
+            result = await conn.fetchrow('SELECT name FROM categories WHERE id = $1', category_id)
             if not result:
                 raise HTTPException(status_code=400, detail="分类不存在")
-            category_name = result[0]
+            category_name = result['name']
 
         # 创建分类目录（如果不存在）
         target_dir = os.path.join(IMG_ROOT_DIR, category_name)
@@ -199,14 +195,12 @@ async def api_upload_images(
 
                 # 写入数据库
                 try:
-                    with get_db_connection() as conn:
-                        cursor = conn.cursor()
-                        cursor.execute('''
+                    async with get_async_db_connection() as conn:
+                        image_id = await conn.fetchval('''
                             INSERT INTO images (filename, file_path, category_id, file_size, width, height, format, md5, uploader, upload_ip)
-                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                             RETURNING id
-                        ''', (unique_filename, rel_path, category_id, len(content), width, height, file_format, md5_hash, uploader, upload_ip))
-                        image_id = cursor.fetchone()[0]
+                        ''', unique_filename, rel_path, category_id, len(content), width, height, file_format, md5_hash, uploader, upload_ip)
                         print(f"[INFO] 图片已写入数据库: ID={image_id}, 文件名={unique_filename}")
                 except Exception as db_error:
                     print(f"[ERROR] 写入数据库失败: {str(db_error)}")

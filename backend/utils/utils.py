@@ -7,6 +7,7 @@
 
 import os
 import time
+import asyncio
 import ipaddress
 from pathlib import Path
 from typing import List, Tuple
@@ -133,11 +134,11 @@ def is_remote_url(url: str) -> bool:
     return bool(re.match(url_pattern, url))
 
 
-def validate_image_file(file_path: str) -> bool:
+async def validate_image_file(file_path: str) -> bool:
     """
     验证文件是否为有效的图片文件
     """
-    if not os.path.isfile(file_path):
+    if not await asyncio.to_thread(os.path.isfile, file_path):
         return False
 
     _, ext = os.path.splitext(file_path.lower())
@@ -146,8 +147,11 @@ def validate_image_file(file_path: str) -> bool:
 
     # 检查文件魔数
     try:
-        with open(file_path, 'rb') as f:
-            header = f.read(12)
+        def read_header():
+            with open(file_path, 'rb') as f:
+                return f.read(12)
+        
+        header = await asyncio.to_thread(read_header)
 
         if len(header) < 2:
             return False
@@ -174,18 +178,19 @@ def validate_image_file(file_path: str) -> bool:
         return False
 
 
-def safe_listdir(dir_path: str) -> List[str]:
+async def safe_listdir(dir_path: str) -> List[str]:
     """
     安全的目录列表函数,过滤软链接
     """
-    if not os.path.isdir(dir_path):
+    if not await asyncio.to_thread(os.path.isdir, dir_path):
         return []
 
     entries = []
     try:
-        for name in os.listdir(dir_path):
+        dir_entries = await asyncio.to_thread(os.listdir, dir_path)
+        for name in dir_entries:
             full_path = os.path.join(dir_path, name)
-            if os.path.islink(full_path):
+            if await asyncio.to_thread(os.path.islink, full_path):
                 continue
             entries.append(name)
     except Exception:
@@ -194,21 +199,22 @@ def safe_listdir(dir_path: str) -> List[str]:
     return entries
 
 
-def get_directory_modify_time(dir_path: str) -> float:
+async def get_directory_modify_time(dir_path: str) -> float:
     """
     获取目录最后修改时间（递归检测子文件/目录）
     """
-    if not os.path.exists(dir_path):
+    if not await asyncio.to_thread(os.path.exists, dir_path):
         return 0
 
     try:
-        max_mtime = os.path.getmtime(dir_path)
+        max_mtime = await asyncio.to_thread(os.path.getmtime, dir_path)
 
-        if os.path.isdir(dir_path):
-            for root, dirs, files in os.walk(dir_path):
+        if await asyncio.to_thread(os.path.isdir, dir_path):
+            walk_result = await asyncio.to_thread(lambda: list(os.walk(dir_path)))
+            for root, dirs, files in walk_result:
                 for d in dirs:
                     try:
-                        mtime = os.path.getmtime(os.path.join(root, d))
+                        mtime = await asyncio.to_thread(os.path.getmtime, os.path.join(root, d))
                         if mtime > max_mtime:
                             max_mtime = mtime
                     except Exception:
@@ -216,7 +222,7 @@ def get_directory_modify_time(dir_path: str) -> float:
 
                 for f in files:
                     try:
-                        mtime = os.path.getmtime(os.path.join(root, f))
+                        mtime = await asyncio.to_thread(os.path.getmtime, os.path.join(root, f))
                         if mtime > max_mtime:
                             max_mtime = mtime
                     except Exception:
@@ -227,12 +233,12 @@ def get_directory_modify_time(dir_path: str) -> float:
         return 0
 
 
-def get_all_images_in_dir(target_dir: str) -> List[str]:
+async def get_all_images_in_dir(target_dir: str) -> List[str]:
     """
     获取目录下所有图片路径（带缓存，保证实时性）
     """
     cache_key = f"img_{target_dir}"
-    current_mtime = get_directory_modify_time(target_dir)
+    current_mtime = await get_directory_modify_time(target_dir)
     last_mtime = global_cache.get_dir_mtime(cache_key)
 
     need_refresh = False
@@ -247,8 +253,9 @@ def get_all_images_in_dir(target_dir: str) -> List[str]:
 
     if need_refresh:
         image_paths = []
-        if os.path.isdir(target_dir):
-            for root, _, files in os.walk(target_dir):
+        if await asyncio.to_thread(os.path.isdir, target_dir):
+            walk_result = await asyncio.to_thread(lambda: list(os.walk(target_dir)))
+            for root, _, files in walk_result:
                 for file_name in files:
                     if file_name.lower().endswith(SUPPORTED_IMAGE_FORMATS):
                         image_paths.append(os.path.join(root, file_name))
@@ -259,17 +266,18 @@ def get_all_images_in_dir(target_dir: str) -> List[str]:
     return global_cache.get_image_cache(cache_key)["data"]
 
 
-def scan_image_directory(directory_path: str) -> List[str]:
+async def scan_image_directory(directory_path: str) -> List[str]:
     """
     扫描目录中的所有图片文件
     """
     image_paths = []
 
-    if not os.path.exists(directory_path):
+    if not await asyncio.to_thread(os.path.exists, directory_path):
         return image_paths
 
     try:
-        for root, dirs, files in os.walk(directory_path):
+        walk_result = await asyncio.to_thread(lambda: list(os.walk(directory_path)))
+        for root, dirs, files in walk_result:
             for file_name in files:
                 if file_name.lower().endswith(SUPPORTED_IMAGE_FORMATS):
                     full_path = os.path.join(root, file_name)
@@ -324,7 +332,7 @@ def get_client_ip(x_forwarded_for: str, remote_addr: str) -> str:
     return remote_addr
 
 
-def get_error_page(error_type: str, context: dict = None) -> str:
+async def get_error_page(error_type: str, context: dict = None) -> str:
     """
     获取错误页面内容
     
@@ -338,13 +346,16 @@ def get_error_page(error_type: str, context: dict = None) -> str:
     # 使用容器路径构建错误页面路径
     # 从项目根目录开始构建绝对路径
     error_page_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "Status_Code", f"{error_type}.html"))
-    if not os.path.exists(error_page_path):
+    if not await asyncio.to_thread(os.path.exists, error_page_path):
         print(f"[ERROR] 错误页面不存在: {error_page_path}")
         return ""
     
     try:
-        with open(error_page_path, "r", encoding="utf-8") as f:
-            content = f.read()
+        def read_error_page():
+            with open(error_page_path, "r", encoding="utf-8") as f:
+                return f.read()
+        
+        content = await asyncio.to_thread(read_error_page)
         
         # 替换占位符
         if context:

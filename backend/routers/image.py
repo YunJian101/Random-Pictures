@@ -10,12 +10,11 @@ from typing import Optional
 from fastapi import Query, Request, HTTPException, Form, Body, Depends
 from fastapi.responses import FileResponse, JSONResponse
 from urllib.parse import unquote
-from psycopg2.extras import RealDictCursor
 from ..api.dependencies import get_current_admin
 from ..handlers.error_handlers import create_error_response, get_base_url
 
 from ..core.config import IMG_ROOT_DIR
-from ..core.database import get_db_connection
+from ..core.database import get_async_db_connection
 from ..services.image_service import (
     get_paginated_categories,
     get_paginated_category_images,
@@ -27,21 +26,17 @@ from ..utils.utils import validate_safe_path, validate_image_file, get_mime_type
 
 async def api_categories(page: int = Query(1, ge=1, le=1000, description="页码")):
     """分类列表API - 从数据库读取"""
-    from ..core.database import get_db_connection
+    from ..core.database import get_async_db_connection
     from ..core.config import HOME_PAGE_SIZE
 
-    with get_db_connection() as conn:
-        from psycopg2.extras import RealDictCursor
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-
+    async with get_async_db_connection() as conn:
         # 查询启用状态的分类，按创建时间排序
-        cursor.execute('''
+        all_categories = await conn.fetch('''
             SELECT id, name, description, status, created_at, updated_at
             FROM categories
             WHERE status = 'enabled'
             ORDER BY created_at DESC
         ''')
-        all_categories = cursor.fetchall()
 
         # 计算分页信息
         total_categories = len(all_categories)
@@ -57,11 +52,10 @@ async def api_categories(page: int = Query(1, ge=1, le=1000, description="页码
         category_list = []
         for category in paginated_categories:
             # 从数据库查询该分类的图片数量
-            cursor.execute('''
+            result = await conn.fetchrow('''
                 SELECT COUNT(*) as count FROM images
-                WHERE category_id = %s AND status = 'enabled'
-            ''', (category['id'],))
-            result = cursor.fetchone()
+                WHERE category_id = $1 AND status = 'enabled'
+            ''', category['id'])
             image_count = result['count'] if result else 0
 
             category_list.append({
@@ -88,7 +82,7 @@ async def api_category_images(
     page: int = Query(1, ge=1, le=1000, description="页码")
 ):
     """分类图片API"""
-    result = get_paginated_category_images(unquote(name), page)
+    result = await get_paginated_category_images(unquote(name), page)
     return JSONResponse(content=result)
 
 
@@ -100,15 +94,15 @@ async def handle_random_image(
     try:
         if type:
             decoded_category = unquote(type)
-            result = get_random_image_in_category(decoded_category)
+            result = await get_random_image_in_category(decoded_category)
         else:
-            result = get_random_image_in_all_categories()
+            result = await get_random_image_in_all_categories()
 
         if result is None:
             if type:
                 # 使用通用函数生成错误响应
                 base_url = get_base_url(request)
-                response = create_error_response(
+                response = await create_error_response(
                     request, 
                     "404分类不存在", 
                     404, 
@@ -130,19 +124,18 @@ async def handle_random_image(
         if not os.path.exists(full_path) or not os.path.isfile(full_path):
             raise HTTPException(status_code=404, detail="图片文件不存在")
 
-        if not validate_image_file(full_path):
+        if not await validate_image_file(full_path):
             raise HTTPException(status_code=404, detail="不是有效的图片文件")
 
         # 更新访问统计信息
         try:
             rel_path = os.path.relpath(full_path, IMG_ROOT_DIR)
-            with get_db_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
+            async with get_async_db_connection() as conn:
+                await conn.execute('''
                     UPDATE images
                     SET view_count = view_count + 1, last_viewed_at = CURRENT_TIMESTAMP
-                    WHERE file_path = %s
-                ''', (rel_path,))
+                    WHERE file_path = $1
+                ''', rel_path)
                 print(f"[INFO] 图片访问统计已更新: {rel_path}")
         except Exception as db_error:
             print(f"[ERROR] 更新访问统计失败: {str(db_error)}")
@@ -175,46 +168,46 @@ async def handle_image(
     full_path = os.path.join(IMG_ROOT_DIR, unquote(path))
 
     if not os.path.exists(full_path):
-        # 检查分类是否存在
-        path_parts = path.split('/')
-        if len(path_parts) > 1:
-            category = path_parts[0]
-            category_path = os.path.join(IMG_ROOT_DIR, category)
-            if not os.path.isdir(category_path):
-                # 使用通用函数生成错误响应
-                base_url = get_base_url(request)
-                response = create_error_response(
-                    request, 
-                    "404分类不存在", 
-                    404, 
-                    {"category": category, "BASE_URL": base_url}, 
-                    "分类不存在"
-                )
-                return response
-        
-        # 使用通用函数生成错误响应
-        # 从路径中提取图片名称和分类
-        image_name = os.path.basename(path)
-        path_parts = path.split('/')
-        category = path_parts[0] if len(path_parts) > 1 else ""
-        base_url = get_base_url(request)
-        response = create_error_response(
-            request, 
-            "404图片不存在", 
-            404, 
-            {"image_name": image_name, "category": category, "image_path": path, "BASE_URL": base_url}, 
-            "图片不存在"
-        )
-        return response
+            # 检查分类是否存在
+            path_parts = path.split('/')
+            if len(path_parts) > 1:
+                category = path_parts[0]
+                category_path = os.path.join(IMG_ROOT_DIR, category)
+                if not os.path.isdir(category_path):
+                    # 使用通用函数生成错误响应
+                    base_url = get_base_url(request)
+                    response = await create_error_response(
+                        request, 
+                        "404分类不存在", 
+                        404, 
+                        {"category": category, "BASE_URL": base_url}, 
+                        "分类不存在"
+                    )
+                    return response
+            
+            # 使用通用函数生成错误响应
+            # 从路径中提取图片名称和分类
+            image_name = os.path.basename(path)
+            path_parts = path.split('/')
+            category = path_parts[0] if len(path_parts) > 1 else ""
+            base_url = get_base_url(request)
+            response = await create_error_response(
+                request, 
+                "404图片不存在", 
+                404, 
+                {"image_name": image_name, "category": category, "image_path": path, "BASE_URL": base_url}, 
+                "图片不存在"
+            )
+            return response
 
-    if not validate_image_file(full_path):
+    if not await validate_image_file(full_path):
         # 使用通用函数生成错误响应
         # 从路径中提取图片名称和分类
         image_name = os.path.basename(path)
         path_parts = path.split('/')
         category = path_parts[0] if len(path_parts) > 1 else ""
         base_url = get_base_url(request)
-        response = create_error_response(
+        response = await create_error_response(
             request, 
             "404图片不存在", 
             404, 
@@ -226,13 +219,12 @@ async def handle_image(
     # 更新访问统计信息
     try:
         rel_path = os.path.relpath(full_path, IMG_ROOT_DIR)
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute('''
+        async with get_async_db_connection() as conn:
+            await conn.execute('''
                 UPDATE images
                 SET view_count = view_count + 1, last_viewed_at = CURRENT_TIMESTAMP
-                WHERE file_path = %s
-            ''', (rel_path,))
+                WHERE file_path = $1
+            ''', rel_path)
             print(f"[INFO] 图片访问统计已更新: {rel_path}")
     except Exception as db_error:
         print(f"[ERROR] 更新访问统计失败: {str(db_error)}")
@@ -254,16 +246,15 @@ async def handle_image(
 async def api_all_images(page: int = Query(1, ge=1, le=1000, description="页码"), category: str = Query("", description="分类名称"), current_user: dict = Depends(get_current_admin)):
     """获取所有图片列表API - 仅管理员可使用"""
     from ..services.image_service import get_all_images
-    result = get_all_images(page, category)
+    result = await get_all_images(page, category)
     return JSONResponse(content=result)
 
 
 async def api_image_detail(image_id: int):
     """获取单个图片详细信息API"""
     try:
-        with get_db_connection() as conn:
-            cursor = conn.cursor(cursor_factory=RealDictCursor)
-            cursor.execute('''
+        async with get_async_db_connection() as conn:
+            image = await conn.fetchrow('''
                 SELECT 
                     i.id, 
                     i.filename, 
@@ -282,9 +273,8 @@ async def api_image_detail(image_id: int):
                     i.created_at as upload_time
                 FROM images i
                 LEFT JOIN categories c ON i.category_id = c.id
-                WHERE i.id = %s
-            ''', (image_id,))
-            image = cursor.fetchone()
+                WHERE i.id = $1
+            ''', image_id)
             
             if not image:
                 return JSONResponse(
@@ -349,16 +339,14 @@ async def api_update_image(request: Request, image_id: int, filename: str = Body
         print(f"[INFO] 用户代理: {user_agent}")
         print(f"[INFO] 更新内容: 文件名='{filename}', 分类ID={category_id}")
         
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
+        async with get_async_db_connection() as conn:
             # 检查图片是否存在
-            cursor.execute('''
+            image = await conn.fetchrow('''
                 SELECT i.id, i.filename, i.file_path, i.category_id, c.name as category_name
                 FROM images i
                 LEFT JOIN categories c ON i.category_id = c.id
-                WHERE i.id = %s
-            ''', (image_id,))
-            image = cursor.fetchone()
+                WHERE i.id = $1
+            ''', image_id)
             if not image:
                 print(f"[ERROR] 更新图片信息失败 - 图片不存在 | 用户: {username} | IP: {client_ip} | 图片ID: {image_id}")
                 return JSONResponse(
@@ -367,10 +355,10 @@ async def api_update_image(request: Request, image_id: int, filename: str = Body
                 )
             
             # 处理文件名更新
-            original_filename = image[1]
-            original_file_path = image[2]
-            original_category_id = image[3]
-            original_category_name = image[4]
+            original_filename = image['filename']
+            original_file_path = image['file_path']
+            original_category_id = image['category_id']
+            original_category_name = image['category_name']
             
             # 校验文件名，避免路径攻击
             from ..utils.utils import validate_local_path
@@ -388,6 +376,7 @@ async def api_update_image(request: Request, image_id: int, filename: str = Body
             
             # 移除文件名中的路径分隔符和其他危险字符
             # 只允许字母、数字、下划线、中文字符和常见标点
+            import re
             safe_filename = re.sub(r'[\\/"*?<>|]', '_', filename)
             
             # 提取原始文件名的后缀
@@ -416,19 +405,19 @@ async def api_update_image(request: Request, image_id: int, filename: str = Body
             # 如果分类有变化，获取新分类的名称
             new_category_name = original_category_name
             if category_changed:
-                cursor.execute('SELECT name FROM categories WHERE id = %s', (category_id,))
-                new_category = cursor.fetchone()
+                new_category = await conn.fetchrow('SELECT name FROM categories WHERE id = $1', category_id)
                 if not new_category:
                     print(f"[ERROR] 更新图片信息失败 - 指定的分类不存在 | 用户: {username} | IP: {client_ip} | 图片ID: {image_id} | 分类ID: {category_id}")
                     return JSONResponse(
                         content={"code": 400, "msg": "指定的分类不存在"},
                         status_code=400
                     )
-                new_category_name = new_category[0]
+                new_category_name = new_category['name']
                 print(f"[INFO] 分类变更 - 从 '{original_category_name}' 变更为 '{new_category_name}'")
             
             # 构建新的文件路径
             from ..core.config import IMG_ROOT_DIR
+            from ..utils.async_io import async_exists, async_makedirs, async_rename
             
             # 提取原始文件名（不含路径）
             original_basename = os.path.basename(original_file_path)
@@ -450,24 +439,23 @@ async def api_update_image(request: Request, image_id: int, filename: str = Body
                 print(f"[INFO] 准备移动文件 | 原路径: {original_full_path} | 新路径: {new_full_path}")
                 
                 # 确保目标文件夹存在
-                os.makedirs(os.path.dirname(new_full_path), exist_ok=True)
+                await async_makedirs(os.path.dirname(new_full_path), exist_ok=True)
                 print(f"[INFO] 目标文件夹已确保存在: {os.path.dirname(new_full_path)}")
                 
                 # 移动文件
-                if os.path.exists(original_full_path):
-                    os.rename(original_full_path, new_full_path)
+                if await async_exists(original_full_path):
+                    await async_rename(original_full_path, new_full_path)
                     print(f"[INFO] 图片文件已移动: {original_full_path} -> {new_full_path}")
                 else:
                     print(f"[WARNING] 原始文件不存在: {original_full_path}")
             
             # 更新图片信息
             print(f"[INFO] 开始更新数据库 | 新文件名: {new_filename} | 新分类ID: {category_id} | 新文件路径: {new_file_path}")
-            cursor.execute('''
+            await conn.execute('''
                 UPDATE images
-                SET filename = %s, category_id = %s, file_path = %s, updated_at = CURRENT_TIMESTAMP
-                WHERE id = %s
-            ''', (new_filename, category_id, new_file_path, image_id))
-            conn.commit()
+                SET filename = $1, category_id = $2, file_path = $3, updated_at = CURRENT_TIMESTAMP
+                WHERE id = $4
+            ''', new_filename, category_id, new_file_path, image_id)
             print(f"[INFO] 数据库更新成功")
             
             # 输出操作完成日志
@@ -492,11 +480,9 @@ async def api_update_image(request: Request, image_id: int, filename: str = Body
 async def api_delete_image(image_id: int, current_user: dict = Depends(get_current_admin)):
     """删除图片API"""
     try:
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
+        async with get_async_db_connection() as conn:
             # 检查图片是否存在
-            cursor.execute('SELECT file_path FROM images WHERE id = %s', (image_id,))
-            result = cursor.fetchone()
+            result = await conn.fetchrow('SELECT file_path FROM images WHERE id = $1', image_id)
             if not result:
                 return JSONResponse(
                     content={"code": 404, "msg": "图片不存在"},
@@ -504,16 +490,16 @@ async def api_delete_image(image_id: int, current_user: dict = Depends(get_curre
                 )
             
             # 获取文件路径
-            file_path = result[0]
+            file_path = result['file_path']
             full_path = os.path.join(IMG_ROOT_DIR, file_path)
             
             # 删除数据库记录
-            cursor.execute('DELETE FROM images WHERE id = %s', (image_id,))
-            conn.commit()
+            await conn.execute('DELETE FROM images WHERE id = $1', image_id)
             
             # 删除物理文件
-            if os.path.exists(full_path):
-                os.remove(full_path)
+            from ..utils.async_io import async_exists, async_remove
+            if await async_exists(full_path):
+                await async_remove(full_path)
                 print(f"[INFO] 物理文件已删除: {full_path}")
             
             return JSONResponse(

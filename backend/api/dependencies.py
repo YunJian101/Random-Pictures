@@ -53,7 +53,7 @@ async def get_current_user(
         raise HTTPException(status_code=401, detail="未登录")
     
     # 验证token
-    result = verify_session(token)
+    result = await verify_session(token)
     if result['code'] != 200:
         if optional:
             return None

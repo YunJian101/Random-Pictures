@@ -86,7 +86,7 @@ def render_error_page(template_path: str, context: dict) -> str:
 async def not_found_handler(request: Request, exc: HTTPException):
     """自定义404错误处理"""
     base_url = get_base_url(request)
-    return create_error_response(
+    return await create_error_response(
         request, 
         "404页面不存在", 
         404, 
@@ -99,7 +99,7 @@ async def internal_error_handler(request: Request, exc: Exception):
     """自定义500错误处理"""
     error_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
-    return create_error_response(
+    return await create_error_response(
         request, 
         "500服务器内部错误", 
         500, 
@@ -117,7 +117,7 @@ async def validation_error_handler(request: Request, exc: RequestValidationError
     if exc.errors:
         detail = exc.errors()[0].get('msg', '参数错误')
     
-    return create_error_response(
+    return await create_error_response(
         request, 
         "400参数错误", 
         400, 
@@ -126,7 +126,7 @@ async def validation_error_handler(request: Request, exc: RequestValidationError
     )
 
 
-def create_error_response(request: Request, error_type: str, status_code: int, context: dict = None, detail: str = None):
+async def create_error_response(request: Request, error_type: str, status_code: int, context: dict = None, detail: str = None):
     """
     创建错误响应
     
@@ -165,7 +165,7 @@ def create_error_response(request: Request, error_type: str, status_code: int, c
     
     if is_html_request(request):
         # 网页请求返回错误页面
-        content = get_error_page(error_type, context)
+        content = await get_error_page(error_type, context)
         if content:
             return HTMLResponse(content=content, status_code=status_code)
         # 如果错误页面不存在，返回默认HTML响应

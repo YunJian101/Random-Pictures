@@ -16,15 +16,15 @@ from ..utils.utils import safe_listdir, get_all_images_in_dir, get_directory_mod
 from ..utils.cache import global_cache
 
 
-def get_all_categories() -> List[str]:
+async def get_all_categories() -> List[str]:
     """
     获取所有分类名称列表
     """
-    categories_data = get_image_categories()
+    categories_data = await get_image_categories()
     return list(categories_data.keys())
 
 
-def get_images_by_category(category_name: str) -> List[dict]:
+async def get_images_by_category(category_name: str) -> List[dict]:
     """
     获取指定分类下的所有图片
     """
@@ -56,36 +56,31 @@ def get_images_by_category(category_name: str) -> List[dict]:
     return images
 
 
-def get_image_categories() -> Dict[str, List[dict]]:
+async def get_image_categories() -> Dict[str, List[dict]]:
     """
     获取所有图片分类（从数据库读取）
     所有分类必须是数据库中存在的分类
     """
     try:
-        from ..core.database import get_db_connection
-        from psycopg2.extras import RealDictCursor
+        from ..core.database import get_async_db_connection
         
         categories = {}
         
-        with get_db_connection() as conn:
-            cursor = conn.cursor(cursor_factory=RealDictCursor)
-            
+        async with get_async_db_connection() as conn:
             # 从数据库查询所有启用状态的分类
-            cursor.execute('''
+            db_categories = await conn.fetch('''
                 SELECT id, name FROM categories 
                 WHERE status = 'enabled'
                 ORDER BY created_at DESC
             ''')
-            db_categories = cursor.fetchall()
             
             # 为每个分类查询对应的图片
             for category in db_categories:
-                cursor.execute('''
+                images = await conn.fetch('''
                     SELECT filename, file_path FROM images 
-                    WHERE category_id = %s AND status = 'enabled'
+                    WHERE category_id = $1 AND status = 'enabled'
                     ORDER BY created_at DESC
-                ''', (category['id'],))
-                images = cursor.fetchall()
+                ''', category['id'])
                 
                 img_list = []
                 for img in images:
@@ -105,20 +100,17 @@ def get_image_categories() -> Dict[str, List[dict]]:
         return {}
 
 
-def get_paginated_categories(page: int = 1) -> dict:
+async def get_paginated_categories(page: int = 1) -> dict:
     """
     分页获取分类列表（从数据库读取）
     所有分类必须是数据库中存在的分类
     """
     try:
-        from ..core.database import get_db_connection
-        from psycopg2.extras import RealDictCursor
+        from ..core.database import get_async_db_connection
         
-        with get_db_connection() as conn:
-            cursor = conn.cursor(cursor_factory=RealDictCursor)
-            
+        async with get_async_db_connection() as conn:
             # 查询所有启用状态的分类，带图片数量
-            cursor.execute('''
+            all_categories = await conn.fetch('''
                 SELECT 
                     c.id, 
                     c.name, 
@@ -133,7 +125,6 @@ def get_paginated_categories(page: int = 1) -> dict:
                 GROUP BY c.id
                 ORDER BY c.created_at DESC
             ''')
-            all_categories = cursor.fetchall()
             
             # 计算分页信息
             total_categories = len(all_categories)
@@ -149,12 +140,11 @@ def get_paginated_categories(page: int = 1) -> dict:
             categories_dict = {}
             for category in paginated_categories:
                 # 查询该分类下的图片
-                cursor.execute('''
+                images = await conn.fetch('''
                     SELECT filename, file_path FROM images 
-                    WHERE category_id = %s AND status = 'enabled'
+                    WHERE category_id = $1 AND status = 'enabled'
                     ORDER BY created_at DESC
-                ''', (category['id'],))
-                images = cursor.fetchall()
+                ''', category['id'])
                 
                 img_list = []
                 for img in images:
@@ -186,24 +176,20 @@ def get_paginated_categories(page: int = 1) -> dict:
         }
 
 
-def get_paginated_category_images(category_name: str, page: int = 1) -> dict:
+async def get_paginated_category_images(category_name: str, page: int = 1) -> dict:
     """
     分页获取分类下图片（从数据库读取）
     所有分类必须是数据库中存在的分类
     """
     try:
-        from ..core.database import get_db_connection
-        from psycopg2.extras import RealDictCursor
+        from ..core.database import get_async_db_connection
         
-        with get_db_connection() as conn:
-            cursor = conn.cursor(cursor_factory=RealDictCursor)
-            
+        async with get_async_db_connection() as conn:
             # 查询分类ID - 所有分类必须从数据库中查询
-            cursor.execute('''
+            category = await conn.fetchrow('''
                 SELECT id FROM categories 
-                WHERE name = %s AND status = 'enabled'
-            ''', (category_name,))
-            category = cursor.fetchone()
+                WHERE name = $1 AND status = 'enabled'
+            ''', category_name)
             
             if not category:
                 return {
@@ -216,12 +202,11 @@ def get_paginated_category_images(category_name: str, page: int = 1) -> dict:
                 }
             
             # 查询该分类下的所有图片
-            cursor.execute('''
+            all_images = await conn.fetch('''
                 SELECT filename, file_path FROM images 
-                WHERE category_id = %s AND status = 'enabled'
+                WHERE category_id = $1 AND status = 'enabled'
                 ORDER BY created_at DESC
-            ''', (category['id'],))
-            all_images = cursor.fetchall()
+            ''', category['id'])
             
             # 转换为所需格式
             formatted_images = []
@@ -262,36 +247,30 @@ def get_paginated_category_images(category_name: str, page: int = 1) -> dict:
         }
 
 
-def get_random_image_in_category(category_name: str) -> Optional[dict]:
+async def get_random_image_in_category(category_name: str) -> Optional[dict]:
     """
     分类随机：从数据库读取指定分类的图片，随机返回一张
     所有分类必须是数据库中存在的分类
     """
     try:
-        from ..core.database import get_db_connection
-        from psycopg2.extras import RealDictCursor
+        from ..core.database import get_async_db_connection
         
-        with get_db_connection() as conn:
-            cursor = conn.cursor(cursor_factory=RealDictCursor)
-            
+        async with get_async_db_connection() as conn:
             # 查询分类ID - 所有分类必须从数据库中查询
-            cursor.execute('''
+            category = await conn.fetchrow('''
                 SELECT id FROM categories 
-                WHERE name = %s AND status = 'enabled'
-            ''', (category_name,))
-            category = cursor.fetchone()
+                WHERE name = $1 AND status = 'enabled'
+            ''', category_name)
             
             if not category:
                 return None
             
             # 从该分类中随机选择一张图片
-            cursor.execute('''
+            image = await conn.fetchrow('''
                 SELECT filename, file_path FROM images 
-                WHERE category_id = %s AND status = 'enabled'
+                WHERE category_id = $1 AND status = 'enabled'
                 ORDER BY RANDOM() LIMIT 1
-            ''', (category['id'],))
-            
-            image = cursor.fetchone()
+            ''', category['id'])
             
             if not image:
                 return {"error": "empty"}
@@ -308,25 +287,20 @@ def get_random_image_in_category(category_name: str) -> Optional[dict]:
         return None
 
 
-def get_random_image_in_all_categories() -> Optional[dict]:
+async def get_random_image_in_all_categories() -> Optional[dict]:
     """
     全局随机:从数据库读取所有图片，随机返回一张
     """
     try:
-        from ..core.database import get_db_connection
-        from psycopg2.extras import RealDictCursor
+        from ..core.database import get_async_db_connection
         
-        with get_db_connection() as conn:
-            cursor = conn.cursor(cursor_factory=RealDictCursor)
-            
+        async with get_async_db_connection() as conn:
             # 从所有启用状态的图片中随机选择一张
-            cursor.execute('''
+            image = await conn.fetchrow('''
                 SELECT filename, file_path FROM images 
                 WHERE status = 'enabled'
                 ORDER BY RANDOM() LIMIT 1
             ''')
-            
-            image = cursor.fetchone()
             
             if not image:
                 return None
@@ -343,7 +317,7 @@ def get_random_image_in_all_categories() -> Optional[dict]:
         return None
 
 
-def get_all_images(page: int = 1, category: str = '') -> dict:
+async def get_all_images(page: int = 1, category: str = '') -> dict:
     """
     获取所有图片列表(分页) - 从数据库读取
     支持分类过滤
@@ -351,16 +325,13 @@ def get_all_images(page: int = 1, category: str = '') -> dict:
     all_images = []
 
     try:
-        from ..core.database import get_db_connection
+        from ..core.database import get_async_db_connection
         from urllib.parse import quote
 
-        with get_db_connection() as conn:
-            from psycopg2.extras import RealDictCursor
-            cursor = conn.cursor(cursor_factory=RealDictCursor)
-
+        async with get_async_db_connection() as conn:
             # 构建查询语句，支持分类过滤
             if category:
-                cursor.execute('''
+                images_data = await conn.fetch('''
                     SELECT
                         i.id,
                         i.filename,
@@ -372,12 +343,12 @@ def get_all_images(page: int = 1, category: str = '') -> dict:
                         c.name as category_name
                     FROM images i
                     LEFT JOIN categories c ON i.category_id = c.id
-                    WHERE i.status = 'enabled' AND c.name = %s
+                    WHERE i.status = 'enabled' AND c.name = $1
                     ORDER BY i.created_at DESC
-                ''', (category,))
+                ''', category)
             else:
                 # 查询启用状态的图片，按创建时间倒序排序
-                cursor.execute('''
+                images_data = await conn.fetch('''
                     SELECT
                         i.id,
                         i.filename,
@@ -392,8 +363,6 @@ def get_all_images(page: int = 1, category: str = '') -> dict:
                     WHERE i.status = 'enabled'
                     ORDER BY i.created_at DESC
                 ''')
-
-            images_data = cursor.fetchall()
 
             # 构建图片列表
             for img in images_data:

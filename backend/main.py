@@ -208,12 +208,13 @@ app.get("/api/system/info")(admin.api_get_system_info)  # 获取系统基本信�
 
 
 # ==================== 主程序入口 ====================
-def run_server(host: str = HOST, port: int = PORT):
+async def run_server(host: str = HOST, port: int = PORT):
     """
     启动FastAPI服务器
     """
     import sys
     import io
+    import os
 
     # 设置标准输出编码为UTF-8
     if sys.platform == 'win32':
@@ -228,7 +229,7 @@ def run_server(host: str = HOST, port: int = PORT):
     print(" 正在连接数据库...")
 
     try:
-        is_new_database = init_db()
+        is_new_database = await init_db()
         if is_new_database:
             print("✅ 数据库不存在，已创建并初始化")
         else:
@@ -253,7 +254,6 @@ def run_server(host: str = HOST, port: int = PORT):
 
     import uvicorn
     import multiprocessing
-    import os
     
     # 从环境变量获取工作进程数，如果未设置则自动计算
     env_workers = os.getenv('UVICORN_WORKERS')
@@ -279,5 +279,6 @@ def run_server(host: str = HOST, port: int = PORT):
 
 
 if __name__ == '__main__':
-    run_server()
+    import asyncio
+    asyncio.run(run_server())
 

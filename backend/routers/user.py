@@ -14,14 +14,14 @@ from ..api.dependencies import get_current_user
 
 async def api_users(current_user: dict = Depends(get_current_user)):
     """获取当前用户信息API"""
-    user = get_user_by_id(current_user['id'])
+    user = await get_user_by_id(current_user['id'])
 
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
 
     formatted_user = {
         'id': user['id'],
-        'user_id': user['userId'],
+        'user_id': user['id'],
         'username': user['username'],
         'email': user['email'],
         'role': 'admin' if user['type'] == '管理员' else 'user',

@@ -15,14 +15,14 @@ from ..schemas.schemas import RegisterRequest, LoginRequest
 
 async def api_register(data: RegisterRequest, response: Response):
     """用户注册API"""
-    result = register_user(data.username, data.email, data.password)
+    result = await register_user(data.username, data.email, data.password)
     status_code = 200 if result['code'] == 200 else 400
     return JSONResponse(content=result, status_code=status_code)
 
 
 async def api_login(data: LoginRequest, response: Response):
     """用户登录API"""
-    result = login_user(data.account, data.password)
+    result = await login_user(data.account, data.password)
 
     # 设置token到cookie
     if result['code'] == 200:
@@ -62,7 +62,7 @@ async def api_logout(response: Response, request: Request):
     """用户登出API"""
     token = request.cookies.get(COOKIE_NAME)
     if token:
-        logout_user(token)
+        await logout_user(token)
 
     # 清除cookie
     json_response = JSONResponse(content={'code': 200, 'msg': '登出成功'})
@@ -76,6 +76,6 @@ async def api_auth_verify(request: Request):
     if not token:
         return JSONResponse(content={'code': 401, 'msg': '未登录'}, status_code=401)
 
-    result = verify_session(token)
+    result = await verify_session(token)
     status_code = 200 if result['code'] == 200 else 401
     return JSONResponse(content=result, status_code=status_code)
