@@ -1078,7 +1078,7 @@
         let categoriesData = [];
 
         // 等待DOM加载完成
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
             console.log('DOM已加载完成');
             console.log('基础URL:', BASE_URL);
 
@@ -1091,17 +1091,19 @@
                 }, 100);
             }
 
-            // 从后端加载配置信息（包含版本号和备案号）
-            loadConfig();
-
-            // 从后端加载分类数据
-            loadCategoriesFromBackend();
-
-            // 从 GitHub 加载更新日志
-            loadGitHubReleases();
-
-            // 检查用户登录状态
-            checkAuthStatus();
+            // 并行执行API请求，提高加载速度
+            try {
+                await Promise.all([
+                    loadConfig(),
+                    loadCategoriesFromBackend(),
+                    loadGitHubReleases(),
+                    checkAuthStatus()
+                ]);
+                console.log('✅ 所有API请求完成');
+            } catch (error) {
+                console.error('❌ API请求失败:', error);
+                // 单个请求失败不影响其他功能
+            }
         });
 
         // 检查用户登录状态

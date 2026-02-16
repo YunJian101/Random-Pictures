@@ -247,8 +247,6 @@
             }
         }
 
-        // 页面加载完成后获取系统信息
-        window.addEventListener('DOMContentLoaded', getSystemInfo);
     </script>
 </head>
 <body class="min-h-screen bg-white dark:bg-dark-200 text-dark-200 dark:text-light-100 transition-colors duration-300">
@@ -930,141 +928,150 @@ echo "&lt;img src='{$imgUrl}' alt='随机图片'&gt;";
             }
         }
 
-        document.addEventListener('DOMContentLoaded', function() {
-            // 获取系统基本信息，更新页面标题
-            getSystemInfo();
-            
-            // 1. 从后端获取分类数据
-            const fetchCategories = async () => {
-                try {
-                    // 清空现有分类（保留随机分类）
-                    const categorySelect = document.getElementById('category-select');
-                    const randomOption = categorySelect.querySelector('option[value="random"]');
-                    categorySelect.innerHTML = '';
-                    categorySelect.appendChild(randomOption);
-
-                    // 清空分类预览容器
-                    const previewContainer = document.getElementById('category-preview-container');
-                    previewContainer.innerHTML = '';
-
-                    // 分页获取全部分类
-                    let allCategories = [];
-                    let currentPage = 1;
-                    let totalPages = 1;
-
-                    do {
-                        const response = await fetch(`/api/categories?page=${currentPage}`);
-                        const data = await response.json();
-
-                        // 合并分类数据（新格式：category_list 数组）
-                        allCategories = allCategories.concat(data.category_list || []);
-
-                        // 更新分页信息
-                        totalPages = data.total_pages || 1;
-                        currentPage++;
-                    } while (currentPage <= totalPages);
-
-                    // 添加获取到的分类
-                    allCategories.forEach(category => {
-                        const categoryName = category.name;
-
-                        // 添加到分类选择下拉框
-                        const option = document.createElement('option');
-                        option.value = categoryName;
-                        option.textContent = categoryName;
-                        categorySelect.appendChild(option);
-
-                        // 创建分类预览项
-                        const previewItem = document.createElement('div');
-                        previewItem.className = 'category-preview-item cursor-pointer hover:opacity-80 transition-opacity w-56';
-                        previewItem.dataset.category = categoryName;
-
-                        // 获取分类下的第一张图片作为预览图
-                        const previewImageUrl = `https://picsum.photos/200/200?${encodeURIComponent(categoryName)}`;
-
-                        previewItem.innerHTML = `
-                            <div class="bg-gray-100 rounded-lg aspect-video overflow-hidden">
-                                <img src="${previewImageUrl}" class="w-full h-full object-cover" alt="${categoryName}">
-                            </div>
-                            <p class="text-xs text-center mt-1 text-gray-700">${categoryName}</p>
-                        `;
-
-                        previewContainer.appendChild(previewItem);
-                    });
+        // 绑定分类预览点击事件
+        function bindCategoryPreviewEvents() {
+            document.querySelectorAll('.category-preview-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const category = this.dataset.category;
+                    document.getElementById('category-select').value = category;
+                    generateCode();
                     
-                    // 重新绑定分类预览点击事件
-                    bindCategoryPreviewEvents();
-                } catch (error) {
-                    console.error('获取分类失败:', error);
-                    // 加载失败时提示错误
-                    const previewContainer = document.getElementById('category-preview-container');
-                    previewContainer.innerHTML = `
-                        <div class="text-center py-8">
-                            <i class="fa fa-exclamation-circle text-red-500 text-4xl mb-2"></i>
-                            <p class="text-gray-600">获取分类失败，请刷新页面重试</p>
-                        </div>
-                    `;
-                }
-            };
-            
-            // 绑定分类预览点击事件
-            const bindCategoryPreviewEvents = () => {
-                document.querySelectorAll('.category-preview-item').forEach(item => {
-                    item.addEventListener('click', function() {
-                        const category = this.dataset.category;
-                        document.getElementById('category-select').value = category;
-                        generateCode();
-                        
-                        // 触发预览
-                        document.getElementById('preview-btn').click();
-                    });
+                    // 触发预览
+                    document.getElementById('preview-btn').click();
                 });
-            };
+            });
+        }
+        
+        // 代码生成逻辑
+        function generateCode() {
+            const category = document.getElementById('category-select').value;
+            const isJson = document.getElementById('format-json').classList.contains('bg-indigo-50');
             
-            // 2. 代码生成逻辑（原有）
-            const generateCode = () => {
-                const category = document.getElementById('category-select').value;
-                const isJson = document.getElementById('format-json').classList.contains('bg-indigo-50');
-                
-                let baseUrl = '/random';
-                let params = '';
-                
-                // 当选择的不是随机分类时，才添加type参数
-                if (category !== 'random') {
-                    params = `type=${category}`;
-                }
-                
-                if (isJson) params += `${params ? '&' : ''}format=json`;
-                
-                const finalUrl = params ? `${baseUrl}?${params}` : baseUrl;
-                
-                // 根据选中的代码类型生成对应代码
-                const codeTypeActive = document.querySelector('[id^="code-type-"].bg-indigo-50').id;
-                let codeOutput = finalUrl;
-                
-                if (codeTypeActive === 'code-type-html') {
-                    codeOutput = `<img src="${finalUrl}" alt="随机图片">`;
-                } else if (codeTypeActive === 'code-type-markdown') {
-                    codeOutput = `![随机图片](${finalUrl})`;
-                } else if (codeTypeActive === 'code-type-js') {
-                    codeOutput = `fetch('${finalUrl}')
+            let baseUrl = '/random';
+            let params = '';
+            
+            // 当选择的不是随机分类时，才添加type参数
+            if (category !== 'random') {
+                params = `type=${category}`;
+            }
+            
+            if (isJson) params += `${params ? '&' : ''}format=json`;
+            
+            const finalUrl = params ? `${baseUrl}?${params}` : baseUrl;
+            
+            // 根据选中的代码类型生成对应代码
+            const codeTypeActive = document.querySelector('[id^="code-type-"].bg-indigo-50').id;
+            let codeOutput = finalUrl;
+            
+            if (codeTypeActive === 'code-type-html') {
+                codeOutput = `<img src="${finalUrl}" alt="随机图片">`;
+            } else if (codeTypeActive === 'code-type-markdown') {
+                codeOutput = `![随机图片](${finalUrl})`;
+            } else if (codeTypeActive === 'code-type-js') {
+                codeOutput = `fetch('${finalUrl}')
   .then(response => response.blob())
   .then(blob => {
     const imgUrl = URL.createObjectURL(blob);
     // 使用图片URL
   });`;
-                } else if (codeTypeActive === 'code-type-python') {
-                    codeOutput = `import requests
+            } else if (codeTypeActive === 'code-type-python') {
+                codeOutput = `import requests
 response = requests.get('${finalUrl}')
 with open('random_img.jpg', 'wb') as f:
     f.write(response.content)`;
-                }
-                
-                document.getElementById('code-output').value = codeOutput;
-                return finalUrl;
-            };
+            }
             
-            // 2. 格式切换（图片/JSON）（原有）
+            document.getElementById('code-output').value = codeOutput;
+            return finalUrl;
+        }
+        
+        // 从后端获取分类数据
+        async function fetchCategories() {
+            try {
+                // 清空现有分类（保留随机分类）
+                const categorySelect = document.getElementById('category-select');
+                const randomOption = categorySelect.querySelector('option[value="random"]');
+                categorySelect.innerHTML = '';
+                categorySelect.appendChild(randomOption);
+
+                // 清空分类预览容器
+                const previewContainer = document.getElementById('category-preview-container');
+                previewContainer.innerHTML = '';
+
+                // 分页获取全部分类
+                let allCategories = [];
+                let currentPage = 1;
+                let totalPages = 1;
+
+                do {
+                    const response = await fetch(`/api/categories?page=${currentPage}`);
+                    const data = await response.json();
+
+                    // 合并分类数据（新格式：category_list 数组）
+                    allCategories = allCategories.concat(data.category_list || []);
+
+                    // 更新分页信息
+                    totalPages = data.total_pages || 1;
+                    currentPage++;
+                } while (currentPage <= totalPages);
+
+                // 添加获取到的分类
+                allCategories.forEach(category => {
+                    const categoryName = category.name;
+
+                    // 添加到分类选择下拉框
+                    const option = document.createElement('option');
+                    option.value = categoryName;
+                    option.textContent = categoryName;
+                    categorySelect.appendChild(option);
+
+                    // 创建分类预览项
+                    const previewItem = document.createElement('div');
+                    previewItem.className = 'category-preview-item cursor-pointer hover:opacity-80 transition-opacity w-56';
+                    previewItem.dataset.category = categoryName;
+
+                    // 获取分类下的第一张图片作为预览图
+                    const previewImageUrl = `https://picsum.photos/200/200?${encodeURIComponent(categoryName)}`;
+
+                    previewItem.innerHTML = `
+                        <div class="bg-gray-100 rounded-lg aspect-video overflow-hidden">
+                            <img src="${previewImageUrl}" class="w-full h-full object-cover" alt="${categoryName}">
+                        </div>
+                        <p class="text-xs text-center mt-1 text-gray-700">${categoryName}</p>
+                    `;
+
+                    previewContainer.appendChild(previewItem);
+                });
+                
+                // 重新绑定分类预览点击事件
+                bindCategoryPreviewEvents();
+            } catch (error) {
+                console.error('获取分类失败:', error);
+                // 加载失败时提示错误
+                const previewContainer = document.getElementById('category-preview-container');
+                previewContainer.innerHTML = `
+                    <div class="text-center py-8">
+                        <i class="fa fa-exclamation-circle text-red-500 text-4xl mb-2"></i>
+                        <p class="text-gray-600">获取分类失败，请刷新页面重试</p>
+                    </div>
+                `;
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', async function() {
+            // 并行执行API请求，提高加载速度
+            try {
+                await Promise.all([
+                    getSystemInfo(),
+                    fetchCategories()
+                ]);
+                console.log('✅ 所有API请求完成');
+            } catch (error) {
+                console.error('❌ API请求失败:', error);
+                // 单个请求失败不影响其他功能
+            }
+            
+            // 格式切换（图片/JSON）
             const formatButtons = [document.getElementById('format-img'), document.getElementById('format-json')];
             formatButtons.forEach(btn => {
                 btn.addEventListener('click', function() {
@@ -1078,7 +1085,7 @@ with open('random_img.jpg', 'wb') as f:
                 });
             });
             
-            // 3. 代码类型切换（原有）
+            // 代码类型切换
             const codeTypeButtons = [
                 document.getElementById('code-type-url'),
                 document.getElementById('code-type-html'),
@@ -1098,7 +1105,7 @@ with open('random_img.jpg', 'wb') as f:
                 });
             });
             
-            // 4. 复制代码（原有）
+            // 复制代码
             document.getElementById('copy-code').addEventListener('click', function() {
                 const codeOutput = document.getElementById('code-output');
                 codeOutput.select();
@@ -1111,7 +1118,7 @@ with open('random_img.jpg', 'wb') as f:
                 }, 2000);
             });
             
-            // 5. 预览图片（原有）
+            // 预览图片
             document.getElementById('preview-btn').addEventListener('click', async function() {
                 const imgUrl = generateCode().replace('&format=json', ''); // JSON格式不预览
                 const previewContainer = document.getElementById('preview-container');
@@ -1182,21 +1189,18 @@ with open('random_img.jpg', 'wb') as f:
                 }
             });
             
-            // 6. 刷新链接（原有）
+            // 刷新链接
             document.getElementById('refresh-code').addEventListener('click', generateCode);
             
-            // 7. 分类选择变化时更新代码（原有）
+            // 分类选择变化时更新代码
             document.getElementById('category-select').addEventListener('change', generateCode);
             
-            // 8. 页面加载完成后获取分类数据
-            fetchCategories();
-            
-            // 9. 页面加载完成后自动加载一张随机图片
+            // 页面加载完成后自动加载一张随机图片
             setTimeout(() => {
                 document.getElementById('preview-btn').click();
             }, 500);
             
-            // 10. 为刷新按钮添加点击事件
+            // 为刷新按钮添加点击事件
             document.getElementById('refresh-img').addEventListener('click', function() {
                 document.getElementById('preview-btn').click();
             });
