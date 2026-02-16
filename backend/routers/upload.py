@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse
 
 from ..api.dependencies import get_current_admin
 from ..core.config import IMG_ROOT_DIR
+from ..utils.async_io import async_exists, async_makedirs, async_open_write
 from ..utils.utils import validate_safe_path, get_client_ip
 from ..core.database import get_db_connection
 
@@ -134,11 +135,11 @@ async def api_upload_images(
 
         # 创建分类目录（如果不存在）
         target_dir = os.path.join(IMG_ROOT_DIR, category_name)
-        os.makedirs(target_dir, exist_ok=True)
+        await async_makedirs(target_dir, exist_ok=True)
 
         # 检查目录是否存在且可写
-        if not os.path.exists(target_dir):
-            os.makedirs(target_dir, exist_ok=True)
+        if not await async_exists(target_dir):
+            await async_makedirs(target_dir, exist_ok=True)
 
         if not os.access(target_dir, os.W_OK):
             raise HTTPException(status_code=500, detail="目录无写入权限")
@@ -175,8 +176,7 @@ async def api_upload_images(
                     failed_files.append({"filename": file.filename, "error": "文件大小超过5MB限制"})
                     continue
                 # 保存文件
-                with open(file_path, "wb") as buffer:
-                    buffer.write(content)
+                await async_open_write(file_path, content, encoding=None)
                 
                 # 计算文件MD5值
                 import hashlib

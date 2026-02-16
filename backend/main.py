@@ -21,7 +21,7 @@ from .core.config import (
     HOST, PORT, STATIC_ROOT_DIR, FRONTEND_ROOT_DIR,
     ALLOW_ORIGINS, ALLOW_METHODS, ALLOW_HEADERS
 )
-from .core.database import init_db, set_shutting_down
+from .core.database import init_db, set_shutting_down, init_async_pool, close_async_pool
 from .middlewares.logging import LoggingMiddleware
 from .handlers import error_handlers
 
@@ -39,12 +39,18 @@ Path(STATIC_ROOT_DIR).mkdir(parents=True, exist_ok=True)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期管理"""
+    # 启动时初始化
+    print("🔄 正在初始化异步数据库连接池...")
+    await init_async_pool()
+    
     yield
 
     # 关闭时清理
     print("\n🔄 正在关闭服务...")
     # 设置应用正在关闭
     set_shutting_down()
+    # 关闭异步数据库连接池
+    await close_async_pool()
     print("✅ 服务已关闭")
 
 
@@ -246,12 +252,29 @@ def run_server(host: str = HOST, port: int = PORT):
     print(f"\n⚠️  按 Ctrl+C 停止服务器")
 
     import uvicorn
+    import multiprocessing
+    import os
+    
+    # 从环境变量获取工作进程数，如果未设置则自动计算
+    env_workers = os.getenv('UVICORN_WORKERS')
+    if env_workers and env_workers.isdigit():
+        workers = int(env_workers)
+    else:
+        # 获取CPU核心数，设置工作进程数为核心数或核心数+1
+        cpu_count = multiprocessing.cpu_count()
+        # 对于性能强大的CPU，允许使用更多工作进程
+        # 最大工作进程数设置为核心数的2倍，但不超过16个
+        workers = min(cpu_count * 2, 16)
+    
+    print(f"🚀 服务器配置: {workers} 个工作进程")
+    
     uvicorn.run(
         "backend.main:app", 
         host=host, 
         port=port, 
         log_level="info",
-        reload=True  # 启用热重载
+        reload=True,  # 启用热重载
+        workers=workers  # 启用多工作进程
     )
 
 

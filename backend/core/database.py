@@ -7,11 +7,13 @@ database管理模块
 这个模块负责database连接和会话管理
 """
 
-from contextlib import contextmanager
-from typing import Optional
+from contextlib import contextmanager, asynccontextmanager
+from typing import Optional, AsyncGenerator
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from psycopg2 import pool
+import asyncpg
+import asyncio
 
 from .config import DATABASE_URL
 import os
@@ -19,21 +21,67 @@ import os
 # 标记应用是否正在关闭
 is_shutting_down = False
 
-# 创建数据库连接池
+# 创建同步数据库连接池
 connection_pool = None
 
+# 创建异步数据库连接池
+async_connection_pool = None
+
 try:
-    # 初始化连接池
+    # 初始化同步连接池
     connection_pool = pool.ThreadedConnectionPool(
         minconn=1,  # 最小连接数
         maxconn=10,  # 最大连接数
         dsn=DATABASE_URL
     )
-    print("✅ 数据库连接池初始化成功")
+    print("✅ 同步数据库连接池初始化成功")
 except Exception as e:
-    print(f"❌ 数据库连接池初始化失败: {str(e)}")
+    print(f"❌ 同步数据库连接池初始化失败: {str(e)}")
     # 如果连接池初始化失败，仍然使用单连接模式
     connection_pool = None
+
+
+async def init_async_pool():
+    """
+    初始化异步数据库连接池
+    """
+    global async_connection_pool
+    try:
+        # 解析DATABASE_URL获取连接参数
+        import urllib.parse
+        parsed = urllib.parse.urlparse(DATABASE_URL)
+        conn_params = {
+            'host': parsed.hostname,
+            'port': parsed.port,
+            'user': parsed.username,
+            'password': parsed.password,
+            'database': parsed.path.lstrip('/')
+        }
+        # asyncpg 使用 ssl 参数而不是 sslmode
+        if parsed.scheme == 'postgres':
+            conn_params['ssl'] = True
+        
+        # 初始化异步连接池
+        async_connection_pool = await asyncpg.create_pool(
+            min_size=1,
+            max_size=10,
+            command_timeout=60,
+            **conn_params
+        )
+        print("✅ 异步数据库连接池初始化成功")
+    except Exception as e:
+        print(f"❌ 异步数据库连接池初始化失败: {str(e)}")
+        async_connection_pool = None
+
+
+async def close_async_pool():
+    """
+    关闭异步数据库连接池
+    """
+    global async_connection_pool
+    if async_connection_pool:
+        await async_connection_pool.close()
+        print("✅ 异步数据库连接池已关闭")
 
 
 def set_shutting_down():
@@ -526,7 +574,7 @@ def init_db():
 @contextmanager
 def get_db_connection():
     """
-    获取database连接的上下文管理器
+    获取同步database连接的上下文管理器
 
     使用示例:
         with get_db_connection() as conn:
@@ -556,3 +604,35 @@ def get_db_connection():
             raise
         finally:
             conn.close()
+
+
+@asynccontextmanager
+async def get_async_db_connection() -> AsyncGenerator[asyncpg.Connection, None]:
+    """
+    获取异步database连接的上下文管理器
+
+    使用示例:
+        async with get_async_db_connection() as conn:
+            result = await conn.fetch("SELECT * FROM users")
+    """
+    if async_connection_pool:
+        conn = await async_connection_pool.acquire()
+        try:
+            yield conn
+            await conn.commit()
+        except Exception:
+            await conn.rollback()
+            raise
+        finally:
+            await async_connection_pool.release(conn)
+    else:
+        # 连接池不可用时，使用单连接模式
+        conn = await asyncpg.connect(DATABASE_URL)
+        try:
+            yield conn
+            await conn.commit()
+        except Exception:
+            await conn.rollback()
+            raise
+        finally:
+            await conn.close()

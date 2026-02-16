@@ -872,6 +872,8 @@ async def api_admin_batch_action(request: Request, current_user: dict = Depends(
     """
     from ..core.database import get_db_connection
     from ..core.config import IMG_ROOT_DIR
+    from ..utils.async_io import async_exists, async_getsize, async_remove, async_joinpath
+    from ..core.database import get_async_db_connection
     import os
     import zipfile
     import tempfile
@@ -946,25 +948,45 @@ async def api_admin_batch_action(request: Request, current_user: dict = Depends(
             zip_path = os.path.join(tempfile.gettempdir(), zip_filename)
             
             try:
-                with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-                    # 从数据库中获取图片信息
-                    with get_db_connection() as conn:
-                        cursor = conn.cursor()
-
-                        for img_id in valid_image_ids:
-                            cursor.execute('SELECT file_path, filename FROM images WHERE id = %s', (img_id,))
-                            result = cursor.fetchone()
-                            if result:
-                                file_path, filename = result
-                                # 构建完整的文件路径
-                                full_path = os.path.join(IMG_ROOT_DIR, file_path)
-                                if os.path.exists(full_path):
-                                    # 将文件添加到ZIP文件中
-                                    zipf.write(full_path, arcname=filename)
-
+                # 异步获取图片信息
+                async with get_async_db_connection() as conn:
+                    # 构建查询语句
+                    placeholders = ','.join(['%s'] * len(valid_image_ids))
+                    query = f'SELECT id, file_path, filename FROM images WHERE id IN ({placeholders})'
+                    
+                    # 执行查询
+                    image_results = await conn.fetch(query, *valid_image_ids)
+                
+                # 将图片信息转换为字典，便于后续处理
+                image_map = {img['id']: {'file_path': img['file_path'], 'filename': img['filename']} for img in image_results}
+                
+                # 使用线程池执行zipfile操作，避免阻塞事件循环
+                import asyncio
+                
+                async def create_zip():
+                    """在后台线程中创建ZIP文件"""
+                    def _create_zip():
+                        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                            for img_id in valid_image_ids:
+                                if img_id in image_map:
+                                    img_info = image_map[img_id]
+                                    file_path = img_info['file_path']
+                                    filename = img_info['filename']
+                                    # 构建完整的文件路径
+                                    full_path = os.path.join(IMG_ROOT_DIR, file_path)
+                                    if os.path.exists(full_path):
+                                        # 将文件添加到ZIP文件中
+                                        zipf.write(full_path, arcname=filename)
+                    
+                    await asyncio.to_thread(_create_zip)
+                
+                # 执行异步ZIP创建
+                await create_zip()
+                
                 # 检查ZIP文件是否为空
-                if os.path.getsize(zip_path) == 0:
-                    os.remove(zip_path)
+                zip_size = await async_getsize(zip_path)
+                if zip_size == 0:
+                    await async_remove(zip_path)
                     return JSONResponse(content={
                         'code': 500,
                         'msg': '打包失败，ZIP文件为空',
@@ -1031,10 +1053,8 @@ async def api_admin_batch_action(request: Request, current_user: dict = Depends(
 
             # 检查分类是否存在
             category_name = None
-            with get_db_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute('SELECT name FROM categories WHERE id = %s', (category_id,))
-                result = cursor.fetchone()
+            async with get_async_db_connection() as conn:
+                result = await conn.fetchrow('SELECT name FROM categories WHERE id = $1', category_id)
                 if not result:
                     return JSONResponse(content={
                         'code': 400,
@@ -1046,57 +1066,58 @@ async def api_admin_batch_action(request: Request, current_user: dict = Depends(
                             'failed_items': [{'id': img_id, 'error': '目标分类不存在'} for img_id in valid_image_ids]
                         }
                     }, status_code=400)
-                category_name = result[0]
+                category_name = result['name']
 
             # 创建目标分类目录
             target_dir = os.path.join(IMG_ROOT_DIR, category_name)
-            os.makedirs(target_dir, exist_ok=True)
+            await async_makedirs(target_dir, exist_ok=True)
 
             # 移动图片
             moved_count = 0
             move_failed_items = []
 
-            with get_db_connection() as conn:
-                cursor = conn.cursor()
-
-                for img_id in valid_image_ids:
-                    try:
+            # 异步移动单个图片的函数
+            async def move_single_image(img_id):
+                try:
+                    async with get_async_db_connection() as conn:
                         # 获取图片信息
-                        cursor.execute('SELECT file_path, filename FROM images WHERE id = %s', (img_id,))
-                        result = cursor.fetchone()
+                        result = await conn.fetchrow('SELECT file_path, filename FROM images WHERE id = $1', img_id)
                         if result:
-                            old_file_path, filename = result
+                            old_file_path = result['file_path']
+                            filename = result['filename']
                             # 构建完整的文件路径
                             old_full_path = os.path.join(IMG_ROOT_DIR, old_file_path)
-                            if os.path.exists(old_full_path):
+                            if await async_exists(old_full_path):
                                 # 构建新的文件路径
                                 new_file_path = os.path.join(category_name, filename)
                                 new_full_path = os.path.join(IMG_ROOT_DIR, new_file_path)
 
                                 # 物理移动文件
-                                shutil.move(old_full_path, new_full_path)
+                                await asyncio.to_thread(shutil.move, old_full_path, new_full_path)
 
                                 # 更新数据库
-                                cursor.execute('UPDATE images SET category_id = %s, file_path = %s WHERE id = %s', (category_id, new_file_path, img_id))
-                                conn.commit()
+                                await conn.execute('UPDATE images SET category_id = $1, file_path = $2 WHERE id = $3', 
+                                                 category_id, new_file_path, img_id)
 
-                                moved_count += 1
+                                return True, None
                             else:
-                                move_failed_items.append({
-                                    'id': img_id,
-                                    'error': '文件不存在'
-                                })
+                                return False, '文件不存在'
                         else:
-                            move_failed_items.append({
-                                'id': img_id,
-                                'error': '图片不存在'
-                            })
-                    except Exception as e:
-                        conn.rollback()
-                        move_failed_items.append({
-                            'id': img_id,
-                            'error': str(e)
-                        })
+                            return False, '图片不存在'
+                except Exception as e:
+                    return False, str(e)
+
+            # 并发执行移动操作
+            tasks = [move_single_image(img_id) for img_id in valid_image_ids]
+            results = await asyncio.gather(*tasks)
+
+            # 处理结果
+            for i, (success, error) in enumerate(results):
+                img_id = valid_image_ids[i]
+                if success:
+                    moved_count += 1
+                else:
+                    move_failed_items.append({'id': img_id, 'error': error})
 
             return JSONResponse(content={
                 'code': 200,
@@ -1114,38 +1135,40 @@ async def api_admin_batch_action(request: Request, current_user: dict = Depends(
             deleted_count = 0
             delete_failed_items = []
 
-            with get_db_connection() as conn:
-                cursor = conn.cursor()
-
-                for img_id in valid_image_ids:
-                    try:
+            # 异步删除单个图片的函数
+            async def delete_single_image(img_id):
+                try:
+                    async with get_async_db_connection() as conn:
                         # 获取图片信息
-                        cursor.execute('SELECT file_path FROM images WHERE id = %s', (img_id,))
-                        result = cursor.fetchone()
+                        result = await conn.fetchrow('SELECT file_path FROM images WHERE id = $1', img_id)
                         if result:
-                            file_path = result[0]
+                            file_path = result['file_path']
                             # 构建完整的文件路径
                             full_path = os.path.join(IMG_ROOT_DIR, file_path)
-                            if os.path.exists(full_path):
+                            if await async_exists(full_path):
                                 # 物理删除文件
-                                os.remove(full_path)
+                                await async_remove(full_path)
 
                             # 从数据库中删除
-                            cursor.execute('DELETE FROM images WHERE id = %s', (img_id,))
-                            conn.commit()
+                            await conn.execute('DELETE FROM images WHERE id = $1', img_id)
 
-                            deleted_count += 1
+                            return True, None
                         else:
-                            delete_failed_items.append({
-                                'id': img_id,
-                                'error': '图片不存在'
-                            })
-                    except Exception as e:
-                        conn.rollback()
-                        delete_failed_items.append({
-                            'id': img_id,
-                            'error': str(e)
-                        })
+                            return False, '图片不存在'
+                except Exception as e:
+                    return False, str(e)
+
+            # 并发执行删除操作
+            tasks = [delete_single_image(img_id) for img_id in valid_image_ids]
+            results = await asyncio.gather(*tasks)
+
+            # 处理结果
+            for i, (success, error) in enumerate(results):
+                img_id = valid_image_ids[i]
+                if success:
+                    deleted_count += 1
+                else:
+                    delete_failed_items.append({'id': img_id, 'error': error})
 
             return JSONResponse(content={
                 'code': 200,
