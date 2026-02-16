@@ -19,9 +19,9 @@ FastAPI Random Pictures API - 后端模块
     - main.py: FastAPI应用入口
 
 作者: 云笺
-版本: 1.0.1 (FastAPI版)
+版本: 1.0.2 (FastAPI版)
 """
 
-__version__ = "1.0.1"
+__version__ = "1.0.2"
 __version_date__ = "2026-02-16"
 __author__ = "云笺"
