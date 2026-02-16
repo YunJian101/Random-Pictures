@@ -503,9 +503,7 @@
         <button class="btn btn-light px-3 py-1 text-sm" id="moveSelectedBtn">
           <i class="fa fa-arrows mr-1"></i> 移动
         </button>
-        <button class="btn btn-light px-3 py-1 text-sm" id="renameSelectedBtn">
-          <i class="fa fa-pencil mr-1"></i> 重命名
-        </button>
+
         <button class="btn btn-danger px-3 py-1 text-sm" id="deleteSelectedBtn">
           <i class="fa fa-trash mr-1"></i> 删除选中
         </button>
@@ -513,11 +511,7 @@
           <option value="">全部分类</option>
           <!-- 分类选项将从API动态加载 -->
         </select>
-        <select class="btn btn-light px-3 py-1 text-sm outline-none">
-          <option>按时间排序</option>
-          <option>按大小排序</option>
-          <option>按名称排序</option>
-        </select>
+
       </div>
 
       <!-- 图片列表表格 -->
@@ -540,6 +534,21 @@
             <!-- 图片数据将从API动态加载 -->
           </tbody>
         </table>
+      </div>
+
+      <!-- 分页控件 -->
+      <div class="mt-4 flex justify-between items-center" id="imagePagination">
+        <div class="text-sm text-gray-500" id="imagePaginationInfo">
+          显示 1-10 条，共 0 条
+        </div>
+        <div class="flex gap-2">
+          <button id="prevPageBtn" class="px-3 py-1 border border-gray-200 rounded-lg flex items-center hover:bg-gray-50 transition-colors disabled:opacity-50" disabled>
+            <i class="fa fa-arrow-left mr-1"></i> 上一页
+          </button>
+          <button id="nextPageBtn" class="px-3 py-1 border border-gray-200 rounded-lg flex items-center hover:bg-gray-50 transition-colors disabled:opacity-50" disabled>
+            下一页 <i class="fa fa-arrow-right ml-1"></i>
+          </button>
+        </div>
       </div>
     </div>
     
@@ -2109,32 +2118,7 @@ document.addEventListener('DOMContentLoaded', function() {
   </div>
 </div>
 
-<!-- 重命名弹窗 -->
-<div id="modalRename" class="modal fixed inset-0 bg-black/40 z-50 hidden items-center justify-center">
-  <div class="bg-white rounded-xl w-full max-w-md p-6">
-    <div class="flex justify-between items-center mb-4">
-      <h3 class="font-semibold">重命名图片</h3>
-      <button class="closeModal text-gray-400 hover:text-gray-700">
-        <i class="fa fa-times"></i>
-      </button>
-    </div>
-    <div class="space-y-4">
-      <div>
-        <label class="text-sm text-gray-700 mb-1 block">原文件名</label>
-        <input type="text" value="anime_001.webp" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50" readonly id="originalName">
-      </div>
-      <div>
-        <label class="text-sm text-gray-700 mb-1 block">新文件名</label>
-        <input type="text" value="anime_001_new.webp" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" id="newName">
-        <p class="text-xs text-gray-400 mt-1">提示：请勿修改文件扩展名，否则可能导致图片无法正常显示</p>
-      </div>
-    </div>
-    <div class="flex justify-end gap-2 mt-4">
-      <button class="closeModal btn btn-light px-4 py-2">取消</button>
-      <button class="btn btn-primary px-4 py-2" id="confirmRenameBtn">确认重命名</button>
-    </div>
-  </div>
-</div>
+
 
 <!-- 移动弹窗 -->
 <div id="modalMove" class="modal fixed inset-0 bg-black/40 z-50 hidden items-center justify-center">
@@ -2155,13 +2139,7 @@ document.addEventListener('DOMContentLoaded', function() {
       <div>
         <label class="text-sm text-gray-700 mb-1 block">目标分类</label>
         <select class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" id="targetCategory">
-          <option value="">请选择分类</option>
-          <option value="anime">二次元</option>
-          <option value="people">人物</option>
-          <option value="nature">自然风光</option>
-          <option value="wallpaper">壁纸</option>
-          <option value="other">其他</option>
-          <option value="new">创建新分类</option>
+          <!-- 分类选项将由 JavaScript 动态填充 -->
         </select>
         <!-- 新建分类输入框 -->
         <div class="mt-2 hidden" id="newCategoryInput">
@@ -2977,6 +2955,12 @@ document.addEventListener('DOMContentLoaded', function() {
   // ==================== API加载函数 ====================
   async function loadImagesFromAPI(page = 1, category = '') {
     try {
+      // 更新当前页码和分类
+      currentImagePage = page;
+      currentImageCategory = category;
+      
+      console.log('加载图片数据:', { page, category });
+      
       // 构建API请求URL，支持分类过滤
       let url = `${API_BASE_URL}/images?page=${page}`;
       if (category) {
@@ -2988,7 +2972,8 @@ document.addEventListener('DOMContentLoaded', function() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const data = await response.json();
-      renderImages(data);
+      console.log('API返回数据:', data);
+      renderImages(data, page, category);
     } catch (error) {
       console.error('加载图片数据失败:', error);
       showToast('加载图片数据失败');
@@ -3015,13 +3000,37 @@ document.addEventListener('DOMContentLoaded', function() {
         // 检查是否有分类数据
         if (data.category_list && data.category_list.length > 0) {
           allCategories = [...allCategories, ...data.category_list];
-          currentPage++;
-          // 假设如果返回的分类数量少于每页预期数量，则认为没有更多数据
-          // 这里简单处理，实际应该根据API返回的分页信息判断
-          if (data.category_list.length < 10) { // 假设每页最多10个分类
+          
+          // 根据API返回的分页信息判断是否还有更多数据
+          // 检查是否存在 total_pages 字段
+          if (data.total_pages) {
+            console.log(`总页数: ${data.total_pages}, 当前页: ${currentPage}`);
+            hasMoreData = currentPage < data.total_pages;
+          } 
+          // 检查是否存在 has_more 字段
+          else if (data.has_more !== undefined) {
+            console.log(`是否有更多数据: ${data.has_more}`);
+            hasMoreData = data.has_more;
+          }
+          // 检查是否存在 total 字段，通过计算判断是否还有更多数据
+          else if (data.total) {
+            console.log(`总分类数: ${data.total}, 当前加载数: ${allCategories.length}`);
+            hasMoreData = allCategories.length < data.total;
+          }
+          // 检查是否存在 total_categories 字段，通过计算判断是否还有更多数据
+          else if (data.total_categories) {
+            console.log(`总分类数: ${data.total_categories}, 当前加载数: ${allCategories.length}`);
+            hasMoreData = allCategories.length < data.total_categories;
+          }
+          // 如果没有任何分页信息，则假设只有一页数据
+          else {
+            console.log('没有分页信息，假设只有一页数据');
             hasMoreData = false;
           }
+          
+          currentPage++;
         } else {
+          console.log('当前页没有分类数据，停止加载');
           hasMoreData = false;
         }
       }
@@ -3054,16 +3063,47 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
-  function renderImages(data) {
+  // 当前分类
+  let currentImageCategory = '';
+
+  function renderImages(data, page = 1, category = '') {
+    console.log('渲染图片数据:', { page, category, data });
+    
     const tbody = document.getElementById('imageTableBody');
     if (!tbody) return;
 
-    if (!data.images || data.images.length === 0) {
+    // 存储当前分类
+    currentImageCategory = category;
+
+    // 检查数据结构
+    let images = [];
+    let total = 0;
+    let pageSize = 10;
+    
+    if (data && typeof data === 'object') {
+      // 处理可能的数据结构
+      if (data.images) {
+        images = data.images;
+      } else if (data.data && data.data.images) {
+        images = data.data.images;
+        data = data.data;
+      }
+      
+      // 获取分页信息
+      total = data.total_images || data.total || data.total_count || 0;
+      pageSize = data.page_size || data.per_page || 10;
+    }
+
+    if (!images || images.length === 0) {
       tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-gray-500">暂无图片数据</td></tr>';
+      // 更新分页信息
+      updatePaginationInfo(0, 0, 0);
+      // 更新分页按钮状态
+      updatePaginationButtons(page, 0, 10);
       return;
     }
 
-    tbody.innerHTML = data.images.map(img => `
+    tbody.innerHTML = images.map(img => `
       <tr class="table-row border-b border-gray-50 cursor-pointer hover:bg-gray-50" data-id="${img.id}" data-path="${img.path}">
         <td class="py-3 px-2"><input type="checkbox" class="rounded imgCheckbox"></td>
         <td class="py-3 px-2">
@@ -3131,7 +3171,42 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     });
 
+    // 更新分页信息
+    const start = (page - 1) * pageSize + 1;
+    const end = Math.min(start + pageSize - 1, total);
+    updatePaginationInfo(start, end, total);
+
+    // 更新分页按钮状态
+    updatePaginationButtons(page, total, pageSize);
+  }
+
+  // 更新分页信息
+  function updatePaginationInfo(start, end, total) {
+    const paginationInfo = document.getElementById('imagePaginationInfo');
+    if (paginationInfo) {
+      paginationInfo.textContent = `显示 ${start}-${end} 条，共 ${total} 条`;
+    }
+  }
+
+  // 更新分页按钮状态
+  function updatePaginationButtons(currentPage, total, pageSize) {
+    const prevBtn = document.getElementById('prevPageBtn');
+    const nextBtn = document.getElementById('nextPageBtn');
     
+    console.log('更新分页按钮状态:', { currentPage, total, pageSize });
+    
+    if (prevBtn) {
+      prevBtn.disabled = currentPage <= 1;
+      console.log('上一页按钮状态:', prevBtn.disabled);
+    }
+    
+    if (nextBtn) {
+      // 计算总页数，至少为1
+      const totalPages = Math.max(1, Math.ceil(total / pageSize));
+      console.log('总页数:', totalPages);
+      nextBtn.disabled = currentPage >= totalPages;
+      console.log('下一页按钮状态:', nextBtn.disabled);
+    }
   }
 
   function renderCategories(data) {
@@ -3336,7 +3411,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const selects = [
       document.getElementById('uploadCategorySelect'),
       document.getElementById('imageCategoryFilter'),
-      document.getElementById('updateCategorySelect')
+      document.getElementById('updateCategorySelect'),
+      document.getElementById('targetCategory')
     ];
 
     selects.forEach(select => {
@@ -3345,6 +3421,10 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
       }
       console.log('正在填充select元素:', select.id);
+
+      // 保存用户之前选择的分类
+      const previousValue = select.value;
+      console.log('保存之前的选择值:', previousValue);
 
       // 清空select元素
       select.innerHTML = '';
@@ -3355,7 +3435,7 @@ document.addEventListener('DOMContentLoaded', function() {
         allOption.value = '';
         allOption.textContent = '全部分类';
         select.appendChild(allOption);
-      } else if (select.id === 'updateCategorySelect') {
+      } else if (select.id === 'updateCategorySelect' || select.id === 'targetCategory') {
         const defaultOption = document.createElement('option');
         defaultOption.value = '';
         defaultOption.textContent = '请选择分类';
@@ -3367,11 +3447,38 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log(`找到 ${data.category_list.length} 个分类`);
         data.category_list.forEach(category => {
           const option = document.createElement('option');
-          option.value = category.id;
+          // 对于上传、更新和移动操作，使用分类ID作为value
+          // 对于过滤操作，使用分类名称作为value
+          if (select.id === 'uploadCategorySelect' || select.id === 'updateCategorySelect' || select.id === 'targetCategory') {
+            option.value = category.id;
+          } else {
+            option.value = category.name;
+          }
           option.textContent = category.name;
           select.appendChild(option);
         });
+        
+        // 为移动操作添加"创建新分类"选项
+        if (select.id === 'targetCategory') {
+          const newCategoryOption = document.createElement('option');
+          newCategoryOption.value = 'new';
+          newCategoryOption.textContent = '创建新分类';
+          select.appendChild(newCategoryOption);
+        }
+        
         console.log(`成功添加了 ${data.category_list.length} 个分类选项到 ${select.id}`);
+
+        // 恢复用户之前选择的分类
+        if (previousValue) {
+          // 检查之前的选择值是否仍然存在
+          const optionExists = Array.from(select.options).some(option => option.value === previousValue);
+          if (optionExists) {
+            select.value = previousValue;
+            console.log('恢复之前的选择值:', previousValue);
+          } else {
+            console.warn('之前的选择值不存在，使用默认值');
+          }
+        }
       } else {
         console.warn('category_list 为空或不存在');
         // 如果没有分类数据，添加一个提示选项
@@ -3435,16 +3542,7 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     });
 
-    // 重命名图片
-    document.querySelectorAll('.renameImgBtn').forEach(btn => {
-      btn.addEventListener('click', function() {
-        const row = this.closest('tr');
-        const fileName = row.querySelector('td:nth-child(4)').textContent;
-        document.getElementById('modalRename').style.display = 'flex';
-        document.getElementById('originalName').value = fileName;
-        document.getElementById('newName').value = fileName.replace('.', '_new.');
-      });
-    });
+
 
     // 移动图片
     document.querySelectorAll('.moveImgBtn').forEach(btn => {
@@ -3606,6 +3704,26 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     }
     
+    // 上一页按钮点击事件
+    const prevPageBtn = document.getElementById('prevPageBtn');
+    if (prevPageBtn) {
+      prevPageBtn.addEventListener('click', function() {
+        if (currentImagePage > 1) {
+          currentImagePage--;
+          loadImagesFromAPI(currentImagePage, currentImageCategory);
+        }
+      });
+    }
+    
+    // 下一页按钮点击事件
+    const nextPageBtn = document.getElementById('nextPageBtn');
+    if (nextPageBtn) {
+      nextPageBtn.addEventListener('click', function() {
+        currentImagePage++;
+        loadImagesFromAPI(currentImagePage, currentImageCategory);
+      });
+    }
+    
     // 图片详情页面按钮事件
     const modalViewImg = document.getElementById('modalViewImg');
     if (modalViewImg) {
@@ -3634,17 +3752,12 @@ document.addEventListener('DOMContentLoaded', function() {
               loadCategoriesFromAPI().then(() => {
                 // 分类数据加载完成后，设置当前分类
                 const updateCategorySelect = document.getElementById('updateCategorySelect');
-                // 遍历所有分类，找到匹配的分类ID
-                const categories = JSON.parse(localStorage.getItem('categories') || '[]');
-                const currentCategory = categories.find(c => c.name === categoryName);
-                if (currentCategory) {
-                  // 设置当前分类
-                  Array.from(updateCategorySelect.options).forEach(option => {
-                    if (option.value == currentCategory.id) {
-                      option.selected = true;
-                    }
-                  });
-                }
+                // 直接根据分类名称设置选中的选项
+                Array.from(updateCategorySelect.options).forEach(option => {
+                  if (option.value === categoryName) {
+                    option.selected = true;
+                  }
+                });
               });
           } else {
             showToast('无法获取图片ID');
@@ -3764,6 +3877,278 @@ document.addEventListener('DOMContentLoaded', function() {
       } else {
         console.error('未找到复制链接按钮');
       }
+    }
+
+    // ==================== 批量操作功能 ====================
+    // 下载选中按钮点击事件
+    const downloadSelectedBtn = document.getElementById('downloadSelectedBtn');
+    if (downloadSelectedBtn) {
+      downloadSelectedBtn.addEventListener('click', async function() {
+        // 收集选中的图片ID
+        const selectedImages = Array.from(document.querySelectorAll('.imgCheckbox:checked'))
+          .map(checkbox => checkbox.closest('tr').dataset.id);
+        
+        if (selectedImages.length === 0) {
+          showToast('请先选择要下载的图片');
+          return;
+        }
+        
+        try {
+          showToast('开始批量下载选中的图片...');
+          
+          const response = await fetch('/api/admin/batch-action', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              action: 'download',
+              image_ids: selectedImages
+            }),
+            credentials: 'include'
+          });
+          
+          if (!response.ok) {
+            // 尝试解析错误响应
+            try {
+              const errorData = await response.json();
+              showToast(`下载失败: ${errorData.msg || '未知错误'}`);
+            } catch {
+              showToast(`下载失败: ${response.statusText}`);
+            }
+            return;
+          }
+          
+          // 检查响应是否为JSON（错误情况）
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const result = await response.json();
+            if (result.code === 200) {
+              showToast('打包成功，正在下载...');
+              // 打开下载链接
+              window.open(result.data.download_url, '_blank');
+            } else {
+              showToast(`下载失败: ${result.msg}`);
+            }
+          } else {
+            // 处理文件下载
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `selected_images_${Date.now()}.zip`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            showToast('下载成功');
+          }
+        } catch (error) {
+          console.error('下载错误:', error);
+          showToast('下载失败，请重试');
+        }
+      });
+    }
+
+    // 移动选中按钮点击事件
+    const moveSelectedBtn = document.getElementById('moveSelectedBtn');
+    if (moveSelectedBtn) {
+      moveSelectedBtn.addEventListener('click', function() {
+        // 收集选中的图片信息
+        const selectedImages = [];
+        const selectedImageNames = [];
+        
+        document.querySelectorAll('.imgCheckbox:checked').forEach(checkbox => {
+          const row = checkbox.closest('tr');
+          const imgId = row.dataset.id;
+          const imgName = row.querySelector('td:nth-child(3)').textContent;
+          selectedImages.push(imgId);
+          selectedImageNames.push(imgName);
+        });
+        
+        if (selectedImages.length === 0) {
+          showToast('请先选择要移动的图片');
+          return;
+        }
+        
+        // 显示移动弹窗
+        const modalMove = document.getElementById('modalMove');
+        modalMove.style.display = 'flex';
+        
+        // 填充选中的图片列表
+        const moveFileList = document.getElementById('moveFileList');
+        if (moveFileList) {
+          moveFileList.innerHTML = selectedImageNames.map(name => `• ${name}`).join('<br>');
+        }
+        
+        // 存储选中的图片ID到弹窗
+        modalMove.dataset.selectedImages = JSON.stringify(selectedImages);
+      });
+    }
+
+    // 确认移动按钮点击事件
+    const confirmMoveBtn = document.getElementById('confirmMoveBtn');
+    if (confirmMoveBtn) {
+      confirmMoveBtn.addEventListener('click', async function() {
+        // 获取选中的图片ID
+        const modalMove = document.getElementById('modalMove');
+        const selectedImages = JSON.parse(modalMove.dataset.selectedImages);
+        
+        // 获取目标分类
+        const targetCategory = document.getElementById('targetCategory').value;
+        
+        if (!targetCategory) {
+          showToast('请选择目标分类');
+          return;
+        }
+        
+        try {
+          showToast('开始移动选中的图片...');
+          
+          let finalTargetCategory = targetCategory;
+          
+          // 处理创建新分类的情况
+          if (targetCategory === 'new') {
+            const newCategoryInput = document.querySelector('#newCategoryInput input');
+            const newCategoryName = newCategoryInput.value.trim();
+            
+            if (!newCategoryName) {
+              showToast('请输入新分类名称');
+              return;
+            }
+            
+            // 创建新分类
+            const createCategoryResponse = await fetch('/api/categories', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                name: newCategoryName,
+                description: ''
+              }),
+              credentials: 'include'
+            });
+            
+            const createCategoryResult = await createCategoryResponse.json();
+            
+            if (createCategoryResult.code !== 200) {
+              showToast(`创建分类失败: ${createCategoryResult.msg}`);
+              return;
+            }
+            
+            finalTargetCategory = createCategoryResult.data.category.id;
+            
+            // 重新加载分类数据
+            await loadAllCategories();
+          }
+          
+          const response = await fetch('/api/admin/batch-action', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              action: 'move',
+              image_ids: selectedImages,
+              target_category: finalTargetCategory
+            }),
+            credentials: 'include'
+          });
+          
+          const result = await response.json();
+          
+          if (result.code === 200) {
+            showToast(`成功移动 ${result.data.moved_count} 张图片`);
+            // 关闭弹窗
+            closeAllModals();
+            // 重新加载图片列表
+            loadImagesFromAPI(currentImagePage, currentImageCategory);
+          } else {
+            showToast(`移动失败: ${result.msg}`);
+          }
+        } catch (error) {
+          console.error('移动错误:', error);
+          showToast('移动失败，请重试');
+        }
+      });
+    }
+
+    // 删除选中按钮点击事件
+    const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+    if (deleteSelectedBtn) {
+      deleteSelectedBtn.addEventListener('click', function() {
+        // 收集选中的图片信息
+        const selectedImages = [];
+        const selectedImageNames = [];
+        
+        document.querySelectorAll('.imgCheckbox:checked').forEach(checkbox => {
+          const row = checkbox.closest('tr');
+          const imgId = row.dataset.id;
+          const imgName = row.querySelector('td:nth-child(3)').textContent;
+          selectedImages.push(imgId);
+          selectedImageNames.push(imgName);
+        });
+        
+        if (selectedImages.length === 0) {
+          showToast('请先选择要删除的图片');
+          return;
+        }
+        
+        // 显示删除确认弹窗
+        const modalDelete = document.getElementById('modalDelete');
+        modalDelete.style.display = 'flex';
+        
+        // 填充选中的图片列表
+        const deleteFileList = document.getElementById('deleteFileList');
+        if (deleteFileList) {
+          deleteFileList.innerHTML = selectedImageNames.map(name => `• ${name}`).join('<br>');
+        }
+        
+        // 存储选中的图片ID到弹窗
+        modalDelete.dataset.selectedImages = JSON.stringify(selectedImages);
+      });
+    }
+
+    // 确认删除按钮点击事件
+    const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+    if (confirmDeleteBtn) {
+      confirmDeleteBtn.addEventListener('click', async function() {
+        // 获取选中的图片ID
+        const modalDelete = document.getElementById('modalDelete');
+        const selectedImages = JSON.parse(modalDelete.dataset.selectedImages);
+        
+        try {
+          showToast('开始删除选中的图片...');
+          
+          const response = await fetch('/api/admin/batch-action', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              action: 'delete',
+              image_ids: selectedImages
+            }),
+            credentials: 'include'
+          });
+          
+          const result = await response.json();
+          
+          if (result.code === 200) {
+            showToast(`成功删除 ${result.data.deleted_count} 张图片`);
+            // 关闭弹窗
+            closeAllModals();
+            // 重新加载图片列表
+            loadImagesFromAPI(currentImagePage, currentImageCategory);
+          } else {
+            showToast(`删除失败: ${result.msg}`);
+          }
+        } catch (error) {
+          console.error('删除错误:', error);
+          showToast('删除失败，请重试');
+        }
+      });
     }
 
     // ==================== 上传页面功能 ====================
@@ -4217,6 +4602,12 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const result = await response.json();
         
+        // 检查是否是后端直接返回的错误格式（如HTTPException）
+        if (result.detail) {
+          // 后端返回的是HTTPException格式的错误
+          throw new Error(result.detail);
+        }
+        
         if (result.code === 200) {
           // 上传成功
           showToast(`上传成功！新增${result.data.uploaded_count}张图片`);
@@ -4225,7 +4616,22 @@ document.addEventListener('DOMContentLoaded', function() {
           fileInput.value = '';
         } else {
           // 上传失败
-          throw new Error(result.msg || '上传失败');
+          console.log('上传失败，响应数据:', result);
+          if (result.data && result.data.failed_files && result.data.failed_files.length > 0) {
+            // 构建详细的错误信息
+            let errorMessage = '上传失败：';
+            result.data.failed_files.forEach((failedFile, index) => {
+              if (index > 0) {
+                errorMessage += '; ';
+              }
+              errorMessage += `${failedFile.filename}: ${failedFile.error}`;
+            });
+            console.log('构建的错误信息:', errorMessage);
+            throw new Error(errorMessage);
+          } else {
+            console.log('使用默认错误信息:', result.msg || '上传失败');
+            throw new Error(result.msg || '上传失败');
+          }
         }
         
       } catch (error) {
@@ -4259,13 +4665,8 @@ document.addEventListener('DOMContentLoaded', function() {
       document.getElementById('headerCheckbox').checked = false;
       showToast('已取消全选');
     });
-    document.getElementById('confirmRenameBtn').addEventListener('click', function() {
-      closeAllModals();
-      showToast('图片重命名成功！');
-    });
-    document.getElementById('renameSelectedBtn').addEventListener('click', function() {
-      document.getElementById('modalRename').style.display = 'flex';
-    });
+
+
 
     // 移动图片
     document.querySelectorAll('.moveImgBtn').forEach(btn => {

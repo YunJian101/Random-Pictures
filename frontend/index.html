@@ -883,11 +883,11 @@
 
             <!-- 分页控件 -->
             <div class="max-w-[1400px] mx-auto mt-8 flex items-center justify-center gap-4">
-                <button id="prev-page" class="px-4 py-2 rounded-lg bg-card border border-light-300 dark:border-dark-300 hover:bg-light-200 dark:hover:bg-dark-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                <button id="category-prev-page" class="px-4 py-2 rounded-lg bg-card border border-light-300 dark:border-dark-300 hover:bg-light-200 dark:hover:bg-dark-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                     <i class="fa-solid fa-chevron-left mr-2"></i>上一页
                 </button>
-                <span id="page-info" class="text-muted-dark dark:text-muted-light">第 1 / 1 页</span>
-                <button id="next-page" class="px-4 py-2 rounded-lg bg-card border border-light-300 dark:border-dark-300 hover:bg-light-200 dark:hover:bg-dark-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                <span id="category-page-info" class="text-muted-dark dark:text-muted-light">第 1 / 1 页</span>
+                <button id="category-next-page" class="px-4 py-2 rounded-lg bg-card border border-light-300 dark:border-dark-300 hover:bg-light-200 dark:hover:bg-dark-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                     下一页<i class="fa-solid fa-chevron-right ml-2"></i>
                 </button>
             </div>
@@ -1557,13 +1557,17 @@
         // 从后端加载分类数据
         async function loadCategoriesFromBackend() {
             try {
+                console.log(`开始加载第 ${currentPage} 页分类数据...`);
+                
+                // 加载当前页的分类数据
                 const response = await fetch(`${BASE_URL}/api/categories?page=${currentPage}`);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
+                
                 const data = await response.json();
-                console.log('从后端获取的分类数据:', data);
-
+                console.log(`加载分类数据成功:`, data);
+                
                 // 从数据库读取的新格式（category_list 数组）
                 if (!data.category_list || data.category_list.length === 0) {
                     console.warn('后端返回的分类数据为空');
@@ -1572,6 +1576,8 @@
                 }
 
                 // 保存分页信息到全局变量
+                // 从后端返回的分页数据中获取每页显示数量，默认为6
+                window.pageSize = data.items_per_page || data.page_size || data.per_page || 6;
                 totalPages = data.total_pages || 1;
                 totalCategories = data.total_categories || 0;
 
@@ -1582,16 +1588,19 @@
                 }));
 
                 console.log('处理后的分类数据:', categoriesData);
-                console.log(`当前页: ${currentPage}, 总页数: ${totalPages}, 总分类数: ${totalCategories}`);
+                console.log(`当前页: ${window.currentPage}, 总页数: ${totalPages}, 总分类数: ${totalCategories}`);
 
-                // 填充分类下拉框
-                populateCategorySelect();
+                // 填充分类下拉框（显示所有分类）
+                await populateCategorySelect();
 
-                // 动态生成分类预览区
+                // 动态生成分类预览区（只显示当前页的分类）
                 generateCategoryPreview();
 
-                // 更新文档中的分类列表
-                updateDocCategoryList();
+                // 加载分类封面图
+                loadCategoryImages();
+
+                // 更新文档中的分类列表（显示所有分类）
+                await updateDocCategoryList();
 
                 // 更新分页控件
                 updatePaginationControls();
@@ -1623,8 +1632,54 @@
 
 
 
+        // 加载所有分类数据用于下拉框
+        async function loadAllCategoriesForSelect() {
+            try {
+                console.log('开始加载所有分类数据用于下拉框...');
+                let allCategories = [];
+                let currentPage = 1;
+                let hasMoreData = true;
+                
+                // 加载所有分类数据
+                while (hasMoreData) {
+                    const response = await fetch(`${BASE_URL}/api/categories?page=${currentPage}`);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    console.log(`加载第 ${currentPage} 页分类数据成功:`, data);
+                    
+                    // 检查是否有分类数据
+                    if (data.category_list && data.category_list.length > 0) {
+                        allCategories = [...allCategories, ...data.category_list];
+                        
+                        // 根据API返回的分页信息判断是否还有更多数据
+                        if (data.total_pages) {
+                            console.log(`总页数: ${data.total_pages}, 当前页: ${currentPage}`);
+                            hasMoreData = currentPage < data.total_pages;
+                        } else {
+                            // 如果没有分页信息，假设只有一页数据
+                            hasMoreData = false;
+                        }
+                        
+                        currentPage++;
+                    } else {
+                        console.log('当前页没有分类数据，停止加载');
+                        hasMoreData = false;
+                    }
+                }
+                
+                console.log('所有分类数据加载完成，共', allCategories.length, '个分类');
+                return allCategories;
+            } catch (error) {
+                console.error('加载所有分类数据失败:', error);
+                return [];
+            }
+        }
+
         // 填充分类下拉框
-        function populateCategorySelect() {
+        async function populateCategorySelect() {
             const categorySelect = document.getElementById('category-select');
             if (!categorySelect) return;
 
@@ -1637,8 +1692,11 @@
             allOption.textContent = '全部';
             categorySelect.appendChild(allOption);
 
+            // 加载所有分类数据用于下拉框
+            const allCategories = await loadAllCategoriesForSelect();
+            
             // 动态添加分类选项
-            categoriesData.forEach(category => {
+            allCategories.forEach(category => {
                 const option = document.createElement('option');
                 option.value = category.name;
                 option.textContent = category.name;  // 直接使用后端返回的分类名
@@ -1654,8 +1712,10 @@
             // 清空现有内容
             categoriesGrid.innerHTML = '';
 
-            // 动态生成分类卡片
-            categoriesData.forEach(category => {
+            // 动态生成分类卡片 - 使用后端返回的当前页分类数据
+            const currentPageCategories = categoriesData;
+
+            currentPageCategories.forEach(category => {
                 const card = document.createElement('div');
                 card.className = 'bg-card p-6 hover:translate-y-[-5px] transition-all';
                 card.innerHTML = `
@@ -1684,12 +1744,16 @@
         }
 
         // 更新文档中的分类列表
-        function updateDocCategoryList() {
+        async function updateDocCategoryList() {
             const categoryList = document.getElementById('doc-category-list');
             if (!categoryList) return;
 
             categoryList.innerHTML = '';
-            categoriesData.forEach(category => {
+            
+            // 加载所有分类数据用于文档中的分类列表
+            const allCategories = await loadAllCategoriesForSelect();
+            
+            allCategories.forEach(category => {
                 const li = document.createElement('li');
                 li.innerHTML = `<span class="badge badge-primary">${category.name}</span>`;
                 categoryList.appendChild(li);
@@ -1810,9 +1874,9 @@
 
         // 更新分页控件状态
         function updatePaginationControls() {
-            const prevBtn = document.getElementById('prev-page');
-            const nextBtn = document.getElementById('next-page');
-            const pageInfo = document.getElementById('page-info');
+            const prevBtn = document.getElementById('category-prev-page');
+            const nextBtn = document.getElementById('category-next-page');
+            const pageInfo = document.getElementById('category-page-info');
 
             if (!prevBtn || !nextBtn || !pageInfo) return;
 
@@ -1825,27 +1889,25 @@
         }
 
         // 上一页
-        function goToPrevPage() {
+        function goToPrevCategoryPage() {
             if (currentPage > 1) {
                 currentPage--;
                 categoryImagesLoaded = false;
                 loadCategoriesFromBackend().then(() => {
                     // 滚动到分类预览区顶部
                     document.getElementById('categories').scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    loadCategoryImages();
                 });
             }
         }
 
         // 下一页
-        function goToNextPage() {
+        function goToNextCategoryPage() {
             if (currentPage < totalPages) {
                 currentPage++;
                 categoryImagesLoaded = false;
                 loadCategoriesFromBackend().then(() => {
                     // 滚动到分类预览区顶部
                     document.getElementById('categories').scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    loadCategoryImages();
                 });
             }
         }
@@ -1881,6 +1943,10 @@
                 if (moduleId === 'categories') {
                     console.log('检测到分类模块，准备加载图片');
                     loadCategoryImages();
+                    
+                    // 为分类页面的分页按钮添加事件监听器
+                    document.getElementById('category-prev-page')?.addEventListener('click', goToPrevCategoryPage);
+                    document.getElementById('category-next-page')?.addEventListener('click', goToNextCategoryPage);
                 }
             }
 

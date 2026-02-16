@@ -182,6 +182,7 @@ app.post("/api/feedbacks")(feedback.api_create_feedback)  # 创建反馈 - 所�
 
 # API路由 - 上传
 app.post("/api/admin/upload")(upload.api_upload_images)  # 上传图片 - 仅管理员可使用
+app.post("/api/admin/batch-action")(admin.api_admin_batch_action)  # 批量操作API - 仅管理员可使用
 
 # API路由 - 系统更新
 app.get("/api/system/version")(admin.api_system_version)  # 获取本地版本信息 - 仅管理员可使用

@@ -864,3 +864,303 @@ async def api_get_system_info():
                 'favicon_url': ''
             }
         })
+
+
+async def api_admin_batch_action(request: Request, current_user: dict = Depends(get_current_admin)):
+    """管理员批量操作API
+    支持下载、移动、删除选中的图片
+    """
+    from ..core.database import get_db_connection
+    from ..core.config import IMG_ROOT_DIR
+    import os
+    import zipfile
+    import tempfile
+    import shutil
+
+    try:
+        # 解析请求体
+        data = await request.json()
+        action = data.get('action')
+        image_ids = data.get('image_ids', [])
+        category_id = data.get('category_id') or data.get('target_category')
+
+        # 验证输入参数
+        if not action:
+            return JSONResponse(content={
+                'code': 400,
+                'msg': '操作类型不能为空'
+            }, status_code=400)
+
+        if action not in ['download', 'move', 'delete']:
+            return JSONResponse(content={
+                'code': 400,
+                'msg': '无效的操作类型'
+            }, status_code=400)
+
+        if not image_ids or not isinstance(image_ids, list):
+            return JSONResponse(content={
+                'code': 400,
+                'msg': '图片ID列表不能为空'
+            }, status_code=400)
+
+        # 验证图片ID是否有效
+        valid_image_ids = []
+        failed_items = []
+
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+
+            for img_id in image_ids:
+                try:
+                    cursor.execute('SELECT id FROM images WHERE id = %s', (img_id,))
+                    if cursor.fetchone():
+                        valid_image_ids.append(img_id)
+                    else:
+                        failed_items.append({
+                            'id': img_id,
+                            'error': '图片不存在'
+                        })
+                except Exception as e:
+                    failed_items.append({
+                        'id': img_id,
+                        'error': str(e)
+                    })
+
+        if not valid_image_ids:
+            return JSONResponse(content={
+                'code': 400,
+                'msg': '没有有效的图片ID',
+                'data': {
+                    'action': action,
+                    'processed_count': 0,
+                    'failed_count': len(failed_items),
+                    'failed_items': failed_items
+                }
+            }, status_code=400)
+
+        # 根据操作类型执行不同的逻辑
+        if action == 'download':
+            # 打包选中的图片为ZIP文件
+            # 创建临时ZIP文件
+            zip_filename = f"selected_images_{tempfile.mktemp()[-8:]}.zip"
+            zip_path = os.path.join(tempfile.gettempdir(), zip_filename)
+            
+            try:
+                with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                    # 从数据库中获取图片信息
+                    with get_db_connection() as conn:
+                        cursor = conn.cursor()
+
+                        for img_id in valid_image_ids:
+                            cursor.execute('SELECT file_path, filename FROM images WHERE id = %s', (img_id,))
+                            result = cursor.fetchone()
+                            if result:
+                                file_path, filename = result
+                                # 构建完整的文件路径
+                                full_path = os.path.join(IMG_ROOT_DIR, file_path)
+                                if os.path.exists(full_path):
+                                    # 将文件添加到ZIP文件中
+                                    zipf.write(full_path, arcname=filename)
+
+                # 检查ZIP文件是否为空
+                if os.path.getsize(zip_path) == 0:
+                    os.remove(zip_path)
+                    return JSONResponse(content={
+                        'code': 500,
+                        'msg': '打包失败，ZIP文件为空',
+                        'data': {
+                            'action': action,
+                            'processed_count': 0,
+                            'failed_count': len(valid_image_ids),
+                            'failed_items': [{'id': img_id, 'error': '打包失败'} for img_id in valid_image_ids]
+                        }
+                    }, status_code=500)
+
+                # 直接返回ZIP文件
+                from fastapi.responses import FileResponse
+                from fastapi import BackgroundTasks
+                
+                # 设置响应头，让浏览器下载文件
+                headers = {
+                    'Content-Disposition': f'attachment; filename="{zip_filename}"'
+                }
+                
+                # 定义后台任务，在文件下载后删除临时文件
+                def cleanup_temp_file(file_path: str):
+                    """删除临时文件的后台任务"""
+                    import time
+                    # 设置下载超时时间为15分钟
+                    time.sleep(900)  # 15分钟后删除临时文件
+                    try:
+                        if os.path.exists(file_path):
+                            os.remove(file_path)
+                            print(f"临时文件已删除: {file_path}")
+                    except Exception as e:
+                        print(f"删除临时文件时出错: {str(e)}")
+                
+                # 创建后台任务
+                background_tasks = BackgroundTasks()
+                background_tasks.add_task(cleanup_temp_file, zip_path)
+                
+                return FileResponse(
+                    path=zip_path,
+                    filename=zip_filename,
+                    headers=headers,
+                    media_type='application/zip',
+                    background=background_tasks
+                )
+            except Exception as e:
+                # 清理临时文件
+                if os.path.exists(zip_path):
+                    os.remove(zip_path)
+                raise
+
+        elif action == 'move':
+            # 验证目标分类ID是否有效
+            if not category_id:
+                return JSONResponse(content={
+                    'code': 400,
+                    'msg': '目标分类ID不能为空',
+                    'data': {
+                        'action': action,
+                        'processed_count': 0,
+                        'failed_count': len(valid_image_ids),
+                        'failed_items': [{'id': img_id, 'error': '目标分类ID不能为空'} for img_id in valid_image_ids]
+                    }
+                }, status_code=400)
+
+            # 检查分类是否存在
+            category_name = None
+            with get_db_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('SELECT name FROM categories WHERE id = %s', (category_id,))
+                result = cursor.fetchone()
+                if not result:
+                    return JSONResponse(content={
+                        'code': 400,
+                        'msg': '目标分类不存在',
+                        'data': {
+                            'action': action,
+                            'processed_count': 0,
+                            'failed_count': len(valid_image_ids),
+                            'failed_items': [{'id': img_id, 'error': '目标分类不存在'} for img_id in valid_image_ids]
+                        }
+                    }, status_code=400)
+                category_name = result[0]
+
+            # 创建目标分类目录
+            target_dir = os.path.join(IMG_ROOT_DIR, category_name)
+            os.makedirs(target_dir, exist_ok=True)
+
+            # 移动图片
+            moved_count = 0
+            move_failed_items = []
+
+            with get_db_connection() as conn:
+                cursor = conn.cursor()
+
+                for img_id in valid_image_ids:
+                    try:
+                        # 获取图片信息
+                        cursor.execute('SELECT file_path, filename FROM images WHERE id = %s', (img_id,))
+                        result = cursor.fetchone()
+                        if result:
+                            old_file_path, filename = result
+                            # 构建完整的文件路径
+                            old_full_path = os.path.join(IMG_ROOT_DIR, old_file_path)
+                            if os.path.exists(old_full_path):
+                                # 构建新的文件路径
+                                new_file_path = os.path.join(category_name, filename)
+                                new_full_path = os.path.join(IMG_ROOT_DIR, new_file_path)
+
+                                # 物理移动文件
+                                shutil.move(old_full_path, new_full_path)
+
+                                # 更新数据库
+                                cursor.execute('UPDATE images SET category_id = %s, file_path = %s WHERE id = %s', (category_id, new_file_path, img_id))
+                                conn.commit()
+
+                                moved_count += 1
+                            else:
+                                move_failed_items.append({
+                                    'id': img_id,
+                                    'error': '文件不存在'
+                                })
+                        else:
+                            move_failed_items.append({
+                                'id': img_id,
+                                'error': '图片不存在'
+                            })
+                    except Exception as e:
+                        conn.rollback()
+                        move_failed_items.append({
+                            'id': img_id,
+                            'error': str(e)
+                        })
+
+            return JSONResponse(content={
+                'code': 200,
+                'msg': f'移动成功，共处理 {moved_count} 张图片',
+                'data': {
+                    'action': action,
+                    'processed_count': moved_count,
+                    'failed_count': len(move_failed_items),
+                    'failed_items': move_failed_items
+                }
+            })
+
+        elif action == 'delete':
+            # 删除图片
+            deleted_count = 0
+            delete_failed_items = []
+
+            with get_db_connection() as conn:
+                cursor = conn.cursor()
+
+                for img_id in valid_image_ids:
+                    try:
+                        # 获取图片信息
+                        cursor.execute('SELECT file_path FROM images WHERE id = %s', (img_id,))
+                        result = cursor.fetchone()
+                        if result:
+                            file_path = result[0]
+                            # 构建完整的文件路径
+                            full_path = os.path.join(IMG_ROOT_DIR, file_path)
+                            if os.path.exists(full_path):
+                                # 物理删除文件
+                                os.remove(full_path)
+
+                            # 从数据库中删除
+                            cursor.execute('DELETE FROM images WHERE id = %s', (img_id,))
+                            conn.commit()
+
+                            deleted_count += 1
+                        else:
+                            delete_failed_items.append({
+                                'id': img_id,
+                                'error': '图片不存在'
+                            })
+                    except Exception as e:
+                        conn.rollback()
+                        delete_failed_items.append({
+                            'id': img_id,
+                            'error': str(e)
+                        })
+
+            return JSONResponse(content={
+                'code': 200,
+                'msg': f'删除成功，共处理 {deleted_count} 张图片',
+                'data': {
+                    'action': action,
+                    'processed_count': deleted_count,
+                    'failed_count': len(delete_failed_items),
+                    'failed_items': delete_failed_items
+                }
+            })
+
+    except Exception as e:
+        print(f"[ERROR] 批量操作时发生错误: {str(e)}")
+        return JSONResponse(content={
+            'code': 500,
+            'msg': f'批量操作时发生错误: {str(e)}'
+        }, status_code=500)

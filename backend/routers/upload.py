@@ -168,13 +168,14 @@ async def api_upload_images(
                 unique_filename = _get_unique_filename(target_dir, file_name_without_ext, file_ext)
                 file_path = os.path.join(target_dir, unique_filename)
 
+                # 先读取文件内容
+                content = await file.read()
+                # 简单的文件大小检查（5MB限制）
+                if len(content) > 5 * 1024 * 1024:
+                    failed_files.append({"filename": file.filename, "error": "文件大小超过5MB限制"})
+                    continue
                 # 保存文件
                 with open(file_path, "wb") as buffer:
-                    content = await file.read()
-                    # 简单的文件大小检查（5MB限制）
-                    if len(content) > 5 * 1024 * 1024:
-                        failed_files.append({"filename": file.filename, "error": "文件大小超过5MB限制"})
-                        continue
                     buffer.write(content)
                 
                 # 计算文件MD5值
