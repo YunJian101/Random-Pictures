@@ -714,11 +714,29 @@ async def api_system_rollback(request: Request, current_user: dict = Depends(get
         }, status_code=500)
 
 
+# 配置缓存
+_config_cache = {}
+_cache_expiry = 0
+
 async def api_get_system_timezone():
     """获取系统时区配置API（公共接口）"""
     from ..core.database import get_db_connection
 
     try:
+        # 尝试从缓存获取
+        global _config_cache, _cache_expiry
+        import time
+        
+        # 检查缓存是否有效（5分钟过期）
+        if time.time() < _cache_expiry and 'timezone' in _config_cache:
+            return JSONResponse(content={
+                'code': 200,
+                'msg': '获取系统时区成功（缓存）',
+                'data': {
+                    'timezone': _config_cache['timezone']
+                }
+            })
+
         with get_db_connection() as conn:
             cursor = conn.cursor()
 
@@ -731,6 +749,10 @@ async def api_get_system_timezone():
             else:
                 # 如果没有配置，使用默认值
                 timezone = 'Asia/Shanghai'
+
+            # 更新缓存
+            _config_cache['timezone'] = timezone
+            _cache_expiry = time.time() + 300  # 5分钟过期
 
             return JSONResponse(content={
                 'code': 200,
@@ -756,37 +778,63 @@ async def api_get_system_info():
     from ..core.database import get_db_connection
 
     try:
+        # 尝试从缓存获取
+        global _config_cache, _cache_expiry
+        import time
+        
+        # 检查缓存是否有效（5分钟过期）
+        if time.time() < _cache_expiry and all(key in _config_cache for key in ['site_name', 'favicon_url']):
+            # 构建响应数据
+            response_data = {
+                'site_name': _config_cache['site_name'],
+                'favicon_url': _config_cache.get('favicon_url', '')
+            }
+            
+            # 只有当显示备案信息开关开启时，才返回备案信息
+            if _config_cache.get('show_beian_info') == 'true' and all(key in _config_cache for key in ['icp_beian', 'beian_link']):
+                response_data['icp_beian_code'] = _config_cache['icp_beian']
+                response_data['icp_beian_url'] = _config_cache['beian_link']
+                response_data['show_beian_info'] = _config_cache['show_beian_info']
+            
+            return JSONResponse(content={
+                'code': 200,
+                'msg': '获取系统基本信息成功（缓存）',
+                'data': response_data
+            })
+
         with get_db_connection() as conn:
             cursor = conn.cursor()
 
-            # 查询站点名称配置
-            cursor.execute('SELECT config_value FROM system_configs WHERE config_key = %s', ('site_name',))
-            site_name_result = cursor.fetchone()
-
-            if site_name_result:
-                site_name = site_name_result[0]
-            else:
-                # 如果没有配置，使用默认值
-                site_name = '随机图API'
-
-            # 查询ICP备案信息
-            cursor.execute('SELECT config_value FROM system_configs WHERE config_key = %s', ('icp_beian',))
-            icp_beian_result = cursor.fetchone()
-            icp_beian_code = icp_beian_result[0] if icp_beian_result else ''
-
-            cursor.execute('SELECT config_value FROM system_configs WHERE config_key = %s', ('beian_link',))
-            beian_link_result = cursor.fetchone()
-            icp_beian_url = beian_link_result[0] if beian_link_result else 'https://beian.miit.gov.cn'
-
-            # 查询是否显示备案信息
-            cursor.execute('SELECT config_value FROM system_configs WHERE config_key = %s', ('show_beian_info',))
-            show_beian_result = cursor.fetchone()
-            show_beian_info = show_beian_result[0] if show_beian_result else 'false'
+            # 一次查询获取所有需要的配置
+            cursor.execute('''
+                SELECT config_key, config_value 
+                FROM system_configs 
+                WHERE config_key IN (%s, %s, %s, %s, %s, %s)
+            ''', ('site_name', 'timezone', 'icp_beian', 'beian_link', 'show_beian_info', 'favicon_url'))
             
-            # 查询站点图标地址
-            cursor.execute('SELECT config_value FROM system_configs WHERE config_key = %s', ('favicon_url',))
-            favicon_result = cursor.fetchone()
-            favicon_url = favicon_result[0] if favicon_result else ''
+            results = cursor.fetchall()
+            
+            # 构建配置字典
+            configs = {key: value for key, value in results}
+            
+            # 获取配置值，使用默认值
+            site_name = configs.get('site_name', '随机图API')
+            timezone = configs.get('timezone', 'Asia/Shanghai')
+            icp_beian_code = configs.get('icp_beian', '')
+            icp_beian_url = configs.get('beian_link', 'https://beian.miit.gov.cn')
+            show_beian_info = configs.get('show_beian_info', 'false')
+            favicon_url = configs.get('favicon_url', '')
+            
+            # 更新缓存
+            _config_cache.update({
+                'site_name': site_name,
+                'timezone': timezone,
+                'icp_beian': icp_beian_code,
+                'beian_link': icp_beian_url,
+                'show_beian_info': show_beian_info,
+                'favicon_url': favicon_url
+            })
+            _cache_expiry = time.time() + 300  # 5分钟过期
 
             # 构建响应数据
             response_data = {
@@ -807,11 +855,12 @@ async def api_get_system_info():
             })
     except Exception as e:
         print(f"[ERROR] 获取系统基本信息时发生错误: {str(e)}")
-        # 发生错误时返回默认值
+        # 返回默认值
         return JSONResponse(content={
             'code': 200,
             'msg': '获取系统基本信息失败，使用默认值',
             'data': {
-                'site_name': '随机图API'
+                'site_name': '随机图API',
+                'favicon_url': ''
             }
         })

@@ -11,12 +11,29 @@ from contextlib import contextmanager
 from typing import Optional
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from psycopg2 import pool
 
 from .config import DATABASE_URL
 import os
 
 # 标记应用是否正在关闭
 is_shutting_down = False
+
+# 创建数据库连接池
+connection_pool = None
+
+try:
+    # 初始化连接池
+    connection_pool = pool.ThreadedConnectionPool(
+        minconn=1,  # 最小连接数
+        maxconn=10,  # 最大连接数
+        dsn=DATABASE_URL
+    )
+    print("✅ 数据库连接池初始化成功")
+except Exception as e:
+    print(f"❌ 数据库连接池初始化失败: {str(e)}")
+    # 如果连接池初始化失败，仍然使用单连接模式
+    connection_pool = None
 
 
 def set_shutting_down():
@@ -517,13 +534,25 @@ def get_db_connection():
             cursor.execute("SELECT * FROM users")
             result = cursor.fetchall()
     """
-    # 使用PostgreSQL
-    conn = psycopg2.connect(DATABASE_URL)
-    try:
-        yield conn
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
+    # 使用连接池获取连接
+    if connection_pool:
+        conn = connection_pool.getconn()
+        try:
+            yield conn
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            connection_pool.putconn(conn)
+    else:
+        # 连接池不可用时，使用单连接模式
+        conn = psycopg2.connect(DATABASE_URL)
+        try:
+            yield conn
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()

@@ -872,12 +872,12 @@
 </div>
 
 <script>
-  document.addEventListener('DOMContentLoaded', function() {
-    // 获取系统时区配置
-    getSystemTimezone();
-    
-    // 获取系统基本信息，包括站点名称
-    getSystemInfo();
+  document.addEventListener('DOMContentLoaded', async function() {
+    // 并行执行API请求，提高效率
+    await Promise.all([
+      getSystemTimezone(),
+      getSystemInfo()
+    ]);
     
     // 初始化默认激活第一个菜单
     document.getElementById('menuImgManage').classList.add('active');
