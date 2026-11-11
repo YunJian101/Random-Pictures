@@ -7,19 +7,19 @@
 
 import os
 from typing import Optional
-from fastapi import Query, Request, HTTPException, Form, Body, Depends
+from fastapi import Query, Request, HTTPException, Body, Depends
 from fastapi.responses import FileResponse, JSONResponse
 from urllib.parse import unquote
 from ..api.dependencies import get_current_admin
+from ..services.audit_service import record as audit
 from ..handlers.error_handlers import create_error_response, get_base_url
 
 from ..core.config import IMG_ROOT_DIR
 from ..core.database import get_async_db_connection
 from ..services.image_service import (
-    get_paginated_categories,
     get_paginated_category_images,
     get_random_image_in_category,
-    get_random_image_in_all_categories
+    get_random_image_in_all_categories,
 )
 from ..utils.utils import validate_safe_path, validate_image_file, get_mime_type, get_client_ip
 
@@ -48,7 +48,8 @@ async def api_categories(page: int = Query(1, ge=1, le=1000, description="页码
         end = start + HOME_PAGE_SIZE
         paginated_categories = all_categories[start:end]
 
-        # 构建包含ID和图片数量的分类列表
+        # 公开接口：只暴露展示所需字段
+        # id / status / 时间戳属于内部数据，仅管理端接口返回（/api/admin/categories）
         category_list = []
         for category in paginated_categories:
             # 从数据库查询该分类的图片数量
@@ -59,13 +60,9 @@ async def api_categories(page: int = Query(1, ge=1, le=1000, description="页码
             image_count = result['count'] if result else 0
 
             category_list.append({
-                'id': category['id'],
                 'name': category['name'],
                 'description': category['description'],
-                'status': category['status'],
-                'image_count': image_count,
-                'created_at': category['created_at'].isoformat(),
-                'updated_at': category['updated_at'].isoformat()
+                'image_count': image_count
             })
 
         return JSONResponse(content={
@@ -86,34 +83,118 @@ async def api_category_images(
     return JSONResponse(content=result)
 
 
+# ==================== 请求参数解析 ====================
+ALLOWED_FORMATS = ('jpg', 'jpeg', 'png', 'gif', 'webp')
+
+
+def _parse_exclude(raw: Optional[str]) -> list:
+    """解析 exclude=1,2,3（排除指定图片 id），最多 100 个"""
+    if not raw:
+        return []
+    ids = []
+    for piece in str(raw).split(','):
+        piece = piece.strip()
+        if not piece:
+            continue
+        if not piece.isdigit():
+            raise HTTPException(status_code=422, detail=f"exclude 参数包含非法值: {piece}")
+        ids.append(int(piece))
+        # 超限必须报错：静默截断会让调用方以为 100 个之后的 ID 也生效了
+        if len(ids) > 100:
+            raise HTTPException(status_code=422, detail="exclude 最多 100 个图片 ID")
+    return ids
+
+
+def _parse_formats(raw: Optional[str]) -> list:
+    """解析 format=jpg,png（限定图片后缀）"""
+    if not raw:
+        return []
+    formats = []
+    for piece in str(raw).split(','):
+        piece = piece.strip().lower().lstrip('.')
+        if not piece:
+            continue
+        if piece == 'jpeg':
+            piece = 'jpg'
+        if piece not in ALLOWED_FORMATS:
+            raise HTTPException(
+                status_code=422,
+                detail=f"不支持的格式: {piece}（可选 {', '.join(ALLOWED_FORMATS)}）",
+            )
+        if piece not in formats:
+            formats.append(piece)
+    return formats
+
+
+async def _serve_image(
+    full_path: str, rel_path: str, width: Optional[int], cache_control: str, accept: str = ''
+):
+    """按需返回原图或缩略图
+
+    响应头带 Vary: Accept —— 同一个缩略图 URL 可能返回 webp 或 jpeg，
+    不加这个 CDN/代理会把 webp 缓存下来发给不支持它的客户端。
+    """
+    from ..services.thumb_service import ensure_thumb, normalize_width, pick_format
+
+    target_width = normalize_width(width)
+    if target_width:
+        fmt = pick_format(accept)
+        thumb = await ensure_thumb(rel_path, target_width, fmt)
+        if thumb:
+            return FileResponse(
+                thumb,
+                media_type='image/webp' if fmt == 'webp' else 'image/jpeg',
+                headers={
+                    'Cache-Control': cache_control,
+                    'X-Thumb-Width': str(target_width),
+                    'X-Thumb-Format': fmt,
+                    'Vary': 'Accept',
+                },
+            )
+        # 缩略图失败（比如 Pillow 处理不了）就退回原图，不让请求失败
+        print(f'[WARN] 缩略图生成失败，回退原图: {rel_path}')
+
+    return FileResponse(
+        full_path,
+        media_type=get_mime_type(full_path),
+        headers={'Cache-Control': cache_control},
+    )
+
+
+# ==================== 图片路由 ====================
 async def handle_random_image(
     request: Request,
-    type: Optional[str] = Query(None, description="分类类型")
+    type: Optional[str] = Query(None, description="分类类型"),
+    exclude: Optional[str] = Query(None, description="排除的图片 ID，逗号分隔"),
+    format: Optional[str] = Query(None, description="限定格式，逗号分隔：jpg/png/gif/webp"),
+    w: Optional[int] = Query(None, ge=1, le=4000, description="返回宽度（自动生成缩略图）"),
 ):
     """处理随机图片请求 - 直接返回图片内容"""
     try:
+        exclude_ids = _parse_exclude(exclude)
+        formats = _parse_formats(format)
+
         if type:
             decoded_category = unquote(type)
-            result = await get_random_image_in_category(decoded_category)
+            result = await get_random_image_in_category(decoded_category, exclude_ids, formats)
         else:
-            result = await get_random_image_in_all_categories()
+            result = await get_random_image_in_all_categories(exclude_ids, formats)
 
         if result is None:
             if type:
-                # 使用通用函数生成错误响应
                 base_url = get_base_url(request)
                 response = await create_error_response(
-                    request, 
-                    "404分类不存在", 
-                    404, 
-                    {"category": decoded_category, "BASE_URL": base_url}, 
+                    request,
+                    "404分类不存在",
+                    404,
+                    {"category": unquote(type), "BASE_URL": base_url},
                     "分类不存在"
                 )
                 return response
             raise HTTPException(status_code=404, detail="没有可用的图片")
 
         if isinstance(result, dict) and result.get('error') == 'empty':
-            raise HTTPException(status_code=404, detail="该分类下没有图片")
+            raise HTTPException(status_code=404, detail="该分类下没有符合条件可用的图片")
 
         image_path = result.get('path')
         if not image_path:
@@ -136,18 +217,13 @@ async def handle_random_image(
                     SET view_count = view_count + 1, last_viewed_at = CURRENT_TIMESTAMP
                     WHERE file_path = $1
                 ''', rel_path)
-                print(f"[INFO] 图片访问统计已更新: {rel_path}")
         except Exception as db_error:
             print(f"[ERROR] 更新访问统计失败: {str(db_error)}")
 
-        content_type = get_mime_type(full_path)
-
-        return FileResponse(
-            full_path,
-            media_type=content_type,
-            headers={
-                'Cache-Control': 'no-cache, max-age=0'
-            }
+        # 随机接口必须禁用缓存，否则拿到的永远是同一张
+        return await _serve_image(
+            full_path, image_path, w, 'no-cache, max-age=0',
+            request.headers.get('accept', ''),
         )
 
     except HTTPException:
@@ -159,99 +235,110 @@ async def handle_random_image(
 
 async def handle_image(
     request: Request,
-    path: str = Query(..., description="图片路径")
+    path: str = Query(..., description="图片路径"),
+    w: Optional[int] = Query(None, ge=1, le=4000, description="返回宽度（自动生成缩略图）"),
 ):
     """处理图片直链请求"""
     if not validate_safe_path(IMG_ROOT_DIR, path):
         raise HTTPException(status_code=422, detail="非法图片路径")
 
-    full_path = os.path.join(IMG_ROOT_DIR, unquote(path))
+    rel_path = unquote(path)
+    full_path = os.path.join(IMG_ROOT_DIR, rel_path)
 
     if not os.path.exists(full_path):
-            # 检查分类是否存在
-            path_parts = path.split('/')
-            if len(path_parts) > 1:
-                category = path_parts[0]
-                category_path = os.path.join(IMG_ROOT_DIR, category)
-                if not os.path.isdir(category_path):
-                    # 使用通用函数生成错误响应
-                    base_url = get_base_url(request)
-                    response = await create_error_response(
-                        request, 
-                        "404分类不存在", 
-                        404, 
-                        {"category": category, "BASE_URL": base_url}, 
-                        "分类不存在"
-                    )
-                    return response
-            
-            # 使用通用函数生成错误响应
-            # 从路径中提取图片名称和分类
-            image_name = os.path.basename(path)
-            path_parts = path.split('/')
-            category = path_parts[0] if len(path_parts) > 1 else ""
-            base_url = get_base_url(request)
-            response = await create_error_response(
-                request, 
-                "404图片不存在", 
-                404, 
-                {"image_name": image_name, "category": category, "image_path": path, "BASE_URL": base_url}, 
-                "图片不存在"
-            )
-            return response
+        # 检查分类是否存在
+        path_parts = path.split('/')
+        if len(path_parts) > 1:
+            category = path_parts[0]
+            category_path = os.path.join(IMG_ROOT_DIR, category)
+            if not os.path.isdir(category_path):
+                base_url = get_base_url(request)
+                response = await create_error_response(
+                    request,
+                    "404分类不存在",
+                    404,
+                    {"category": category, "BASE_URL": base_url},
+                    "分类不存在"
+                )
+                return response
+
+        image_name = os.path.basename(path)
+        category = path_parts[0] if len(path_parts) > 1 else ""
+        base_url = get_base_url(request)
+        response = await create_error_response(
+            request,
+            "404图片不存在",
+            404,
+            {"image_name": image_name, "category": category, "image_path": path, "BASE_URL": base_url},
+            "图片不存在"
+        )
+        return response
 
     if not await validate_image_file(full_path):
-        # 使用通用函数生成错误响应
-        # 从路径中提取图片名称和分类
         image_name = os.path.basename(path)
         path_parts = path.split('/')
         category = path_parts[0] if len(path_parts) > 1 else ""
         base_url = get_base_url(request)
         response = await create_error_response(
-            request, 
-            "404图片不存在", 
-            404, 
-            {"image_name": image_name, "category": category, "image_path": path, "BASE_URL": base_url}, 
+            request,
+            "404图片不存在",
+            404,
+            {"image_name": image_name, "category": category, "image_path": path, "BASE_URL": base_url},
             "图片不存在"
         )
         return response
 
     # 更新访问统计信息
     try:
-        rel_path = os.path.relpath(full_path, IMG_ROOT_DIR)
         async with get_async_db_connection() as conn:
             await conn.execute('''
                 UPDATE images
                 SET view_count = view_count + 1, last_viewed_at = CURRENT_TIMESTAMP
                 WHERE file_path = $1
             ''', rel_path)
-            print(f"[INFO] 图片访问统计已更新: {rel_path}")
     except Exception as db_error:
         print(f"[ERROR] 更新访问统计失败: {str(db_error)}")
 
-    content_type = get_mime_type(full_path)
-
-    return FileResponse(
-        full_path,
-        media_type=content_type,
-        headers={
-            'Cache-Control': 'public, max-age=604800'
-        }
+    # 直链内容稳定，可以长缓存
+    return await _serve_image(
+        full_path, rel_path, w, 'public, max-age=604800',
+        request.headers.get('accept', ''),
     )
 
 
+async def handle_thumb(request: Request, path: str = Query(..., description="图片路径"),
+                       w: int = Query(320, ge=1, le=4000, description="缩略图宽度")):
+    """缩略图接口：列表/卡片用，避免直接拉原图"""
+    if not validate_safe_path(IMG_ROOT_DIR, path):
+        raise HTTPException(status_code=422, detail="非法图片路径")
+
+    rel_path = unquote(path)
+    full_path = os.path.join(IMG_ROOT_DIR, rel_path)
+
+    if not os.path.isfile(full_path):
+        raise HTTPException(status_code=404, detail="图片不存在")
+
+    return await _serve_image(
+        full_path, rel_path, w, 'public, max-age=2592000',
+        request.headers.get('accept', ''),
+    )
 
 
-
-async def api_all_images(page: int = Query(1, ge=1, le=1000, description="页码"), category: str = Query("", description="分类名称"), current_user: dict = Depends(get_current_admin)):
+async def api_all_images(
+    page: int = Query(1, ge=1, le=1000, description="页码"),
+    category: str = Query("", description="分类名称"),
+    q: str = Query("", max_length=100, description="文件名关键字"),
+    sort: str = Query("created_desc", description="排序：created_desc/created_asc/size_desc/size_asc/views_desc/name_asc"),
+    current_user: dict = Depends(get_current_admin),
+):
     """获取所有图片列表API - 仅管理员可使用"""
     from ..services.image_service import get_all_images
-    result = await get_all_images(page, category)
+    result = await get_all_images(page, category, q, sort)
     return JSONResponse(content=result)
 
 
-async def api_image_detail(image_id: int):
-    """获取单个图片详细信息API"""
+async def api_image_detail(image_id: int, current_user: dict = Depends(get_current_admin)):
+    """获取单个图片详细信息API - 仅管理员（含 md5 / 上传 IP 等内部数据）"""
     try:
         async with get_async_db_connection() as conn:
             image = await conn.fetchrow('''
@@ -461,6 +548,10 @@ async def api_update_image(request: Request, image_id: int, filename: str = Body
             # 输出操作完成日志
             print(f"[INFO] 图片信息更新成功 - 操作: 更新图片 | 用户: {username} | IP: {client_ip} | 图片ID: {image_id}")
             print(f"[INFO] 更新结果: 文件名='{new_filename}', 分类ID={category_id}, 文件路径='{new_file_path}'")
+
+            await audit(request, 'image.update', current_user,
+                        target_type='image', target_id=image_id,
+                        detail=f"修改图片 #{image_id} 为「{new_filename}」，分类 #{category_id}")
             
             return JSONResponse(
                 content={"code": 200, "msg": "图片信息更新成功"}
@@ -477,7 +568,7 @@ async def api_update_image(request: Request, image_id: int, filename: str = Body
         )
 
 
-async def api_delete_image(image_id: int, current_user: dict = Depends(get_current_admin)):
+async def api_delete_image(image_id: int, request: Request, current_user: dict = Depends(get_current_admin)):
     """删除图片API"""
     try:
         async with get_async_db_connection() as conn:
@@ -501,7 +592,11 @@ async def api_delete_image(image_id: int, current_user: dict = Depends(get_curre
             if await async_exists(full_path):
                 await async_remove(full_path)
                 print(f"[INFO] 物理文件已删除: {full_path}")
-            
+
+            await audit(request, 'image.delete', current_user,
+                        target_type='image', target_id=image_id,
+                        detail=f"删除图片 #{image_id}（{file_path}）")
+
             return JSONResponse(
                 content={"code": 200, "msg": "图片删除成功"}
             )

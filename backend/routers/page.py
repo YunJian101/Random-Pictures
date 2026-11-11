@@ -11,7 +11,7 @@ from fastapi.responses import FileResponse, RedirectResponse, HTMLResponse
 from fastapi import Request as FastAPIRequest
 
 from ..core.config import FRONTEND_ROOT_DIR
-from ..api.dependencies import get_current_user, get_current_admin, get_current_user_optional
+from ..api.dependencies import get_current_user_optional
 
 
 async def handle_index(request: FastAPIRequest, current_user: dict = Depends(get_current_user_optional)):
@@ -35,20 +35,48 @@ async def handle_login_page(request: FastAPIRequest, current_user: dict = Depend
     raise HTTPException(status_code=404, detail="登录页面不存在")
 
 
-async def handle_admin_panel(request: FastAPIRequest, current_user: dict = Depends(get_current_admin)):
-    """处理管理后台页面 - 需要管理员权限"""
+async def handle_admin_panel(request: FastAPIRequest, current_user: dict = Depends(get_current_user_optional)):
+    """处理管理后台页面 - 需要管理员权限
+
+    用 optional 依赖 + 手动判别，是为了让浏览器得到「跳登录页 / 403 错误页」，
+    而不是一段裸的 {"detail":"未登录"} JSON（那是给程序调用的接口才该有的样子）。
+    """
+    if current_user is None:
+        return RedirectResponse(url='/login', status_code=302)
+    if current_user.get('role') != 'admin':
+        return await _forbidden(request)
+
     admin_path = os.path.join(FRONTEND_ROOT_DIR, '管理后台.html')
     if os.path.exists(admin_path):
         return FileResponse(admin_path)
     raise HTTPException(status_code=404, detail="管理后台页面不存在")
 
 
-async def handle_user_panel(request: FastAPIRequest, current_user: dict = Depends(get_current_user)):
+async def handle_user_panel(request: FastAPIRequest, current_user: dict = Depends(get_current_user_optional)):
     """处理用户后台页面 - 需要登录"""
+    if current_user is None:
+        return RedirectResponse(url='/login', status_code=302)
+
     user_path = os.path.join(FRONTEND_ROOT_DIR, '用户后台.html')
     if os.path.exists(user_path):
         return FileResponse(user_path)
     raise HTTPException(status_code=404, detail="用户后台页面不存在")
+
+
+async def _forbidden(request: FastAPIRequest) -> HTMLResponse:
+    """统一渲染 403 错误页（拿不到模板时退回纯文本，至少状态码是对的）"""
+    from ..utils.utils import get_error_page
+
+    try:
+        content = await get_error_page(
+            '403禁止访问',
+            {'BASE_URL': str(request.base_url).rstrip('/')},
+        )
+        if content:
+            return HTMLResponse(content=content, status_code=403)
+    except Exception:
+        pass
+    return HTMLResponse(content='<h1>403 Forbidden</h1>', status_code=403)
 
 
 async def handle_favicon():

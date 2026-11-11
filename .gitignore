@@ -187,3 +187,5 @@ last_project-update_service.py
 # Backup files
 *.bak
 *.backup
+# 个人收款码，不入库
+Donate/

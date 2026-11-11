@@ -5,18 +5,19 @@
 处理图片上传相关的API请求
 """
 
+import asyncio
 import os
 import re
 import uuid
 from typing import List, Optional
-from datetime import datetime
 from fastapi import Depends, UploadFile, File, Form, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from ..api.dependencies import get_current_admin
 from ..core.config import IMG_ROOT_DIR
 from ..utils.async_io import async_exists, async_makedirs, async_open_write
-from ..utils.utils import validate_safe_path, get_client_ip
+from ..utils.image_meta import strip_metadata
+from ..utils.utils import get_client_ip
 from ..core.database import get_async_db_connection
 
 
@@ -46,35 +47,46 @@ def _get_image_resolution(file_path: str) -> tuple:
         return (0, 0)
 
 
-async def _get_category_id(category_id: str) -> Optional[int]:
-    """
-    根据分类ID获取分类ID，仅支持数字ID
+async def _get_category_id(category: str) -> Optional[int]:
+    """解析上传目标分类
 
-    Args:
-        category_id: 分类ID（数字字符串）
-
-    Returns:
-        int: 分类ID，如果分类不存在或参数无效返回None
+    同时支持两种写法（前端传分类名更直观，旧调用方传数字 ID）：
+      - "3"    → 先按 id=3 查
+      - "风景"  → 按分类名查（仅启用的分类）
+    找不到返回 None，由调用方返回 400。
     """
+    if not category:
+        return None
+
+    key = str(category).strip()
+    if not key:
+        return None
+
     try:
-        # 验证参数是否为有效的数字
-        if not category_id.isdigit():
-            print(f"[ERROR] 分类ID格式无效: {category_id}")
-            return None
-        
-        # 转换为整数
-        category_id_int = int(category_id)
-        
-        # 查询数据库
         async with get_async_db_connection() as conn:
-            result = await conn.fetchrow('SELECT id FROM categories WHERE id = $1', category_id_int)
-            
-            # 检查分类是否存在
-            if not result:
-                print(f"[ERROR] 分类不存在: ID={category_id_int}")
+            # 数字：优先当作 id
+            if key.isdigit():
+                row = await conn.fetchrow(
+                    'SELECT id, status FROM categories WHERE id = $1', int(key)
+                )
+                if row and row['status'] == 'enabled':
+                    return row['id']
+                if row:
+                    print(f"[WARN] 目标分类已停用: id={key}")
+                    return None
+
+            # 其余情况按名称匹配（先不限状态，好把「已停用」和「不存在」区分开）
+            row = await conn.fetchrow(
+                'SELECT id, status FROM categories WHERE name = $1', key
+            )
+            if row and row['status'] == 'enabled':
+                return row['id']
+            if row:
+                print(f"[WARN] 目标分类已停用: {key}")
                 return None
-            
-            return result['id']
+
+            print(f"[ERROR] 分类不存在: {key}")
+            return None
     except Exception as e:
         print(f"[ERROR] 获取分类ID失败: {str(e)}")
         return None
@@ -117,9 +129,12 @@ async def api_upload_images(
         # 获取分类ID
         category_id = await _get_category_id(category)
 
-        # 验证分类ID是否有效
+        # 验证分类ID是否有效（分类被停用时也会走到这里，文案要能指路）
         if not category_id:
-            raise HTTPException(status_code=400, detail="分类不存在或无效")
+            raise HTTPException(
+                status_code=400,
+                detail=f"分类「{category}」不存在或已停用，请先在「分类管理」中新建或启用该分类",
+            )
 
         # 获取分类名称用于创建目录
         category_name = None
@@ -141,6 +156,7 @@ async def api_upload_images(
             raise HTTPException(status_code=500, detail="目录无写入权限")
 
         uploaded_files = []
+        duplicate_files = []
         failed_files = []
 
         # 处理每个上传的文件
@@ -171,13 +187,47 @@ async def api_upload_images(
                 if len(content) > 5 * 1024 * 1024:
                     failed_files.append({"filename": file.filename, "error": "文件大小超过5MB限制"})
                     continue
-                # 保存文件
-                await async_open_write(file_path, content, encoding=None)
-                
-                # 计算文件MD5值
+                # 清理私密元数据（EXIF/GPS/XMP 等）：重编码后再存，
+                # 处理失败就拒绝这张图，不能把带定位信息的原图留在服务器上
+                cleaned, meta_msg = await asyncio.to_thread(strip_metadata, content)
+                if cleaned is None:
+                    failed_files.append({"filename": file.filename, "error": meta_msg})
+                    continue
+                content = cleaned
+
+                if len(content) > 5 * 1024 * 1024:
+                    failed_files.append({"filename": file.filename, "error": "清理元数据后文件仍超过5MB限制"})
+                    continue
+
+                # 计算文件MD5值（按清理后的内容算，便于去重）
                 import hashlib
                 md5_hash = hashlib.md5(content).hexdigest()
-                
+
+                # 去重：同一张图只保留一份，跳过重复上传
+                try:
+                    async with get_async_db_connection() as conn:
+                        duplicate = await conn.fetchrow('''
+                            SELECT id, filename, file_path FROM images
+                            WHERE md5 = $1 AND status = 'enabled'
+                            LIMIT 1
+                        ''', md5_hash)
+                except Exception as dup_error:
+                    print(f"[WARN] 查重失败，继续正常上传: {str(dup_error)}")
+                    duplicate = None
+
+                if duplicate:
+                    duplicate_files.append({
+                        "filename": file.filename,
+                        "existing_id": duplicate['id'],
+                        "existing_name": duplicate['filename'],
+                        "existing_path": duplicate['file_path'],
+                        "error": "已存在相同图片，已跳过",
+                    })
+                    continue
+
+                # 保存文件
+                await async_open_write(file_path, content, encoding=None)
+
                 # 获取文件格式
                 file_format = file_ext[1:]  # 移除点号，例如 .webp -> webp
 
@@ -232,8 +282,10 @@ async def api_upload_images(
             "msg": "上传完成",
             "data": {
                 "uploaded_count": len(uploaded_files),
+                "duplicate_count": len(duplicate_files),
                 "failed_count": len(failed_files),
                 "uploaded_files": uploaded_files,
+                "duplicate_files": duplicate_files,
                 "failed_files": failed_files
             }
         }

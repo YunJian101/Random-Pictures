@@ -5,14 +5,11 @@
 处理各种HTTP错误的响应
 """
 
-import os
 import uuid
 from datetime import datetime
-from fastapi import Request, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.exceptions import RequestValidationError
 
-from ..core.config import FRONTEND_ROOT_DIR
+from fastapi import Request, HTTPException
+from fastapi.exceptions import RequestValidationError
 
 
 def get_error_id() -> str:

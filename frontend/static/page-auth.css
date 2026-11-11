@@ -1,0 +1,207 @@
+/* ==========================================================================
+   认证页（登录 / 注册）
+   ========================================================================== */
+
+.auth {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  background: var(--bg);
+}
+
+/* ---------------- 左侧品牌面板 ---------------- */
+.auth__aside {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 44px 48px;
+  overflow: hidden;
+  color: #fff;
+  background:
+    radial-gradient(120% 90% at 0% 0%, #312e81 0%, transparent 60%),
+    radial-gradient(110% 80% at 100% 100%, #0e7490 0%, transparent 58%),
+    linear-gradient(150deg, #1b1b4b 0%, #241f5e 46%, #102a4c 100%);
+}
+/* 细网格纹理：轻科技感，不抢内容 */
+.auth__aside::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.35;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 38px 38px;
+  mask-image: radial-gradient(80% 70% at 30% 20%, #000 20%, transparent 78%);
+  -webkit-mask-image: radial-gradient(80% 70% at 30% 20%, #000 20%, transparent 78%);
+}
+.auth__aside > * { position: relative; z-index: 1; }
+
+.auth__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+.auth__brand .brand__mark {
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  box-shadow: none;
+  backdrop-filter: blur(6px);
+}
+
+.auth__pitch { margin: auto 0; max-width: 420px; }
+.auth__pitch h1 {
+  font-size: clamp(26px, 2.6vw, 36px);
+  line-height: 1.28;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: #fff;
+}
+.auth__pitch h1 span { color: #a5b4fc; }
+.auth__pitch p {
+  margin-top: 14px;
+  font-size: 14.5px;
+  line-height: 1.75;
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.auth__points { margin-top: 30px; display: flex; flex-direction: column; gap: 14px; }
+.auth__point { display: flex; align-items: flex-start; gap: 12px; font-size: 13.5px; color: rgba(255, 255, 255, 0.82); }
+.auth__point i {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  font-size: 12px;
+  color: #c7d2fe;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+.auth__point b { display: block; color: #fff; font-weight: 600; margin-bottom: 1px; }
+.auth__point span { color: rgba(255, 255, 255, 0.6); font-size: 12.5px; }
+
+.auth__aside-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+/* ---------------- 右侧表单区 ---------------- */
+.auth__main {
+  display: flex;
+  flex-direction: column;
+  padding: 28px clamp(20px, 5vw, 64px);
+  overflow-y: auto;
+}
+.auth__topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.auth__topbar .brand { font-size: 15px; }
+.auth__mobile-brand { display: none; }
+
+.auth__card {
+  width: 100%;
+  max-width: 400px;
+  margin: auto;
+  padding: 6px 0;
+}
+.auth__head { margin-bottom: 22px; }
+.auth__head h2 { font-size: 23px; letter-spacing: -0.02em; }
+.auth__head p { margin-top: 6px; font-size: 13.5px; color: var(--text-2); }
+
+.auth__switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--r-md);
+  background: var(--surface-3);
+  margin-bottom: 22px;
+}
+.auth__switch button {
+  padding: 9px 0;
+  border: 0;
+  border-radius: var(--r-xs);
+  background: transparent;
+  color: var(--text-2);
+  font-size: 13.5px;
+  font-weight: 550;
+  cursor: pointer;
+  transition: all 0.2s var(--ease);
+}
+.auth__switch button.is-active {
+  background: var(--surface);
+  color: var(--primary);
+  box-shadow: var(--shadow-1);
+}
+
+.auth-form { display: flex; flex-direction: column; gap: 15px; }
+.auth-form .field { gap: 6px; }
+
+.auth__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+}
+.auth__check { display: inline-flex; align-items: center; gap: 8px; color: var(--text-2); cursor: pointer; }
+.auth__link { color: var(--primary); font-weight: 550; }
+.auth__link:hover { text-decoration: underline; }
+
+.strength { display: flex; align-items: center; gap: 9px; margin-top: 2px; }
+.strength__track { flex: 1; height: 4px; border-radius: var(--r-pill); background: var(--surface-3); overflow: hidden; }
+.strength__fill { height: 100%; width: 0; border-radius: inherit; transition: width 0.3s var(--ease), background 0.3s var(--ease); }
+.strength__text { font-size: 11.5px; color: var(--text-3); min-width: 52px; text-align: right; }
+
+.auth__submit { margin-top: 4px; }
+.auth__foot { margin-top: 18px; text-align: center; font-size: 12.5px; color: var(--text-3); }
+.auth__divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0 0;
+  font-size: 12px;
+  color: var(--text-3);
+}
+.auth__divider::before,
+.auth__divider::after { content: ""; height: 1px; flex: 1; background: var(--line); }
+
+/* ---------------- 响应式 ---------------- */
+@media (max-width: 980px) {
+  .auth { grid-template-columns: minmax(0, 1fr); }
+  .auth__aside { display: none; }
+  .auth__main { min-height: 100vh; padding-top: 22px; }
+  .auth__mobile-brand { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 26px; }
+  .auth__card { margin-top: 0; margin-bottom: auto; }
+}
+
+/* ---------------- 左栏：流动光晕 ---------------- */
+.auth__aside::after {
+  content: "";
+  position: absolute;
+  width: 68%;
+  height: 62%;
+  left: -14%;
+  top: -18%;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(52px);
+  background: radial-gradient(circle, rgba(129, 140, 248, 0.5), transparent 66%);
+  animation: drift-a 26s var(--ease) infinite alternate;
+  z-index: 0;
+}
+.auth__aside::before { z-index: 0; }
+.auth__aside > * { z-index: 1; }

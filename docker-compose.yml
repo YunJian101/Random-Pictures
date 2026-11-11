@@ -1,25 +1,101 @@
 # =============================================================================
-# Docker Compose 配置文件
-# 用于部署和随机图API服务
+# Docker Compose - 本地一键运行
+#   docker compose up -d --build     启动（自动构建镜像 + 起 PostgreSQL）
+#   docker compose logs -f app       看应用日志
+#   docker compose down              停止（加 -v 连数据库一起清掉）
+#
+# 默认无需任何 .env，开箱可用；需要改动时在项目根目录建 .env：
+#   POSTGRES_PASSWORD=换成你的密码
+#   APP_PORT=8081
 # =============================================================================
+
 services:
-  # 随机图API核心服务
-  random-pictures:
-    # 构建配置
+  # ---------------- PostgreSQL ----------------
+  db:
+    image: ${POSTGRES_IMAGE:-postgres:16-alpine}
+    container_name: random-pictures-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-random_pictures}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      TZ: ${TZ:-Asia/Shanghai}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # 数据库就绪后 app 才会启动，避免首次初始化时的连接失败
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-random_pictures}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    # 默认不映射端口，避免与本机 PostgreSQL 冲突；
+    # 需要用客户端连进去时取消下面两行注释
+    # ports:
+    #   - "5432:5432"
+
+  # ---------------- 随机图 API ----------------
+  app:
     build:
       context: .
       dockerfile: Dockerfile
-    image: ghcr.io/yunjian101/random-pictures:latest
-    container_name: random-pictures                 # 容器名称，便于管理
-    ports:
-      - "8081:8081"                                 # 端口映射：主机端口:容器端口
-    volumes:
-    #通常情况下挂在/app/images文件夹到本地就行，不用挂载/app
-    # - ./images:/app/images
-      - ./:/app
+      args:
+        # 内网/加速场景可覆盖，例如 BASE_IMAGE=registry.local/library/python:3.11-slim
+        BASE_IMAGE: ${BASE_IMAGE:-python:3.11-slim}
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.org/simple}
+    image: random-pictures:local
+    container_name: random-pictures
     restart: unless-stopped
-    # 重启策略：除非手动停止，否则容器退出后自动重启
+    init: true                      # 正确处理 SIGTERM，容器能优雅退出
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${APP_PORT:-8081}:8081"
     environment:
-      # ========== 基础配置 ==========
-      - DATABASE_URL=postgresql://postgres:postgres@192.168.11.3:5432/random_pictures  
-      # 数据库连接URL：格式为 postgresql://用户名:密码@主机:端口/数据库名
+      # 用户名/密码含特殊字符时请对 URL 编码，或改用下面的复合写法拆开
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-random_pictures}
+      HOST: 0.0.0.0
+      PORT: "8081"
+      IMG_ROOT_DIR: /app/images
+      # 容器内 cpu_count 可能读到宿主机核数，显式限一下工作进程
+      UVICORN_WORKERS: ${UVICORN_WORKERS:-2}
+      RELOAD: "false"
+      # 生产环境走 HTTPS 时打开，浏览器只会在 HTTPS 下回传 Cookie
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      # 限流：每个 IP 对 /random、/image、/thumb 每分钟的请求上限
+      RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-120}
+      # 登录防爆破：同一账号连续失败 5 次开始锁定（60s 起，逐次翻倍，上限 15 分钟）
+      LOGIN_MAX_FAILURES: ${LOGIN_MAX_FAILURES:-5}
+      LOGIN_IP_MAX_FAILURES: ${LOGIN_IP_MAX_FAILURES:-20}
+      LOGIN_LOCK_MAX_SECONDS: ${LOGIN_LOCK_MAX_SECONDS:-900}
+      # 会话治理：单用户最多保留 10 个会话，过期会话每 30 分钟清一次
+      MAX_SESSIONS_PER_USER: ${MAX_SESSIONS_PER_USER:-10}
+      SESSION_CLEANUP_INTERVAL: ${SESSION_CLEANUP_INTERVAL:-1800}
+      # 走反向代理时设 true 才会信任 X-Forwarded-For
+      TRUST_PROXY: ${TRUST_PROXY:-false}
+      TZ: ${TZ:-Asia/Shanghai}
+    volumes:
+      # 图片放在命名卷里，重建容器不丢图（也不依赖 Docker Desktop 的目录共享授权）
+      - images:/app/images
+      # 缩略图缓存（重建容器不丢，避免反复生成）
+      - thumbs:/app/data
+      # 想直接看宿主机文件，可改成 bind mount，并在 Docker Desktop
+      # Settings → Resources → File sharing 里把项目目录加进白名单：
+      # - ./images:/app/images
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8081/api/system/info', timeout=3).status==200 else 1)"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  pgdata:
+    name: random-pictures-pgdata
+  images:
+    name: random-pictures-images
+  thumbs:
+    name: random-pictures-thumbs

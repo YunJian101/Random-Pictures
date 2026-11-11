@@ -1,33 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Pydantic模型定义
-================
+Pydantic 请求模型
+=================
 
-定义API请求和响应的数据模型
+只保留路由实际使用的模型。响应体统一用 JSONResponse 直接构造，
+不再维护一整套与实现脱节的 Response 模型（原先 20 个模型里 15 个从未被引用）。
 """
 
-from typing import Optional, List
-from datetime import datetime
-from pydantic import BaseModel, EmailStr, Field
+from typing import Optional
+
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
-# ==================== 通用响应模型 ====================
-class APIResponse(BaseModel):
-    """通用API响应"""
-    code: int
-    msg: str
-    data: Optional[dict] = None
-
-
-class ErrorResponse(BaseModel):
-    """错误响应"""
-    code: int
-    msg: str
-    data: Optional[dict] = None
-
-
-# ==================== 认证相关模型 ====================
 class RegisterRequest(BaseModel):
     """用户注册请求"""
     username: str = Field(..., min_length=3, max_length=16, description="用户名，3-16位字母、数字、下划线")
@@ -42,147 +27,27 @@ class LoginRequest(BaseModel):
     remember: bool = False
 
 
-class LogoutRequest(BaseModel):
-    """用户登出请求"""
-    pass
-
-
-class VerifyResponse(BaseModel):
-    """会话验证响应"""
-    code: int
-    msg: str
-    data: Optional['UserData'] = None
-
-
-class UserData(BaseModel):
-    """用户数据"""
-    id: int
-    username: str
-    email: str
-    role: str
-
-
-class LoginResponse(BaseModel):
-    """登录响应"""
-    code: int
-    msg: str
-    data: Optional[dict] = None
-
-
-# ==================== 用户相关模型 ====================
-class UserResponse(BaseModel):
-    """用户信息响应"""
-    id: int
-    user_id: str
-    username: str
-    email: str
-    role: str
-    avatar: str
-    created_at: str
-    last_login_ip: str
-    is_banned: bool
-
-
-class UserListResponse(BaseModel):
-    """用户列表响应"""
-    code: int
-    msg: str
-    data: dict
+class UserCreateRequest(BaseModel):
+    """创建用户（管理员）"""
+    username: str = Field(..., min_length=3, max_length=16)
+    email: Optional[EmailStr] = None
+    password: str = Field(..., min_length=6)
 
 
 class UserUpdateRequest(BaseModel):
-    """更新用户请求"""
+    """更新用户（管理员）
+
+    password / role 为可选：管理员可以顺手重置密码或调整角色。
+    """
     username: str = Field(..., min_length=3, max_length=16)
     email: Optional[EmailStr] = None
+    password: Optional[str] = Field(None, min_length=6, max_length=64)
+    role: Optional[str] = Field(None, pattern=r'^(admin|user|vip)$')
 
-
-class UserCreateRequest(BaseModel):
-    """创建用户请求（管理员）"""
-    username: str = Field(..., min_length=3, max_length=16)
-    email: Optional[EmailStr] = None
-    password: str = Field(..., min_length=6)
-
-
-class CreateAdminRequest(BaseModel):
-    """创建管理员请求"""
-    username: str = Field(..., min_length=3, max_length=16)
-    email: Optional[EmailStr] = None
-    password: str = Field(..., min_length=6)
-
-
-# ==================== 图片相关模型 ====================
-class ImageInfo(BaseModel):
-    """图片信息"""
-    name: str
-    url: str
-    path: str
-
-
-class CategoriesResponse(BaseModel):
-    """分类列表响应"""
-    categories: dict
-    current_page: int
-    total_pages: int
-    total_categories: int
-    items_per_page: int
-
-
-class CategoryImagesResponse(BaseModel):
-    """分类图片响应"""
-    category_name: str
-    images: List[ImageInfo]
-    current_page: int
-    total_pages: int
-    total_images: int
-    page_size: int
-
-
-# ==================== 配置相关模型 ====================
-class ConfigResponse(BaseModel):
-    """配置信息响应"""
-    version: str
-    icp_beian_code: str
-    icp_beian_url: str
-    code: int = 200
-    msg: str = "success"
-
-
-# ==================== 反馈相关模型 ====================
-class FeedbackCreateRequest(BaseModel):
-    """创建反馈请求"""
-    content: str = Field(..., min_length=1, max_length=1000, description="反馈内容")
-
-
-class FeedbackResponse(BaseModel):
-    """反馈信息响应"""
-    id: int
-    user_id: int
-    username: str
-    content: str
-    status: str
-    created_at: str
-    updated_at: str
-
-
-class FeedbackListResponse(BaseModel):
-    """反馈列表响应"""
-    code: int
-    msg: str
-    data: dict
-
-
-# ==================== 错误信息模型 ====================
-class ErrorInfo(BaseModel):
-    """错误信息"""
-    error_id: str
-    error_time: str
-
-
-class CategoryNotFoundError(ErrorInfo):
-    """分类不存在错误"""
-    category: str
-
-
-class ImageNotFoundError(ErrorInfo):
-    """图片不存在错误"""
-    image_path: str
+    @field_validator('password', 'role', mode='before')
+    @classmethod
+    def _blank_to_none(cls, value):
+        """前端表单没填时会传空串，这里当成"不修改"处理"""
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value

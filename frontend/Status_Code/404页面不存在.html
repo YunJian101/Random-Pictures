@@ -1,177 +1,129 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="light">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>404 - 页面不存在 | 加载中...</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#6366f1',
-                        secondary: '#10b981',
-                        accent: '#f59e0b',
-                    }
-                }
-            }
-        }
-    </script>
-    <!-- 引入Font Awesome图标 - 多CDN竞争加载 -->
-    <script>
-    (function() {
-        var cdnList = [
-            'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css',
-            'https://cdn.bootcdn.net/ajax/libs/font-awesome/6.5.1/css/all.min.css',
-            'https://lib.baomitu.com/font-awesome/6.5.1/css/all.min.css'
-        ];
-        
-        var loaded = false;
-        var links = [];
-        
-        // 同时加载所有CDN
-        cdnList.forEach(function(cdn) {
-            var link = document.createElement('link');
-            link.rel = 'stylesheet';
-            link.href = cdn;
-            
-            link.onload = function() {
-                if (!loaded) {  // 第一个加载成功的
-                    loaded = true;
-                    console.log('✅ Font Awesome CDN加载成功:', cdn);
-                    // 移除其他未完成的链接
-                    links.forEach(function(l) {
-                        if (l !== link && l.parentNode) {
-                            l.parentNode.removeChild(l);
-                        }
-                    });
-                }
-            };
-            
-            links.push(link);
-            document.head.appendChild(link);
-        });
-    })();
-    </script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        body { font-family: 'Inter', 'Microsoft YaHei', sans-serif; }
-        .bg-gradient { background: linear-gradient(135deg, #f5f7ff 0%, #eef2ff 100%); }
-        .bg-gradient-main {
-            background: linear-gradient(to bottom right, rgba(99, 102, 241, 0.1), rgba(16, 185, 129, 0.1));
-        }
-        .text-gradient {
-            background: linear-gradient(to right, #6366f1, #10b981);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-            color: transparent;
-        }
-    </style>
-    <script>
-        function showCategories() {
-            localStorage.setItem('openModule', 'categories');
-            window.location.href = window.location.origin + '/';
-        }
-        function showDocs() {
-            localStorage.setItem('openModule', 'docs');
-            window.location.href = window.location.origin + '/';
-        }
-        function showFeedback() {
-            localStorage.setItem('openModule', 'feedback');
-            window.location.href = window.location.origin + '/';
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>404 · 找不到这个页面 | 随机图 API</title>
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<script>
+  (function () {
+    var t = null;
+    try { t = localStorage.getItem('theme'); } catch (e) {}
+    if (!t) t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', t);
+  })();
+</script>
+<link rel="stylesheet" href="/static/app.css">
+<link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+      onerror="this.onerror=null;this.href='https://lib.baomitu.com/font-awesome/6.5.1/css/all.min.css'">
+<style>
+  .err {
+    position: relative;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 32px 20px;
+    overflow: hidden;
+  }
+  .err__glow {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(70px);
+    pointer-events: none;
+  }
+  .err__glow--a { width: 46%; height: 46%; left: 6%; top: -8%; background: radial-gradient(circle, color-mix(in srgb, var(--primary) 40%, transparent), transparent 68%); }
+  .err__glow--b { width: 40%; height: 40%; right: 4%; bottom: -10%; background: radial-gradient(circle, color-mix(in srgb, var(--accent) 26%, transparent), transparent 70%); }
 
-        // 获取系统基本信息，包括站点名称
-        async function getSystemInfo() {
-            try {
-                const response = await fetch('/api/system/info');
-                const data = await response.json();
-                if (data.code === 200 && data.data && data.data.site_name) {
-                    const siteName = data.data.site_name;
-                    // 更新页面标题
-                    document.title = `404 - 页面不存在 | ${siteName}`;
-                    // 更新页面中的站点名称
-                    const siteNameElements = document.querySelectorAll('h1.text-gradient');
-                    siteNameElements.forEach(element => {
-                        element.textContent = siteName;
-                    });
-                    // 更新页脚中的站点名称
-                    const footerElements = document.querySelectorAll('footer p');
-                    footerElements.forEach(element => {
-                        if (element.textContent.includes('© 2026')) {
-                            element.textContent = `© 2026 ${siteName} - 稳定运行2000+天`;
-                        }
-                    });
-                    console.log('✅ 系统基本信息获取成功:', siteName);
-                }
-            } catch (error) {
-                console.error('❌ 获取系统基本信息失败:', error);
-                // 使用默认标题
-            }
-        }
+  .err__card {
+    position: relative;
+    width: 100%;
+    max-width: 560px;
+    padding: 40px 36px 34px;
+    border-radius: var(--r-xl);
+    border: 1px solid transparent;
+    background:
+      linear-gradient(var(--surface), var(--surface)) padding-box,
+      linear-gradient(140deg, color-mix(in srgb, var(--primary) 50%, transparent), color-mix(in srgb, var(--line) 92%, transparent) 46%, color-mix(in srgb, var(--accent) 34%, transparent)) border-box;
+    box-shadow: var(--shadow-2);
+    text-align: center;
+  }
 
-        // 页面加载完成后获取系统信息
-        window.addEventListener('DOMContentLoaded', getSystemInfo);
-    </script>
+  .err__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 13px;
+    border-radius: var(--r-pill);
+    background: color-mix(in srgb, var(--primary) 12%, transparent);
+    color: var(--primary);
+    font-size: 12.5px;
+    font-weight: 600;
+  }
+
+  .err__code {
+    margin: 18px 0 0;
+    font-size: clamp(64px, 16vw, 104px);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.05em;
+    background: linear-gradient(135deg, var(--primary), color-mix(in srgb, var(--primary) 45%, var(--accent)));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .err__title { margin-top: 6px; font-size: 21px; letter-spacing: -0.02em; }
+  .err__desc { margin-top: 8px; font-size: 14px; color: var(--text-2); line-height: 1.75; }
+
+  .err__details {
+    margin-top: 20px;
+    padding: 12px 14px;
+    border-radius: var(--r-sm);
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    text-align: left;
+    font-size: 12.5px;
+    color: var(--text-2);
+    line-height: 1.9;
+    word-break: break-all;
+  }
+  .err__details span { color: var(--text-3); margin-right: 6px; }
+  .err__details code { font-family: var(--mono); font-size: 12px; }
+
+  .err__actions { margin-top: 24px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+
+  .err__foot { margin-top: 18px; font-size: 12px; color: var(--text-3); }
+
+  @media (max-width: 560px) {
+    .err__card { padding: 30px 20px 26px; }
+  }
+</style>
 </head>
-<body class="bg-gradient min-h-screen flex flex-col items-center justify-center p-4">
-    <!-- 背景装饰 -->
-    <div class="fixed inset-0 bg-gradient-main -z-10"></div>
+<body>
+<main class="err">
+  <div class="err__glow err__glow--a"></div>
+  <div class="err__glow err__glow--b"></div>
 
-    <header class="fixed top-0 w-full max-w-4xl flex justify-between items-center py-4 px-6 bg-white/80 backdrop-blur-sm rounded-b-lg shadow-sm">
-        <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-full bg-gradient-to-r from-primary to-secondary flex items-center justify-center shadow-lg">
-                <i class="fa-solid fa-images text-white text-xl"></i>
-            </div>
-            <h1 class="text-xl md:text-2xl font-bold text-gradient">随机图片API</h1>
-        </div>
-        <a href="{{BASE_URL}}/" class="text-primary hover:opacity-80 transition-colors">
-            <i class="fa-solid fa-house mr-1"></i> 返回首页
-        </a>
-    </header>
+  <div class="err__card">
+    <span class="err__badge"><i class="fa-solid fa-compass"></i>页面不存在</span>
+    <div class="err__code">404</div>
+    <h1 class="err__title">找不到这个页面</h1>
+    <p class="err__desc">链接可能已失效、被移动，或地址拼写有误。</p>
 
-    <main class="w-full max-w-2xl bg-white rounded-2xl shadow-lg p-8 md:p-10 mt-16">
-        <div class="flex flex-col items-center text-center mb-8">
-            <div class="text-9xl font-bold text-gradient mb-4">404</div>
-            <h2 class="text-2xl font-semibold text-gray-800 mb-2">页面不存在</h2>
-            <p class="text-gray-600 max-w-md">你访问的地址「{{page_url}}」无效，可能是路径错误或页面已移除</p>
-        </div>
+    <div class="err__details">
+      <div><span>请求地址</span><code>{{page_url}}</code></div>
+<div><span>站点</span><code>{{BASE_URL}}</code></div>
+    </div>
 
-        <div class="bg-gradient-main rounded-xl p-6 mb-8 border border-primary/10">
-            <h3 class="text-lg font-semibold text-primary mb-4 flex items-center">
-                <i class="fa-solid fa-compass mr-2"></i> 常用功能入口
-            </h3>
-            <div class="grid grid-cols-2 gap-3">
-                <a href="{{BASE_URL}}/random" class="bg-white rounded-lg p-4 text-center hover:shadow-md transition-shadow">
-                    <i class="fa-solid fa-shuffle text-indigo-500 text-xl mb-2"></i>
-                    <p class="text-gray-800 font-medium">随机图片</p>
-                </a>
-                <a href="javascript:void(0)" onclick="showCategories()" class="bg-white rounded-lg p-4 text-center hover:shadow-md transition-shadow cursor-pointer">
-                    <i class="fa-solid fa-list text-indigo-500 text-xl mb-2"></i>
-                    <p class="text-gray-800 font-medium">分类列表</p>
-                </a>
-                <a href="javascript:void(0)" onclick="showDocs()" class="bg-white rounded-lg p-4 text-center hover:shadow-md transition-shadow cursor-pointer">
-                    <i class="fa-solid fa-book text-indigo-500 text-xl mb-2"></i>
-                    <p class="text-gray-800 font-medium">API文档</p>
-                </a>
-                <a href="javascript:void(0)" onclick="showFeedback()" class="bg-white rounded-lg p-4 text-center hover:shadow-md transition-shadow cursor-pointer">
-                    <i class="fa-solid fa-comment-dots text-indigo-500 text-xl mb-2"></i>
-                    <p class="text-gray-800 font-medium">反馈</p>
-                </a>
-            </div>
-        </div>
+    <div class="err__actions">
+      <a class="btn btn--primary" href="/"><i class="fa-solid fa-house"></i>返回首页</a>
+      <button class="btn btn--outline" onclick="history.length>1?history.back():location.href='/'">
+        <i class="fa-solid fa-arrow-left"></i>返回上一页
+      </button>
+    </div>
 
-        <div class="flex justify-center">
-            <a href="{{BASE_URL}}/" class="bg-primary text-white py-3 px-8 rounded-lg hover:opacity-90 transition-colors flex items-center">
-                <i class="fa-solid fa-arrow-left mr-2"></i> 回到首页
-            </a>
-        </div>
-    </main>
-
-    <footer class="mt-8 text-gray-500 text-sm text-center">
-        <p>© 2026 随机图片API - 稳定运行2000+天</p>
-    </footer>
+    <p class="err__foot">随机图 API · 如需帮助请在站内提交反馈</p>
+  </div>
+</main>
 </body>
 </html>

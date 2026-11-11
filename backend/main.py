@@ -1,110 +1,142 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-FastAPI随机图API - 主应用
-=========================
+FastAPI 随机图 API - 主应用
+==========================
 
-使用FastAPI重构的随机图片API服务
+路由在这里集中注册。权限约定：
+    - 公开接口：只返回展示所需字段（分类名 / 图片数量 / 站点信息 / 版本号）
+    - 登录接口：仅返回当前用户自己的数据（如"我的反馈"）
+    - 管理接口：一律使用 get_current_admin，含内部字段（id / md5 / 上传 IP 等）
 """
 
+import asyncio
+import contextlib
 import os
-from datetime import datetime
-from pathlib import Path
 from contextlib import asynccontextmanager
+from pathlib import Path
 
-from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
+from fastapi.openapi.utils import get_openapi
+from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
+from .api.dependencies import get_current_admin, get_current_user_optional
 from .core.config import (
-    HOST, PORT, STATIC_ROOT_DIR, FRONTEND_ROOT_DIR,
-    ALLOW_ORIGINS, ALLOW_METHODS, ALLOW_HEADERS
+    ALLOW_HEADERS,
+    ALLOW_METHODS,
+    ALLOW_ORIGINS,
+    FRONTEND_ROOT_DIR,
+    HOST,
+    PORT,
+    STATIC_ROOT_DIR,
 )
-from .core.database import init_db, set_shutting_down, init_async_pool, close_async_pool
-from .middlewares.logging import LoggingMiddleware
+from .core.database import (
+    close_async_pool,
+    init_async_pool,
+    init_db,
+    set_shutting_down,
+)
+from .core.tasks import cleanup_loop
 from .handlers import error_handlers
+from .middlewares.compression import TextCompressionMiddleware
+from .middlewares.logging import LoggingMiddleware
+from .middlewares.rate_limit import RateLimitMiddleware
+from .routers import admin, auth, feedback, image, page, profile, sessions, upload
+from .utils.utils import get_error_page
 
-# 导入路由模块
-from .routers import page, image, auth, user, admin, feedback, upload
 
-
-
-# ==================== 初始化代码 ====================
-# 确保目录存在
+# ==================== 目录准备 ====================
 Path(FRONTEND_ROOT_DIR).mkdir(parents=True, exist_ok=True)
 Path(STATIC_ROOT_DIR).mkdir(parents=True, exist_ok=True)
+
 
 # ==================== 应用生命周期 ====================
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """应用生命周期管理"""
-    # 启动时初始化
     print("🔄 正在初始化异步数据库连接池...")
     await init_async_pool()
-    
+
+    cleanup_task = asyncio.create_task(cleanup_loop())
+
     yield
 
-    # 关闭时清理
     print("\n🔄 正在关闭服务...")
-    # 设置应用正在关闭
     set_shutting_down()
-    # 关闭异步数据库连接池
+    cleanup_task.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await cleanup_task
     await close_async_pool()
     print("✅ 服务已关闭")
 
 
-# ==================== 创建FastAPI应用 ====================
-from fastapi import Depends
-from .api.dependencies import get_current_admin
 app = FastAPI(
     title="随机图API",
     description="一个高性能的随机图片API服务",
-    version="3.0.0",
+    version="1.1.0",
     lifespan=lifespan,
-    docs_url=None,  # 禁用默认的文档端点
-    redoc_url=None   # 禁用默认的 ReDoc 端点
+    docs_url=None,    # 使用下方受保护的文档路由
+    redoc_url=None,
+    # 关键：不传的话 FastAPI 会自动注册一个「无鉴权」的 /openapi.json，
+    # 且其匹配顺序在下面手写的路由之前，等于接口定义对外全公开。
+    openapi_url=None,
 )
 
-# 添加受保护的文档路由
-from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
-from fastapi.openapi.utils import get_openapi
 
-# 受保护的 Swagger UI 文档
-@app.get("/docs", dependencies=[Depends(get_current_admin)])
-async def custom_swagger_ui_html():
-    return get_swagger_ui_html(
-        openapi_url="/openapi.json",
-        title="API文档 - 管理员专用",
-    )
+# ==================== 受保护的 API 文档 ====================
+async def _guard_docs(request: Request, current_user):
+    """文档页只对管理员开放
 
-# 受保护的 ReDoc 文档
-@app.get("/redoc", dependencies=[Depends(get_current_admin)])
-async def custom_redoc_html():
+    - 未登录：浏览器会被带到登录页（而不是甩一段 {"detail":"未登录"} 的裸 JSON）
+    - 非管理员：返回 403 错误页
+    """
+    if current_user is None:
+        return RedirectResponse(url="/login", status_code=302)
+    if current_user.get('role') != 'admin':
+        content = await get_error_page(
+            "403禁止访问",
+            {"BASE_URL": str(request.base_url).rstrip("/")},
+        )
+        return HTMLResponse(content=content, status_code=403)
+    return None
+
+
+@app.get("/docs", include_in_schema=False)
+async def custom_swagger_ui_html(request: Request, current_user: dict = Depends(get_current_user_optional)):
+    denied = await _guard_docs(request, current_user)
+    if denied:
+        return denied
+    return get_swagger_ui_html(openapi_url="/openapi.json", title="API文档 - 管理员专用")
+
+
+@app.get("/redoc", include_in_schema=False)
+async def custom_redoc_html(request: Request, current_user: dict = Depends(get_current_user_optional)):
+    denied = await _guard_docs(request, current_user)
+    if denied:
+        return denied
     return get_redoc_html(
         openapi_url="/openapi.json",
         title="API文档 - 管理员专用",
-        redoc_js_url="https://cdn.jsdelivr.net/npm/redoc@latest/bundles/redoc.standalone.js"
+        redoc_js_url="https://cdn.jsdelivr.net/npm/redoc@latest/bundles/redoc.standalone.js",
     )
 
-# 受保护的 OpenAPI JSON 端点
-@app.get("/openapi.json", dependencies=[Depends(get_current_admin)])
+
+@app.get("/openapi.json", dependencies=[Depends(get_current_admin)], include_in_schema=False)
 async def get_openapi_json():
     return get_openapi(
         title="随机图API",
-        version="3.0.0",
+        version="1.1.0",
         description="一个高性能的随机图片API服务",
         routes=app.routes,
     )
 
-# 添加CORS中间件
-# 注意：当使用credentials: 'include'时，不能使用通配符*作为allow_origins
-# 这里使用一个特殊的处理方式，允许所有域名的请求
-from fastapi.middleware.cors import CORSMiddleware
 
-# 检查是否需要使用通配符
+# ==================== 中间件 ====================
+# 允许携带凭证的跨域：不能直接使用 "*"，需要回显请求来源
 if '*' in ALLOW_ORIGINS:
-    # 如果配置了通配符，使用特殊处理
     @app.middleware("http")
     async def add_cors_headers(request, call_next):
         response = await call_next(request)
@@ -116,7 +148,6 @@ if '*' in ALLOW_ORIGINS:
             response.headers["Access-Control-Allow-Headers"] = ", ".join(ALLOW_HEADERS)
         return response
 else:
-    # 否则使用正常的CORS中间件
     app.add_middleware(
         CORSMiddleware,
         allow_origins=ALLOW_ORIGINS,
@@ -125,160 +156,179 @@ else:
         allow_headers=ALLOW_HEADERS,
     )
 
-# 添加日志中间件
+# 限流：/random、/image、/thumb 按 IP 滑动窗口计数。
+# 注意顺序：后添加的中间件在更外层，所以日志中间件能记录到被限流的 429 请求。
+app.add_middleware(RateLimitMiddleware)
+
 app.add_middleware(LoggingMiddleware)
 
-# 注册异常处理器
+# 最外层：文本类响应 gzip。图片不走这层，避免白烧 CPU（见 middlewares/compression.py）
+app.add_middleware(TextCompressionMiddleware)
+
 app.add_exception_handler(404, error_handlers.not_found_handler)
 app.add_exception_handler(500, error_handlers.internal_error_handler)
 app.add_exception_handler(RequestValidationError, error_handlers.validation_error_handler)
 
-# 挂载静态文件目录
+class CachedStaticFiles(StaticFiles):
+    """静态资源带长缓存：JS/CSS 改版后靠文件名或部署时间自然失效即可"""
+
+    async def get_response(self, path, scope):
+        response = await super().get_response(path, scope)
+        if response.status_code == 200:
+            response.headers.setdefault('cache-control', 'public, max-age=604800')
+        return response
+
+
 if os.path.exists(STATIC_ROOT_DIR):
-    app.mount("/static", StaticFiles(directory=STATIC_ROOT_DIR), name="static")
+    app.mount("/static", CachedStaticFiles(directory=STATIC_ROOT_DIR), name="static")
 
 
-# ==================== 注册路由 ====================
-# 页面路由 - 使用HTMLResponse以正确处理响应类型
-from fastapi.responses import HTMLResponse
+# ==================== 页面路由 ====================
 app.get("/", response_class=HTMLResponse)(page.handle_index)
 app.get("/login", response_class=HTMLResponse)(page.handle_login_page)
 app.get("/admin-panel", response_class=HTMLResponse)(page.handle_admin_panel)
 app.get("/user-panel", response_class=HTMLResponse)(page.handle_user_panel)
 app.get("/favicon.ico")(page.handle_favicon)
 
-# API路由 - 图片
-app.get("/api/categories")(image.api_categories)  # 获取分类列表 - 所有人可使用
-app.get("/api/category/images")(image.api_category_images)  # 获取指定分类的图片 - 所有人可使用
-app.get("/api/images")(image.api_all_images)  # 获取所有图片列表 - 仅管理员可使用
-app.get("/api/image/{image_id}")(image.api_image_detail)  # 获取单个图片详情 - 所有人可使用
-app.put("/api/image/{image_id}")(image.api_update_image)  # 更新图片信息 - 仅管理员可使用
-app.delete("/api/image/{image_id}")(image.api_delete_image)  # 删除图片 - 仅管理员可使用
 
-app.get("/random")(image.handle_random_image)  # 获取随机图片 - 所有人可使用
-app.get("/image")(image.handle_image)  # 获取指定图片 - 所有人可使用
-
-# API路由 - 管理员分类管理
-app.post("/api/admin/categories")(admin.api_admin_create_category)  # 创建分类 - 仅管理员可使用
-app.put("/api/admin/categories/{category_id}")(admin.api_admin_update_category)  # 更新分类 - 仅管理员可使用
-app.delete("/api/admin/categories/{category_id}")(admin.api_admin_delete_category)  # 删除分类 - 仅管理员可使用
-
-# API路由 - 认证
-app.post("/api/register")(auth.api_register)  # 用户注册 - 所有人可使用
-app.post("/api/login")(auth.api_login)  # 用户登录 - 所有人可使用
-app.post("/api/logout")(auth.api_logout)  # 用户登出 - 仅登录用户可使用
-app.get("/api/auth/verify")(auth.api_auth_verify)  # 验证认证状态 - 所有人可使用
-
-# API路由 - 用户（合并后的统一路由）
-app.get("/api/users")(admin.api_admin_users)  # 获取用户列表 - 仅管理员可使用
-app.get("/api/users/{user_id}")(admin.api_admin_user_detail)  # 获取用户详情 - 仅管理员可使用
-app.post("/api/users")(admin.api_admin_users_create)  # 创建用户 - 仅管理员可使用
-app.put("/api/users/{user_id}")(admin.api_admin_user_update)  # 更新用户 - 仅管理员可使用
-app.delete("/api/users/{user_id}")(admin.api_admin_user_delete)  # 删除用户 - 仅管理员可使用
-app.put("/api/users/{user_id}/ban")(admin.api_admin_user_ban)  # 封禁用户 - 仅管理员可使用
-app.put("/api/users/{user_id}/unban")(admin.api_admin_user_unban)  # 解封用户 - 仅管理员可使用
-app.post("/api/create-admin")(admin.api_create_admin)  # 创建管理员账号 - 仅初始设置时可使用
-
-# API路由 - 反馈
-app.get("/api/admin/feedbacks")(feedback.api_admin_feedbacks)  # 获取反馈列表 - 仅管理员可使用
-app.get("/api/admin/feedbacks/{feedback_id}")(feedback.api_admin_feedback_detail)  # 获取反馈详情 - 仅管理员可使用
-app.put("/api/admin/feedbacks/{feedback_id}/status")(feedback.api_admin_feedback_update_status)  # 更新反馈状态 - 仅管理员可使用
-app.delete("/api/admin/feedbacks/{feedback_id}")(feedback.api_admin_feedback_delete)  # 删除反馈 - 仅管理员可使用
-app.post("/api/feedbacks")(feedback.api_create_feedback)  # 创建反馈 - 所有人可使用
-
-# API路由 - 上传
-app.post("/api/admin/upload")(upload.api_upload_images)  # 上传图片 - 仅管理员可使用
-app.post("/api/admin/batch-action")(admin.api_admin_batch_action)  # 批量操作API - 仅管理员可使用
-
-# API路由 - 系统更新
-app.get("/api/system/version")(admin.api_system_version)  # 获取本地版本信息 - 仅管理员可使用
-app.get("/api/system/backups")(admin.api_system_backups)  # 获取备份列表 - 仅管理员可使用
-app.get("/api/system/check-update")(admin.api_system_check_update)  # 检查是否有新版本 - 仅管理员可使用
-app.post("/api/system/execute-update")(admin.api_system_execute_update)  # 执行完整更新流程 - 仅管理员可使用
-app.post("/api/system/rollback")(admin.api_system_rollback)  # 从备份回滚 - 仅管理员可使用
-
-# API路由 - 系统配置
-app.get("/api/admin/system/config")(admin.api_admin_get_system_config)  # 获取系统配置 - 仅管理员可使用
-app.put("/api/admin/system/config")(admin.api_admin_update_system_config)  # 更新系统配置 - 仅管理员可使用
-app.post("/api/admin/system/config/reset")(admin.api_admin_reset_system_config)  # 重置系统配置为默认值 - 仅管理员可使用
-app.get("/api/system/timezone")(admin.api_get_system_timezone)  # 获取系统时区配置 - 公共接口
-app.get("/api/system/info")(admin.api_get_system_info)  # 获取系统基本信息 - 公共接口
+# ==================== 公开接口（只暴露展示字段） ====================
+app.get("/random")(image.handle_random_image)              # 随机图片
+app.get("/image")(image.handle_image)                      # 图片直链
+app.get("/thumb")(image.handle_thumb)                      # 缩略图（列表/卡片用）
+app.get("/api/categories")(image.api_categories)           # 分类列表（name / description / image_count）
+app.get("/api/category/images")(image.api_category_images)  # 分类下图片
+app.get("/api/system/info")(admin.api_get_system_info)     # 站点名称 / 备案 / 图标
+app.get("/api/system/timezone")(admin.api_get_system_timezone)
+app.get("/api/system/version")(admin.api_system_version)   # 版本号（首页展示需要，去掉管理员依赖）
 
 
+# ==================== 认证接口 ====================
+app.post("/api/register")(auth.api_register)
+app.post("/api/login")(auth.api_login)
+app.post("/api/logout")(auth.api_logout)
+app.get("/api/auth/verify")(auth.api_auth_verify)
 
 
-# ==================== 主程序入口 ====================
+# ==================== 登录用户接口（仅自己的数据） ====================
+app.post("/api/feedbacks")(feedback.api_create_feedback)
+app.get("/api/me")(profile.api_me)                       # 我的账号信息
+app.put("/api/me")(profile.api_update_me)                # 改用户名 / 邮箱
+app.put("/api/me/password")(profile.api_change_my_password)  # 改密码
+app.get("/api/me/sessions")(sessions.api_my_sessions)        # 登录设备列表
+app.delete("/api/me/sessions/{sid}")(sessions.api_revoke_session)  # 踢掉指定设备
+app.post("/api/me/sessions/revoke-others")(sessions.api_revoke_other_sessions)
+app.get("/api/my/feedbacks")(feedback.api_my_feedbacks)
+app.post("/api/my/feedbacks/{feedback_id}/messages")(feedback.api_my_feedback_message)
+app.put("/api/my/feedbacks/{feedback_id}/status")(feedback.api_my_feedback_close)
+
+
+# ==================== 管理接口（全部要求管理员） ====================
+# 总览与分类
+app.get("/api/admin/stats")(admin.api_admin_stats)
+app.get("/api/admin/audit-logs")(admin.api_admin_audit_logs)   # 审核日志（只读）
+app.get("/api/admin/categories")(admin.api_admin_categories)
+app.post("/api/admin/categories")(admin.api_admin_create_category)
+app.put("/api/admin/categories/{category_id}")(admin.api_admin_update_category)
+app.delete("/api/admin/categories/{category_id}")(admin.api_admin_delete_category)
+
+# 图片
+app.get("/api/images")(image.api_all_images)
+app.get("/api/image/{image_id}")(image.api_image_detail)
+app.put("/api/image/{image_id}")(image.api_update_image)
+app.delete("/api/image/{image_id}")(image.api_delete_image)
+app.post("/api/admin/upload")(upload.api_upload_images)
+app.post("/api/admin/batch-action")(admin.api_admin_batch_action)
+
+# 用户
+app.get("/api/users")(admin.api_admin_users)
+app.get("/api/users/{user_id}")(admin.api_admin_user_detail)
+app.post("/api/users")(admin.api_admin_users_create)
+app.put("/api/users/{user_id}")(admin.api_admin_user_update)
+app.delete("/api/users/{user_id}")(admin.api_admin_user_delete)
+app.put("/api/users/{user_id}/ban")(admin.api_admin_user_ban)
+app.put("/api/users/{user_id}/unban")(admin.api_admin_user_unban)
+
+# 反馈
+app.get("/api/admin/feedbacks")(feedback.api_admin_feedbacks)
+app.get("/api/admin/feedbacks/{feedback_id}")(feedback.api_admin_feedback_detail)
+app.put("/api/admin/feedbacks/{feedback_id}/status")(feedback.api_admin_feedback_update_status)
+app.put("/api/admin/feedbacks/{feedback_id}/reply")(feedback.api_admin_feedback_reply)
+app.post("/api/admin/feedbacks/{feedback_id}/messages")(feedback.api_admin_feedback_message)
+app.delete("/api/admin/feedbacks/{feedback_id}")(feedback.api_admin_feedback_delete)
+
+# 系统配置与更新
+app.get("/api/admin/system/config")(admin.api_admin_get_system_config)
+app.put("/api/admin/system/config")(admin.api_admin_update_system_config)
+app.put("/api/admin/system/config/batch")(admin.api_admin_update_system_config_batch)
+app.post("/api/admin/system/config/reset")(admin.api_admin_reset_system_config)
+app.get("/api/system/backups")(admin.api_system_backups)
+app.get("/api/system/check-update")(admin.api_system_check_update)
+app.post("/api/system/execute-update")(admin.api_system_execute_update)
+app.post("/api/system/rollback")(admin.api_system_rollback)
+
+
+# ==================== 启动入口 ====================
 async def run_server(host: str = HOST, port: int = PORT):
+    """启动服务
+
+    reload 与 workers 是互斥的（reload 只能单进程），
+    因此用环境变量 RELOAD 明确区分"开发热重载"和"生产多进程"。
     """
-    启动FastAPI服务器
-    """
-    import sys
     import io
-    import os
+    import sys
 
-    # 设置标准输出编码为UTF-8
     if sys.platform == 'win32':
-        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', line_buffering=True)
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', line_buffering=True)
 
-    # 启动时初始化
     print(f"\n{'=' * 50}")
-    print(f"🚀 随机图API 启动中...")
+    print("🚀 随机图API 启动中...")
     print(f"{'=' * 50}")
-
     print(" 正在连接数据库...")
 
     try:
         is_new_database = await init_db()
-        if is_new_database:
-            print("✅ 数据库不存在，已创建并初始化")
-        else:
-            print("✅ 数据库已存在，跳过初始化")
+        print("✅ 数据库不存在，已创建并初始化" if is_new_database else "✅ 数据库已存在，跳过初始化")
     except Exception as e:
         print(f"❌ 数据库初始化失败: {e}")
 
-    from .core.config import IMG_ROOT_DIR, CATEGORY_PAGE_SIZE
+    from .core.config import CATEGORY_PAGE_SIZE, IMG_ROOT_DIR
 
-    print(f"\n🚀 随机图API 启动成功！")
+    reload_enabled = os.getenv('RELOAD', 'false').lower() in ('1', 'true', 'yes', 'on')
+
+    if reload_enabled:
+        workers = 1
+    else:
+        env_workers = os.getenv('UVICORN_WORKERS')
+        if env_workers and env_workers.isdigit() and int(env_workers) > 0:
+            workers = int(env_workers)
+        else:
+            import multiprocessing
+            workers = min((multiprocessing.cpu_count() or 2) * 2, 16)
+
+    print("\n🚀 随机图API 启动成功！")
     print(f"🌐 访问地址: http://{host}:{port}")
     print(f"📁 图片目录: {os.path.abspath(IMG_ROOT_DIR)}")
-    print(f"📚 API文档: http://{host}:{port}/docs")
-    print(f"⚡ 核心特性：")
-    print(f"  - 支持运行中新增/删除图片，实时更新")
-    print(f"  - 随机接口优化：800张图片场景下响应时间<3ms")
-    print(f"  - 图片直链缓存7天，随机接口禁用缓存保证随机性")
-    print(f"  - 分类内图片分页：每页最多显示{CATEGORY_PAGE_SIZE}张图片")
-    print(f"  - 完整跨域支持，兼容所有前端调用")
-    print(f"  - 热重载功能已启用，文件变更会自动更新")
-    print(f"\n⚠️  按 Ctrl+C 停止服务器")
+    print(f"📚 API文档: http://{host}:{port}/docs （需管理员登录）")
+    print("⚡ 特性："
+          "\n  - 支持运行中新增/删除图片，实时更新"
+          "\n  - 随机接口走内存索引，800 张规模下 <3ms"
+          "\n  - 图片直链缓存 7 天，随机接口禁用缓存"
+          f"\n  - 分类内分页：每页最多 {CATEGORY_PAGE_SIZE} 张")
+    print(f"\n🔧 运行模式: {'热重载（单进程）' if reload_enabled else f'{workers} 个工作进程'}")
+    print("⚠️  按 Ctrl+C 停止服务器\n")
 
     import uvicorn
-    import multiprocessing
-    
-    # 从环境变量获取工作进程数，如果未设置则自动计算
-    env_workers = os.getenv('UVICORN_WORKERS')
-    if env_workers and env_workers.isdigit():
-        workers = int(env_workers)
-    else:
-        # 获取CPU核心数，设置工作进程数为核心数或核心数+1
-        cpu_count = multiprocessing.cpu_count()
-        # 对于性能强大的CPU，允许使用更多工作进程
-        # 最大工作进程数设置为核心数的2倍，但不超过16个
-        workers = min(cpu_count * 2, 16)
-    
-    print(f"🚀 服务器配置: {workers} 个工作进程")
-    
+
     uvicorn.run(
-        "backend.main:app", 
-        host=host, 
-        port=port, 
-        log_level="info",
-        reload=True,  # 启用热重载
-        workers=workers  # 启用多工作进程
+        "backend.main:app",
+        host=host,
+        port=port,
+        log_level=os.getenv('LOG_LEVEL', 'info').lower(),
+        reload=reload_enabled,
+        workers=workers,
     )
 
 
 if __name__ == '__main__':
-    import asyncio
     asyncio.run(run_server())
-

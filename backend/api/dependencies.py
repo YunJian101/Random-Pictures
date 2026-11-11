@@ -1,108 +1,73 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-FastAPI依赖项 - 方案一：参数化依赖
-================================
+FastAPI 认证依赖
+================
+
+三个依赖各自只接受 `request`，权限语义固定在函数里。
+（旧实现把 optional / require_admin 写成带默认值的函数参数，
+  FastAPI 会把它们当成查询参数暴露出来，请求方可以传 `?optional=true`
+  绕过 401 —— 这里改成内部函数，杜绝该问题。）
 """
 
 from typing import Optional
-from fastapi import Depends, HTTPException, Request, Cookie
+
+from fastapi import HTTPException, Request
 
 from ..core.config import COOKIE_NAME
 from ..core.security.auth import verify_session
 
 
 def _get_token_from_request(request: Request) -> Optional[str]:
-    """从请求中获取token（Cookie或Header）"""
-    # 优先从Cookie获取
+    """从 Cookie 或 Authorization: Bearer 中取 token"""
     token = request.cookies.get(COOKIE_NAME)
-    
-    # 如果没有，从Authorization header获取
     if not token:
         auth_header = request.headers.get('Authorization', '')
         if auth_header.startswith('Bearer '):
-            token = auth_header[7:]
-    
+            token = auth_header[7:].strip()
     return token
 
 
-async def get_current_user(
-    request: Request,
-    optional: bool = False,
-    require_admin: bool = False
-) -> Optional[dict]:
-    """
-    统一认证依赖
-    
-    Args:
-        optional: 是否可选认证（True: 未登录返回None）
-        require_admin: 是否需要管理员权限
-    
-    Returns:
-        用户信息字典，optional=True时未登录返回None
-    
-    Raises:
-        HTTPException: 401未登录 / 403权限不足
-    """
+async def _resolve_user(request: Request, optional: bool = False, require_admin: bool = False) -> Optional[dict]:
+    """内部实现：解析当前用户并按需校验权限"""
     token = _get_token_from_request(request)
-    
-    # 没有token
+
     if not token:
         if optional:
             return None
         raise HTTPException(status_code=401, detail="未登录")
-    
-    # 验证token
+
     result = await verify_session(token)
-    if result['code'] != 200:
+    if result.get('code') != 200:
         if optional:
             return None
-        raise HTTPException(status_code=401, detail=result['msg'])
-    
+        raise HTTPException(status_code=401, detail=result.get('msg', '登录状态无效'))
+
     user = result['data']['user']
-    
-    # 检查管理员权限
+
     if require_admin and user.get('role') != 'admin':
         raise HTTPException(status_code=403, detail="权限不足")
-    
+
     return user
 
 
-# ========== 便捷的依赖工厂函数 ==========
-
-def require_auth() -> type:
-    """工厂函数：创建必须登录的依赖"""
-    return lambda: Depends(lambda r: get_current_user(r, optional=False))
+async def get_current_user(request: Request) -> dict:
+    """必须登录"""
+    return await _resolve_user(request, optional=False)
 
 
-def require_admin() -> type:
-    """工厂函数：创建管理员权限的依赖"""
-    return lambda: Depends(lambda r: get_current_user(r, optional=False, require_admin=True))
+async def get_current_user_optional(request: Request) -> Optional[dict]:
+    """可选登录：未登录返回 None"""
+    return await _resolve_user(request, optional=True)
 
 
-def optional_auth() -> type:
-    """工厂函数：创建可选认证的依赖"""
-    return lambda: Depends(lambda r: get_current_user(r, optional=True))
+async def get_current_admin(request: Request) -> dict:
+    """必须是管理员"""
+    return await _resolve_user(request, optional=False, require_admin=True)
 
 
-# ========== 向后兼容的别名（可选） ==========
-
-async def get_current_user_optional(
-    request: Request
-) -> Optional[dict]:
-    """可选认证依赖 - 向后兼容"""
-    return await get_current_user(request, optional=True)
-
-
-async def get_current_user_required(
-    request: Request
-) -> dict:
-    """必须认证依赖 - 向后兼容"""
-    return await get_current_user(request, optional=False)
-
-
-async def get_current_admin(
-    request: Request
-) -> dict:
-    """管理员依赖 - 向后兼容"""
-    return await get_current_user(request, optional=False, require_admin=True)
+__all__ = [
+    'get_current_user',
+    'get_current_user_optional',
+    'get_current_admin',
+]

@@ -6,15 +6,11 @@
 """
 
 import os
-import time
 import asyncio
 import ipaddress
-from pathlib import Path
-from typing import List, Tuple
 from urllib.parse import unquote
 
-from ..core.config import SUPPORTED_IMAGE_FORMATS, CACHE_EXPIRE_SECONDS
-from .cache import global_cache
+from ..core.config import SUPPORTED_IMAGE_FORMATS
 
 
 def validate_safe_path(base_path: str, target_path: str) -> bool:
@@ -78,6 +74,23 @@ def validate_safe_path(base_path: str, target_path: str) -> bool:
         return True
     except Exception:
         return False
+
+
+
+async def execute_count(conn, sql: str, *args) -> int:
+    """执行写操作并返回受影响行数
+
+    注意：asyncpg 的 ``Connection.execute()`` 返回的是 ``'DELETE 1'`` 这类
+    状态字符串，**没有** ``rowcount`` 属性（沿用 psycopg2 的写法会直接抛
+    AttributeError，被 except 吞掉后表现为"操作成功却提示失败"）。
+    """
+    status = await conn.execute(sql, *args)
+    if not status:
+        return 0
+    try:
+        return int(str(status).split()[-1])
+    except (IndexError, ValueError):
+        return 0
 
 
 def validate_local_path(path: str) -> tuple[bool, str]:
@@ -176,116 +189,6 @@ async def validate_image_file(file_path: str) -> bool:
         return False
     except Exception:
         return False
-
-
-async def safe_listdir(dir_path: str) -> List[str]:
-    """
-    安全的目录列表函数,过滤软链接
-    """
-    if not await asyncio.to_thread(os.path.isdir, dir_path):
-        return []
-
-    entries = []
-    try:
-        dir_entries = await asyncio.to_thread(os.listdir, dir_path)
-        for name in dir_entries:
-            full_path = os.path.join(dir_path, name)
-            if await asyncio.to_thread(os.path.islink, full_path):
-                continue
-            entries.append(name)
-    except Exception:
-        return []
-
-    return entries
-
-
-async def get_directory_modify_time(dir_path: str) -> float:
-    """
-    获取目录最后修改时间（递归检测子文件/目录）
-    """
-    if not await asyncio.to_thread(os.path.exists, dir_path):
-        return 0
-
-    try:
-        max_mtime = await asyncio.to_thread(os.path.getmtime, dir_path)
-
-        if await asyncio.to_thread(os.path.isdir, dir_path):
-            walk_result = await asyncio.to_thread(lambda: list(os.walk(dir_path)))
-            for root, dirs, files in walk_result:
-                for d in dirs:
-                    try:
-                        mtime = await asyncio.to_thread(os.path.getmtime, os.path.join(root, d))
-                        if mtime > max_mtime:
-                            max_mtime = mtime
-                    except Exception:
-                        continue
-
-                for f in files:
-                    try:
-                        mtime = await asyncio.to_thread(os.path.getmtime, os.path.join(root, f))
-                        if mtime > max_mtime:
-                            max_mtime = mtime
-                    except Exception:
-                        continue
-
-        return max_mtime
-    except Exception:
-        return 0
-
-
-async def get_all_images_in_dir(target_dir: str) -> List[str]:
-    """
-    获取目录下所有图片路径（带缓存，保证实时性）
-    """
-    cache_key = f"img_{target_dir}"
-    current_mtime = await get_directory_modify_time(target_dir)
-    last_mtime = global_cache.get_dir_mtime(cache_key)
-
-    need_refresh = False
-
-    if current_mtime != last_mtime:
-        need_refresh = True
-        global_cache.set_dir_mtime(cache_key, current_mtime)
-    else:
-        cache_info = global_cache.get_image_cache(cache_key)
-        if not cache_info or time.time() - cache_info["time"] >= CACHE_EXPIRE_SECONDS:
-            need_refresh = True
-
-    if need_refresh:
-        image_paths = []
-        if await asyncio.to_thread(os.path.isdir, target_dir):
-            walk_result = await asyncio.to_thread(lambda: list(os.walk(target_dir)))
-            for root, _, files in walk_result:
-                for file_name in files:
-                    if file_name.lower().endswith(SUPPORTED_IMAGE_FORMATS):
-                        image_paths.append(os.path.join(root, file_name))
-
-        global_cache.set_image_cache(cache_key, image_paths)
-        return image_paths
-
-    return global_cache.get_image_cache(cache_key)["data"]
-
-
-async def scan_image_directory(directory_path: str) -> List[str]:
-    """
-    扫描目录中的所有图片文件
-    """
-    image_paths = []
-
-    if not await asyncio.to_thread(os.path.exists, directory_path):
-        return image_paths
-
-    try:
-        walk_result = await asyncio.to_thread(lambda: list(os.walk(directory_path)))
-        for root, dirs, files in walk_result:
-            for file_name in files:
-                if file_name.lower().endswith(SUPPORTED_IMAGE_FORMATS):
-                    full_path = os.path.join(root, file_name)
-                    image_paths.append(full_path)
-    except Exception as e:
-        print(f"扫描目录时出错: {e}")
-
-    return image_paths
 
 
 def is_valid_public_ip(ip_str: str) -> bool:
