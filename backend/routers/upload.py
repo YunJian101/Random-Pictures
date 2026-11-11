@@ -196,8 +196,8 @@ async def api_upload_images(
                 # 先读取文件内容
                 content = await file.read()
                 # 粗筛：原始体积超过上限的 RAW_GUARD_FACTOR 倍直接拒。
-                # 重编码要过一遍 Pillow，几百 MB 的图会吃满 CPU / 内存，
-                # 这种图本来也压不进上限，没必要解出来。
+                # 剥离元数据虽然不解码图像，但这种量级的文件本来也过不了上限，
+                # 没必要读进来再算一遍。
                 if len(content) > max_upload_bytes * RAW_GUARD_FACTOR:
                     failed_files.append({
                         "filename": file.filename,
@@ -205,7 +205,7 @@ async def api_upload_images(
                                  f"{max_upload_mb}MB 的 {RAW_GUARD_FACTOR} 倍，请先压缩后再上传",
                     })
                     continue
-                # 清理私密元数据（EXIF/GPS/XMP 等）：重编码后再存，
+                # 剥离私密元数据（EXIF/GPS/XMP 等）：只删元数据段，像素不动（无损），
                 # 处理失败就拒绝这张图，不能把带定位信息的原图留在服务器上
                 cleaned, meta_msg = await asyncio.to_thread(strip_metadata, content)
                 if cleaned is None:
@@ -213,12 +213,11 @@ async def api_upload_images(
                     continue
                 content = cleaned
 
-                # 体积上限按「真正落盘的体积」判断：重编码一般会变小，
-                # 拿原始体积去卡会把本来存得下的图误判成超限
+                # 体积上限按「真正落盘的体积」判断（无损剥离后体积≈原始体积）
                 if len(content) > max_upload_bytes:
                     failed_files.append({
                         "filename": file.filename,
-                        "error": f"清理元数据后为 {len(content) / 1024 / 1024:.1f}MB，"
+                        "error": f"剥离元数据后为 {len(content) / 1024 / 1024:.1f}MB，"
                                  f"超过上限 {max_upload_mb}MB，请压缩后重试",
                     })
                     continue

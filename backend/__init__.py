@@ -22,6 +22,6 @@ FastAPI Random Pictures API - 后端模块
 版本: 1.0.3 (FastAPI版)
 """
 
-__version__ = "2.0.1"
+__version__ = "2.0.2"
 __version_date__ = "2026-11-11"
 __author__ = "云笺"
