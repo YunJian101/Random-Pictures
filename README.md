@@ -38,6 +38,20 @@
 
 ---
 
+## 界面预览
+
+截图来自 v1.1.1 的本地演示环境，图库为空时的初始状态。
+
+| 首页 | 登录 / 注册 |
+| :---: | :---: |
+| ![首页](screenshots/home.png) | ![登录与注册](screenshots/login.png) |
+
+| 管理后台 · 数据总览 | 用户中心 · 快捷调用 |
+| :---: | :---: |
+| ![管理后台](screenshots/admin.png) | ![用户中心](screenshots/user.png) |
+
+---
+
 ## 快速开始
 
 需要 Docker 与 Docker Compose。
