@@ -183,6 +183,10 @@ last_project-update_service.py
 *token*
 *password*
 *secret*
+# 例外：这是源码模块，不是敏感文件。
+# 曾被上面的 *password* 误伤而没入库，导致 GHCR 镜像缺少该文件，
+# 启动时报 ModuleNotFoundError: backend.core.security.password
+!backend/core/security/password.py
 
 # Backup files
 *.bak

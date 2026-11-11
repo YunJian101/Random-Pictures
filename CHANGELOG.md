@@ -5,6 +5,20 @@
 格式遵循 [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 规范，
 项目版本遵循 [语义化版本](https://semver.org/spec/v2.0.0.html) 规范。
 
+## [v1.1.1] - 2026-11-11
+
+修复镜像发布链路，补齐精简部署配置。
+
+### 修复
+
+- 修正 `.gitignore` 中 `*password*` 规则误伤 `backend/core/security/password.py` 的问题。该文件此前一直未入库，导致从仓库源码构建的 GHCR 镜像缺少此模块，容器启动即报 `ModuleNotFoundError: No module named 'backend.core.security.password'` 并无限重启
+- 同步独立 Compose 文件与 README 中的命令（补 `-f` 指定文件、修正服务名）
+
+### 新增
+
+- `docker-compose.simple.yml`：仅应用的精简部署配置，直接拉取 GHCR 镜像、外置 PostgreSQL、图片与缩略图用 bind mount
+- README 补充「精简部署」小节，说明 `DATABASE_URL` 三种填法与常用命令
+
 ## [v1.1.0] - 2026-11-04
 
 界面重构、权限收敛与稳定性治理。功能集合与 v1.0.0 保持兼容，数据库中已存在的数据无需手动迁移。

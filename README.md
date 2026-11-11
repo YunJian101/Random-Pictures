@@ -60,6 +60,34 @@ docker compose logs -f app     # 查看日志
 docker compose down            # 停止（加 -v 会连数据库一起删除）
 ```
 
+### 精简部署（仅应用，外置数据库）
+
+如果已有 PostgreSQL，或者不想本地构建镜像，可以使用精简版 Compose：
+
+```bash
+# 改 docker-compose.simple.yml 里的 DATABASE_URL，指向你的 PostgreSQL
+docker compose -f docker-compose.simple.yml up -d
+```
+
+精简版直接从 GHCR 拉取镜像，无需本地构建；图片和缩略图以 bind mount 存放在项目目录下的 `images/` 和 `thumbs/`。
+
+DATABASE_URL 格式：
+
+```
+postgresql://用户名:密码@主机:端口/库名
+```
+
+- 宿主机上的数据库 → `host.docker.internal:5432`
+- 同网络的容器 → 填容器名，如 `postgres:5432`
+- 远程服务器 → 填 IP 或域名
+
+常用命令（注意带 `-f` 指定文件）：
+
+```bash
+docker compose -f docker-compose.simple.yml logs -f   # 查看日志
+docker compose -f docker-compose.simple.yml down      # 停止
+```
+
 ---
 
 ## 文档

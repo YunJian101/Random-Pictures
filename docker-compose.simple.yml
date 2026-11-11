@@ -1,0 +1,35 @@
+# ============================================================
+# 随机图 API · Docker Compose
+#
+#   启动   docker compose -f docker-compose.simple.yml up -d
+#   日志   docker compose -f docker-compose.simple.yml logs -f Random-Pictures
+#   停止   docker compose -f docker-compose.simple.yml down
+#
+# 说明：本文件只包含应用服务，数据库需自备 PostgreSQL。
+#       连接信息见下方 DATABASE_URL，按自己的环境改这一行即可。
+# ============================================================
+services:
+  Random-Pictures:
+    image: ghcr.io/yunjian101/random-pictures:latest
+    container_name: Random-Pictures
+    restart: unless-stopped
+    ports:
+      # 宿主机端口:容器端口，宿主机端口冲突时只改左边
+      - "8081:8081"
+    environment:
+      # 格式：postgresql://用户名:密码@主机:端口/库名
+      #   host.docker.internal → 宿主机上的 PostgreSQL
+      #   数据库也是容器       → 填容器名，如 @postgres:5432
+      #   数据库在远程服务器   → 填 IP 或域名
+      DATABASE_URL: postgresql://postgres:postgres@192.168.11.2:54321/random_pictures
+
+      # 以下按需启用，不写则使用程序默认值
+      # TZ: Asia/Shanghai
+      # SECRET_KEY: 换成随机字符串       # 生产环境务必修改，用于会话签名
+      # COOKIE_SECURE: "true"           # 站点走 HTTPS 时开启
+      # TRUST_PROXY: "true"             # 前面有 Nginx 等反向代理时开启
+    volumes:
+      # 图片原图，容器重建不丢
+      - ./images:/app/images
+      # 缩略图缓存，容器重建不丢，避免重复生成
+      - ./thumbs:/app/data
