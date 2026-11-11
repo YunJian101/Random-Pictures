@@ -24,6 +24,7 @@ from fastapi.openapi.utils import get_openapi
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
+from . import __version__
 from .api.dependencies import get_current_admin, get_current_user_optional
 from .core.config import (
     ALLOW_HEADERS,
@@ -76,7 +77,9 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="随机图API",
     description="一个自托管的随机图片 API 服务",
-    version="1.1.0",
+    # 版本号统一取 backend/__init__.py，不再手写：之前这里写死 1.1.0，
+    # 结果 /docs 与 /redoc 上显示的版本一直和实际版本对不上
+    version=__version__,
     lifespan=lifespan,
     docs_url=None,    # 使用下方受保护的文档路由
     redoc_url=None,
@@ -128,7 +131,7 @@ async def custom_redoc_html(request: Request, current_user: dict = Depends(get_c
 async def get_openapi_json():
     return get_openapi(
         title="随机图API",
-        version="1.1.0",
+        version=__version__,
         description="一个自托管的随机图片 API 服务",
         routes=app.routes,
     )
