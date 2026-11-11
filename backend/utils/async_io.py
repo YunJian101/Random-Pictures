@@ -9,8 +9,44 @@
 
 import asyncio
 import os
+import uuid
 
 import aiofiles
+
+
+async def async_unique_filename(dir_path: str, filename: str, is_taken=None, limit: int = 1000) -> str:
+    """在 dir_path 下给 filename 找一个不冲突的文件名
+
+    目标已存在就按「名字_1.jpg」「名字_2.jpg」顺延，和上传时的命名策略保持一致。
+    这一步不能省：`os.rename` / `shutil.move` 在目标已存在时会**静默覆盖**，
+    等于把另一张图的内容冲掉，而两条数据库记录还会指向同一个文件。
+
+    Args:
+        dir_path: 目标目录（绝对路径）
+        filename: 期望的文件名
+        is_taken: 可选的额外占用判断，接收候选文件名、返回 awaitable（例如查库里
+                  有没有别的记录已经占着这个相对路径）
+        limit: 顺延次数上限，超过就退化成随机后缀
+
+    Returns:
+        str: 可用的文件名
+    """
+    name, ext = os.path.splitext(filename)
+    candidate = filename
+    counter = 0
+
+    while True:
+        full_path = os.path.join(dir_path, candidate)
+        taken = await asyncio.to_thread(os.path.exists, full_path)
+        if not taken and is_taken is not None:
+            taken = await is_taken(candidate)
+        if not taken:
+            return candidate
+
+        counter += 1
+        if counter > limit:
+            return f"{name}_{uuid.uuid4().hex[:8]}{ext}"
+        candidate = f"{name}_{counter}{ext}"
 
 
 async def async_exists(path: str) -> bool:

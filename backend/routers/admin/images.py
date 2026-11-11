@@ -20,7 +20,13 @@ async def api_admin_batch_action(request: Request, current_user: dict = Depends(
     支持下载、移动、删除选中的图片
     """
     from ...core.config import IMG_ROOT_DIR
-    from ...utils.async_io import async_exists, async_getsize, async_remove, async_makedirs
+    from ...utils.async_io import (
+        async_exists,
+        async_getsize,
+        async_remove,
+        async_makedirs,
+        async_unique_filename,
+    )
     from ...core.database import get_async_db_connection
     import os
     import zipfile
@@ -267,20 +273,34 @@ async def api_admin_batch_action(request: Request, current_user: dict = Depends(
                             # 构建完整的文件路径
                             old_full_path = os.path.join(IMG_ROOT_DIR, old_file_path)
                             if await async_exists(old_full_path):
+                                # 目标目录里已有同名文件就顺延（名字_1.jpg…）：
+                                # shutil.move 在目标已存在时会静默覆盖，把另一张图的内容冲掉，
+                                # 之后两条记录还都指向同一个文件（实测会丢图）
+                                unique_name = await async_unique_filename(
+                                    target_dir,
+                                    filename,
+                                    is_taken=lambda name: conn.fetchval(
+                                        'SELECT id FROM images WHERE file_path = $1 AND id <> $2',
+                                        os.path.join(category_name, name),
+                                        img_id,
+                                    ),
+                                )
                                 # 构建新的文件路径
-                                new_file_path = os.path.join(category_name, filename)
+                                new_file_path = os.path.join(category_name, unique_name)
                                 new_full_path = os.path.join(IMG_ROOT_DIR, new_file_path)
 
                                 # 物理移动文件
                                 await asyncio.to_thread(shutil.move, old_full_path, new_full_path)
 
-                                # 更新数据库
-                                await conn.execute('UPDATE images SET category_id = $1, file_path = $2 WHERE id = $3', 
-                                                 category_id_int, new_file_path, img_id)
+                                # 更新数据库（重名顺延过的话，filename 也要一起改）
+                                await conn.execute(
+                                    'UPDATE images SET category_id = $1, file_path = $2, filename = $3 WHERE id = $4',
+                                    category_id_int, new_file_path, unique_name, img_id,
+                                )
 
                                 return True, None
                             else:
-                                return False, '文件不存在'
+                                return False, '原文件不存在（可能已被删除）'
                         else:
                             return False, '图片不存在'
                 except Exception as e:

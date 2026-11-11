@@ -503,7 +503,12 @@ async def api_update_image(request: Request, image_id: int, filename: str = Body
             
             # 构建新的文件路径
             from ..core.config import IMG_ROOT_DIR
-            from ..utils.async_io import async_exists, async_makedirs, async_rename
+            from ..utils.async_io import (
+                async_exists,
+                async_makedirs,
+                async_rename,
+                async_unique_filename,
+            )
             
             # 提取原始文件名（不含路径）
             original_basename = os.path.basename(original_file_path)
@@ -518,6 +523,22 @@ async def api_update_image(request: Request, image_id: int, filename: str = Body
             
             # 如果文件路径有变化，移动文件
             if original_file_path != new_file_path:
+                target_dir_rel = os.path.dirname(new_file_path)
+                target_dir_abs = os.path.join(IMG_ROOT_DIR, target_dir_rel)
+
+                # 重名必须顺延：os.rename 会静默覆盖同名文件，把另一张图的内容冲掉，
+                # 之后两条记录还都指向同一个文件（实测会丢图）
+                new_filename = await async_unique_filename(
+                    target_dir_abs,
+                    new_filename,
+                    is_taken=lambda name: conn.fetchval(
+                        'SELECT id FROM images WHERE file_path = $1 AND id <> $2',
+                        os.path.join(target_dir_rel, name),
+                        image_id,
+                    ),
+                )
+                new_file_path = os.path.join(target_dir_rel, new_filename)
+
                 # 构建完整的文件路径
                 original_full_path = os.path.join(IMG_ROOT_DIR, original_file_path)
                 new_full_path = os.path.join(IMG_ROOT_DIR, new_file_path)
@@ -528,12 +549,16 @@ async def api_update_image(request: Request, image_id: int, filename: str = Body
                 await async_makedirs(os.path.dirname(new_full_path), exist_ok=True)
                 print(f"[INFO] 目标文件夹已确保存在: {os.path.dirname(new_full_path)}")
                 
-                # 移动文件
-                if await async_exists(original_full_path):
-                    await async_rename(original_full_path, new_full_path)
-                    print(f"[INFO] 图片文件已移动: {original_full_path} -> {new_full_path}")
-                else:
-                    print(f"[WARNING] 原始文件不存在: {original_full_path}")
+                # 源文件必须真的在：不在就不能假装成功，否则数据库会指向一个不存在的文件
+                if not await async_exists(original_full_path):
+                    print(f"[ERROR] 原始文件不存在，拒绝改名/移动: {original_full_path}")
+                    return JSONResponse(
+                        content={"code": 400, "msg": "原文件不存在（可能已被删除或移动），请重新上传或删除该图片记录"},
+                        status_code=400
+                    )
+
+                await async_rename(original_full_path, new_full_path)
+                print(f"[INFO] 图片文件已移动: {original_full_path} -> {new_full_path}")
             
             # 更新图片信息
             print(f"[INFO] 开始更新数据库 | 新文件名: {new_filename} | 新分类ID: {category_id} | 新文件路径: {new_file_path}")
