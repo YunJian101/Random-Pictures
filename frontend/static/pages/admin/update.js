@@ -60,7 +60,23 @@ $('btn-check-update').addEventListener('click', async () => {
     const diff = (latest && current) ? compareVersion(latest, current) : 0;
     // 只有 GitHub 上的版本「更高」才允许更新；用 !== 判断会把降级当成升级
     const hasUpdate = diff > 0;
-    $('btn-execute-update').disabled = !hasUpdate;
+    // 跨大版本（1.x → 2.x）不允许软件内更新：2.0.0 是重构版，只能手动升级
+    const manual = !!d.manual_update_required;
+    $('btn-execute-update').disabled = !hasUpdate || manual;
+
+    if (manual) {
+      const hint = d.manual_update_hint
+        || `当前 v${current} 不能软件内更新到 ${d.latest_version}，请手动升级`;
+      $('changelog-box').insertAdjacentHTML('afterbegin', `
+        <div class="changelog-item" style="border:1px solid #d97706;background:rgba(217,119,6,.08);border-radius:10px;padding:12px;margin-bottom:12px">
+          <div class="strong" style="margin-bottom:6px">
+            <i class="fa-solid fa-triangle-exclamation" style="color:#d97706"></i> 跨大版本，不支持软件内更新
+          </div>
+          <div class="small muted">${util.escapeHtml(hint)}</div>
+        </div>`);
+      Toast.warn('跨大版本重构，请手动更新');
+      return;
+    }
 
     if (!latest || !current) Toast.warn('无法比较版本，请手动确认');
     else if (hasUpdate) Toast.info(`发现新版本 ${d.latest_version}`);
@@ -75,14 +91,18 @@ $('btn-check-update').addEventListener('click', async () => {
 });
 
 $('btn-execute-update').addEventListener('click', async () => {
-  const ok = await util.confirm('执行更新', '将从 GitHub 拉取最新代码并重启服务，期间可能出现短暂不可用。确定继续？', '开始更新');
+  const ok = await util.confirm(
+    '执行更新',
+    '将从 GitHub 拉取最新代码并替换到磁盘。完成后服务会自动重启，期间约 10~30 秒无法访问，等一会儿刷新页面即可。确定继续？',
+    '开始更新',
+  );
   if (!ok) return;
   const btn = $('btn-execute-update');
   btn.disabled = true;
   btn.innerHTML = '<div class="spinner"></div>更新中…';
   try {
     const res = await api('/api/system/execute-update', { method: 'POST' });
-    Toast.success((res && res.msg) || '更新已触发');
+    Toast.success((res && res.msg) || '更新已启动，完成后会自动重启，请稍候刷新');
     setTimeout(loadVersion, 2500);
   } catch (e) {
     Toast.error(e.message || '更新失败');
@@ -119,11 +139,15 @@ $('btn-load-backups').addEventListener('click', async () => {
 });
 
 export async function rollback(filename) {
-  const ok = await util.confirm('回滚版本', '回滚会把代码恢复到该备份的状态，请确认已了解风险。', '回滚');
+  const ok = await util.confirm(
+    '回滚版本',
+    '回滚会把代码恢复到该备份的状态，完成后服务会自动重启，期间约 10~30 秒无法访问。确定继续？',
+    '回滚',
+  );
   if (!ok) return;
   try {
-    await api('/api/system/rollback', { method: 'POST', body: { backup_path: filename } });
-    Toast.success('回滚已触发');
+    const res = await api('/api/system/rollback', { method: 'POST', body: { backup_path: filename } });
+    Toast.success((res && res.msg) || '回滚完成，服务正在重启，请稍候刷新');
   } catch (e) {
     Toast.error(e.message || '回滚失败');
   }

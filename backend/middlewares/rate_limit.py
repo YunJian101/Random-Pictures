@@ -10,7 +10,8 @@
 注意：
 - 计数在进程内存里，多 worker 部署时每个进程各算一份（总限额 = 单进程 × worker 数）。
   如果需要全局精确限额，应换成 Redis；这里作为"防刷"的第一道闸足够。
-- 默认不信任 X-Forwarded-For（TRUST_PROXY=false），否则客户端伪造就绕过限流了。
+- 默认不信任 X-Forwarded-For（运行时配置 trust_proxy=false），否则客户端伪造就绕过限流了。
+  前置有反向代理时在管理后台打开「信任反向代理」，计数才会按真实客户端 IP 分组。
 """
 
 import time
@@ -56,8 +57,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     def _is_limited(self, path: str) -> bool:
         return path in self.paths or path in self.auth_paths
 
-    def _client_key(self, request: Request, path: str) -> str:
-        return f'{client_ip(request)}|{path}'
+    async def _client_key(self, request: Request, path: str) -> str:
+        return f'{await client_ip(request)}|{path}'
 
     def _cleanup(self, now: float) -> None:
         cutoff = now - WINDOW_SECONDS
@@ -115,7 +116,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             limit = runtime_config.get_int('rate_limit_per_minute', self.limit)
         limit = max(1, limit)
 
-        key = self._client_key(request, path)
+        key = await self._client_key(request, path)
         now = time.monotonic()
 
         bucket = self.buckets.get(key)

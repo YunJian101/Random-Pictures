@@ -483,7 +483,10 @@
     flex-direction: column;
   }
   .site-footer {
-    margin-top: auto;
+    /* 不能用 margin-top: auto：内容撑满视口（页面可滚动）时它会被算成 0，
+       页脚就和上面最后一排卡片粘在一起了。body/main 已经是 flex 列布局，
+       main 会自己撑满把页脚压到视口底部，这里只需要保底留白。 */
+    margin-top: 48px;
   }
   /* 单模块展示时，保证模块本身也有足够的留白 */
   .module.hidden + .module {

@@ -21,7 +21,7 @@ services:
       #   host.docker.internal → 宿主机上的 PostgreSQL
       #   数据库也是容器       → 填容器名，如 @postgres:5432
       #   数据库在远程服务器   → 填 IP 或域名
-      DATABASE_URL: postgresql://postgres:postgres@192.168.11.2:54321/random_pictures
+      DATABASE_URL: postgresql://postgres:postgres@host.docker.internal:5432/random_pictures
 
       # 以下按需启用，不写则使用程序默认值
       # TZ: Asia/Shanghai
@@ -33,3 +33,5 @@ services:
       - ./images:/app/images
       # 缩略图缓存，容器重建不丢，避免重复生成
       - ./thumbs:/app/data
+      # 版本更新前的备份（.tar.gz），容器重建不丢，回滚时从这里取
+      - ./backups:/app/backups

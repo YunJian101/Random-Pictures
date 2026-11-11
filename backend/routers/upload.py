@@ -14,11 +14,18 @@ from fastapi import Depends, UploadFile, File, Form, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from ..api.dependencies import get_current_admin
-from ..core.config import IMG_ROOT_DIR
+from ..core import runtime_config
+from ..core.config import IMG_ROOT_DIR, MAX_UPLOAD_MB
 from ..utils.async_io import async_exists, async_makedirs, async_open_write
 from ..utils.image_meta import strip_metadata
-from ..utils.utils import get_client_ip
+from ..utils.request import client_ip
+from ..services.audit_service import record as audit
 from ..core.database import get_async_db_connection
+
+# 原始体积的粗筛倍数：清理元数据后的体积才是真正的落盘上限，
+# 但重编码前的原始体积若大得离谱（超过上限的这个倍数），直接拒绝，
+# 免得把几百 MB 的图丢给 Pillow 去解（CPU / 内存黑洞）。
+RAW_GUARD_FACTOR = 4
 
 
 def _get_image_resolution(file_path: str) -> tuple:
@@ -111,9 +118,8 @@ async def api_upload_images(
         JSONResponse: 上传结果
     """
     try:
-        # 获取上传IP地址
-        x_forwarded_for = request.headers.get('X-Forwarded-For', '')
-        upload_ip = get_client_ip(x_forwarded_for, request.client.host if request.client else '')
+        # 获取上传IP地址（与登录、审核日志同一套规则，见 utils.request.client_ip）
+        upload_ip = await client_ip(request)
         # 获取上传者信息
         uploader = current_user.get('username', 'admin')
         # 验证输入参数
@@ -159,6 +165,12 @@ async def api_upload_images(
         duplicate_files = []
         failed_files = []
 
+        # 单张体积上限取运行时配置（管理后台「系统设置」可改，改完 5 秒内生效），
+        # 读不到库就回落到环境变量默认值 MAX_UPLOAD_MB
+        await runtime_config.ensure_loaded()
+        max_upload_mb = max(1, runtime_config.get_int('max_upload_mb', MAX_UPLOAD_MB))
+        max_upload_bytes = max_upload_mb * 1024 * 1024
+
         # 处理每个上传的文件
         for file in files:
             try:
@@ -183,9 +195,15 @@ async def api_upload_images(
 
                 # 先读取文件内容
                 content = await file.read()
-                # 简单的文件大小检查（5MB限制）
-                if len(content) > 5 * 1024 * 1024:
-                    failed_files.append({"filename": file.filename, "error": "文件大小超过5MB限制"})
+                # 粗筛：原始体积超过上限的 RAW_GUARD_FACTOR 倍直接拒。
+                # 重编码要过一遍 Pillow，几百 MB 的图会吃满 CPU / 内存，
+                # 这种图本来也压不进上限，没必要解出来。
+                if len(content) > max_upload_bytes * RAW_GUARD_FACTOR:
+                    failed_files.append({
+                        "filename": file.filename,
+                        "error": f"原始文件 {len(content) / 1024 / 1024:.1f}MB，超过上限 "
+                                 f"{max_upload_mb}MB 的 {RAW_GUARD_FACTOR} 倍，请先压缩后再上传",
+                    })
                     continue
                 # 清理私密元数据（EXIF/GPS/XMP 等）：重编码后再存，
                 # 处理失败就拒绝这张图，不能把带定位信息的原图留在服务器上
@@ -195,8 +213,14 @@ async def api_upload_images(
                     continue
                 content = cleaned
 
-                if len(content) > 5 * 1024 * 1024:
-                    failed_files.append({"filename": file.filename, "error": "清理元数据后文件仍超过5MB限制"})
+                # 体积上限按「真正落盘的体积」判断：重编码一般会变小，
+                # 拿原始体积去卡会把本来存得下的图误判成超限
+                if len(content) > max_upload_bytes:
+                    failed_files.append({
+                        "filename": file.filename,
+                        "error": f"清理元数据后为 {len(content) / 1024 / 1024:.1f}MB，"
+                                 f"超过上限 {max_upload_mb}MB，请压缩后重试",
+                    })
                     continue
 
                 # 计算文件MD5值（按清理后的内容算，便于去重）
@@ -275,6 +299,22 @@ async def api_upload_images(
                         os.remove(file_path)
                     except:
                         pass
+
+        # 写审核日志：上传就是「新增图片」，后台审核日志里要能查到谁往哪个分类传了什么
+        await audit(
+            request, 'upload.images', current_user,
+            target_type='category', target_id=category_name,
+            detail=(f"上传 {len(files)} 张到「{category_name}」：成功 {len(uploaded_files)}，"
+                    f"重复 {len(duplicate_files)}，失败 {len(failed_files)}"),
+            metadata={
+                'category': category_name,
+                'total': len(files),
+                'uploaded': [f.get('saved_name') for f in uploaded_files][:50],
+                'duplicate': [d.get('filename') for d in duplicate_files][:50],
+                'failed': [{'filename': f.get('filename'), 'error': f.get('error')}
+                           for f in failed_files][:50],
+            },
+        )
 
         # 构造响应
         response_data = {

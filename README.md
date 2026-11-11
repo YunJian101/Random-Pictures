@@ -11,7 +11,7 @@
 - 支持 `format` 按格式筛选、`exclude` 排除指定图片
 - `w` 参数按需生成缩略图（160/320/480/640/960），磁盘缓存
 - 客户端支持时自动输出 WebP（比 JPEG 更小），否则回退 JPEG
-- 直链支持 7 天浏览器缓存；随机接口不缓存，每次返回不同图片
+- `/image` 直链带 7 天浏览器缓存（`/thumb` 缩略图 30 天）；`/random` 不缓存，每次返回不同图片
 
 **管理后台**
 - 图片管理：上传、改分类/文件名、批量移动与删除、导出 ZIP
@@ -19,7 +19,7 @@
 - 用户管理：新建、改资料、重置密码、调整角色、封禁、删除
 - 反馈管理：对话式回复、状态流转、删除
 - 审核日志：记录管理员操作与异常请求，可按动作/关键字/日期筛选
-- 系统设置：站点信息、功能开关、限流与安全参数（保存后即时生效，无需重启）
+- 系统设置：站点信息、功能开关、限流与安全参数（保存后约 5 秒生效，无需重启）
 - 版本更新：检查、执行、备份与回滚
 
 **用户中心**
@@ -40,7 +40,7 @@
 
 ## 界面预览
 
-截图来自 v1.1.1 的本地演示环境，图库为空时的初始状态。
+截图来自 v2.0.0 的本地演示环境，图库为空时的初始状态。
 
 | 首页 | 登录 / 注册 |
 | :---: | :---: |
@@ -104,6 +104,22 @@ docker compose -f docker-compose.simple.yml down      # 停止
 
 ---
 
+## 从 1.x 升级到 2.0.0（手动）
+
+**2.0.0 是重构版本，不支持软件内更新**：1.x 内置的更新逻辑只会替换 `backend/`、`frontend/` 等文件，覆盖不了 2.0.0 的结构与配置变化，硬升会让站点处于半新半旧的状态。请手动升级：
+
+```bash
+cd Random-Pictures
+git fetch --tags
+git checkout v2.0.0          # 或者直接下载 Release 压缩包解压覆盖
+docker compose up -d --build
+```
+
+- 数据库结构在启动时自动迁移（`schema_migrations` 幂等，重复启动不会重复执行）；图片、缩略图、备份都在卷里，不会丢
+- 2.0.0 起，2.0.x 之间可以正常使用软件内更新；管理后台「版本更新」页在检测到 1.x → 2.x 时会直接提示走手动升级
+
+---
+
 ## 文档
 
 | 文档 | 内容 |
@@ -159,8 +175,9 @@ BASE_URL=http://192.0.2.10:8081 ADMIN_USER=admin ADMIN_PASSWORD=你的密码 pyt
 
 - 生产环境请通过 `.env` 设置 `SECRET_KEY` 与 `POSTGRES_PASSWORD`，不要使用默认值
 - 走 HTTPS 时设置 `COOKIE_SECURE=true`
-- 使用 Nginx 等反向代理时设置 `TRUST_PROXY=true`，否则限流会把所有请求算到代理 IP 上
-- 图片、缩略图、数据库分别放在命名卷中，`docker compose down` 不会丢数据；`down -v` 会
+- 使用 Nginx 等反向代理时设置 `TRUST_PROXY=true`（或后台「系统设置 → 信任反向代理」打开），否则限流、登录记录、审核日志都会算到代理 IP 上
+- 图片、缩略图、备份、数据库分别放在命名卷中（`random-pictures-images` / `-thumbs` / `-backups` / `-pgdata`），`docker compose down` 不会丢数据；`down -v` 会
+- 备份卷 `random-pictures-backups` 挂到容器内 `/app/backups`：后台「版本更新」每次执行更新前会把当前代码打包成 `backup_<版本>_<时间戳>.tar.gz` 放在这里，回滚也从这里取。想导出：`docker run --rm -v random-pictures-backups:/b -v "%cd%":/out alpine tar czf /out/backups.tgz -C /b .`
 
 ---
 

@@ -81,6 +81,8 @@ services:
       - images:/app/images
       # 缩略图缓存（重建容器不丢，避免反复生成）
       - thumbs:/app/data
+      # 版本更新前的备份（.tar.gz），后台「版本更新 → 备份与回滚」就从这里读
+      - backups:/app/backups
       # 想直接看宿主机文件，可改成 bind mount，并在 Docker Desktop
       # Settings → Resources → File sharing 里把项目目录加进白名单：
       # - ./images:/app/images
@@ -99,3 +101,5 @@ volumes:
     name: random-pictures-images
   thumbs:
     name: random-pictures-thumbs
+  backups:
+    name: random-pictures-backups

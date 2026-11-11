@@ -24,8 +24,8 @@ class LoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         start_time = datetime.now()
 
-        # 取客户端 IP 统一走 utils.request：TRUST_PROXY=false 时不会信 X-Forwarded-For
-        ip = client_ip(request)
+        # 取客户端 IP 统一走 utils.request：trust_proxy 关闭时不会信 X-Forwarded-For
+        ip = await client_ip(request)
 
         response = await call_next(request)
 

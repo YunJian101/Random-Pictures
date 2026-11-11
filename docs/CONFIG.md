@@ -50,7 +50,7 @@
 | `SECRET_KEY` | 占位字符串 | 会话签名密钥，**生产环境必须修改** |
 | `TOKEN_EXPIRE_DAYS` | `0.5` | 会话有效期（天），默认 12 小时 |
 | `COOKIE_SECURE` | `false` | HTTPS 部署时设为 `true` |
-| `TRUST_PROXY` | `false` | 反向代理后设为 `true`，否则限流会把所有请求算到代理 IP |
+| `TRUST_PROXY` | `false` | 反向代理后设为 `true`，否则限流会把所有请求算到代理 IP。也可在后台「系统设置 → 信任反向代理」里切换 |
 
 ### 限流与防护（运行时配置的默认值）
 
@@ -70,6 +70,7 @@
 | `REGISTER_MIN_INTERVAL_SECONDS` | `30` | 两次注册的最小间隔 |
 | `MAX_SESSIONS_PER_USER` | `10` | 单用户保留的会话数上限 |
 | `SESSION_CLEANUP_INTERVAL` | `1800` | 过期会话清理间隔（秒） |
+| `MAX_UPLOAD_MB` | `5` | 单张图片上传大小上限（MB） |
 
 ### 首页分页
 
@@ -83,7 +84,7 @@
 
 ## 运行时配置
 
-在管理后台「系统设置」中修改。全部项保存后即时生效。
+在管理后台「系统设置」中修改。保存后约 5 秒对所有进程生效（进程内有 5 秒快照缓存）；站点信息类（站名 / 备案 / 图标 / 创建日期）改完立即生效。
 
 ### 站点信息
 
@@ -95,6 +96,7 @@
 | `beian_link` | 备案跳转链接（URL） |
 | `timezone` | 站点时区，如 `Asia/Shanghai` |
 | `favicon_url` | 站点图标（URL 或本地相对路径） |
+| `site_launch_date` | 项目创建日期 `YYYY-MM-DD`，首页「稳定交付 N 天」按它计算；留空则不显示天数 |
 
 ### 功能开关
 
@@ -105,6 +107,13 @@
 | `enable_path_traversal_protection` | 校验 `/image?path=` 参数 |
 | `enable_hotlink_protection` | 校验 Referer |
 | `enable_ip_blacklist` | 启用 IP 黑名单 |
+| `trust_proxy` | 信任反向代理传来的 `X-Forwarded-For`（限流、登录记录、审核日志都按真实客户端 IP 记） |
+
+### 上传限制
+
+| 键 | 范围 | 说明 |
+|---|---|---|
+| `max_upload_mb` | 1–100 | 单张图片上传大小上限（MB）。按清理元数据后的**落盘体积**判断；原始体积超过上限 4 倍时直接拒绝，不浪费 CPU 去重编码 |
 
 ### 限流
 

@@ -25,6 +25,7 @@ from .config import (
     LOGIN_LOCK_MAX_SECONDS,
     LOGIN_MAX_FAILURES,
     MAX_SESSIONS_PER_USER,
+    MAX_UPLOAD_MB,
     RATE_LIMIT_AUTH_PER_MINUTE,
     RATE_LIMIT_ENABLED,
     RATE_LIMIT_PER_MINUTE,
@@ -33,6 +34,8 @@ from .config import (
     REGISTER_MIN_INTERVAL_SECONDS,
     REGISTER_WINDOW_SECONDS,
     SESSION_CLEANUP_INTERVAL,
+    SITE_LAUNCH_DATE,
+    TRUST_PROXY,
 )
 
 __all__ = [
@@ -57,6 +60,9 @@ DEFAULTS: dict[str, str] = {
     'max_sessions_per_user': str(MAX_SESSIONS_PER_USER),
     'session_cleanup_interval': str(SESSION_CLEANUP_INTERVAL),
     'audit_retention_days': '90',
+    'max_upload_mb': str(MAX_UPLOAD_MB),
+    'trust_proxy': 'true' if TRUST_PROXY else 'false',
+    'site_launch_date': SITE_LAUNCH_DATE,
     'enable_register_guard': 'true' if REGISTER_GUARD_ENABLED else 'false',
     'register_max_per_window': str(REGISTER_MAX_PER_WINDOW),
     'register_window_seconds': str(REGISTER_WINDOW_SECONDS),

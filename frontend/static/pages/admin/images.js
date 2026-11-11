@@ -313,6 +313,35 @@ $('upload-clear').addEventListener('click', () => {
   renderUploadList();
 });
 
+/** 上传结果弹窗：一共上传几张 / 成功几张 / 失败几张，失败项目逐条列文件名 + 原因 */
+function showUploadResult(total, payload) {
+  const okCount = payload.uploaded_count || 0;
+  const dupCount = payload.duplicate_count || 0;
+  const failed = payload.failed_files || [];
+  const failCount = payload.failed_count != null ? payload.failed_count : failed.length;
+
+  $('upload-result-title').textContent =
+    `一共上传 ${total} 张，成功 ${okCount} 张，失败 ${failCount} 张`;
+  $('upload-result-extra').textContent = dupCount
+    ? `另有 ${dupCount} 张因重复被跳过`
+    : (failCount ? '' : '全部上传成功');
+
+  const block = $('upload-result-fail-block');
+  const list = $('upload-result-failures');
+  if (failed.length) {
+    list.innerHTML = failed.map((f, i) => `
+      <li style="margin-bottom:8px">
+        <b>${i + 1}. ${util.escapeHtml(f.filename)}</b>
+        <div class="tiny dim">${util.escapeHtml(f.error || '未知原因')}</div>
+      </li>`).join('');
+    block.classList.remove('hidden');
+  } else {
+    list.innerHTML = '';
+    block.classList.add('hidden');
+  }
+  Modal.open('modal-upload-result');
+}
+
 $('upload-submit').addEventListener('click', async () => {
   if (!uploadFiles.length) return;
   const categoryId = $('upload-category').value;
@@ -322,38 +351,35 @@ $('upload-submit').addEventListener('click', async () => {
   const form = new FormData();
   uploadFiles.forEach((file) => form.append('files', file));
   form.append('category', cat.name);
+  const total = uploadFiles.length;
 
   const btn = $('upload-submit');
   btn.disabled = true;
   btn.innerHTML = '<div class="spinner"></div>上传中…';
-  try {
-    const res = await api('/api/admin/upload', { method: 'POST', body: form });
-    const payload = (res && res.data) || {};
-    // 后端字段：uploaded_count / duplicate_count / failed_count
-    const okCount = payload.uploaded_count != null ? payload.uploaded_count
-      : (payload.uploaded != null ? payload.uploaded : uploadFiles.length);
-    const dupCount = payload.duplicate_count || 0;
-    const failCount = payload.failed_count || 0;
 
-    const parts = [`成功 ${okCount} 张`];
-    if (dupCount) parts.push(`跳过重复 ${dupCount} 张`);
-    if (failCount) parts.push(`失败 ${failCount} 张`);
-    const type = (failCount && !okCount) ? 'error' : (dupCount ? 'warn' : 'success');
-    Toast[type](`上传完成：${parts.join('，')}`);
-
-    if (dupCount) {
-      const names = (payload.duplicate_files || []).slice(0, 3)
-        .map((d) => `${d.filename} → 已存在`).join('；');
-      Toast.warn(`重复图片已自动跳过：${names}${dupCount > 3 ? ' …' : ''}`);
-    }
+  // 收尾：弹结果 → 清空选择 → 关上传弹窗 → 刷新列表
+  const finish = (payload) => {
+    showUploadResult(total, payload || {});
     uploadFiles = [];
     $('upload-input').value = '';
     renderUploadList();
     Modal.close('modal-upload');
     state.categories = [];   // 图片数量变了，下次重新拉分类
     loadImages(1);
+  };
+
+  try {
+    const res = await api('/api/admin/upload', { method: 'POST', body: form });
+    finish((res && res.data) || {});
   } catch (e) {
-    Toast.error(e.message || '上传失败');
+    // 全部失败时后端返回 HTTP 400，明细在 payload.data.failed_files 里，
+    // 只报「上传失败」等于让用户猜，所以照样把结果弹出来
+    const payload = (e && e.payload && e.payload.data) || null;
+    if (payload && (payload.failed_files || payload.failed_count != null)) {
+      finish(payload);
+    } else {
+      Toast.error(e.message || '上传失败');
+    }
   } finally {
     btn.disabled = false;
     btn.innerHTML = '<i class="fa-solid fa-upload"></i>开始上传';

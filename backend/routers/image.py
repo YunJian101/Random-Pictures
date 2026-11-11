@@ -21,7 +21,8 @@ from ..services.image_service import (
     get_random_image_in_category,
     get_random_image_in_all_categories,
 )
-from ..utils.utils import validate_safe_path, validate_image_file, get_mime_type, get_client_ip
+from ..utils.utils import validate_safe_path, validate_image_file, get_mime_type
+from ..utils.request import client_ip as resolve_client_ip
 
 
 async def api_categories(page: int = Query(1, ge=1, le=1000, description="页码")):
@@ -414,11 +415,9 @@ async def api_image_detail(image_id: int, current_user: dict = Depends(get_curre
 async def api_update_image(request: Request, image_id: int, filename: str = Body(...), category_id: int = Body(...), current_user: dict = Depends(get_current_admin)):
     """更新图片信息API"""
     try:
-        # 获取用户信息和IP地址
+        # 获取用户信息和IP地址（与登录、审核日志同一套规则）
         username = current_user.get('username', 'unknown')
-        x_forwarded_for = request.headers.get('X-Forwarded-For', '')
-        remote_addr = request.client.host if request.client else ''
-        client_ip = get_client_ip(x_forwarded_for, remote_addr)
+        client_ip = await resolve_client_ip(request)
         user_agent = request.headers.get('User-Agent', 'unknown')
         
         # 输出操作开始日志

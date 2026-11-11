@@ -8,6 +8,7 @@
 """
 
 import time
+from pathlib import Path
 
 from fastapi import (
     Depends,
@@ -148,12 +149,30 @@ async def api_system_check_update(current_user: dict = Depends(get_current_admin
                 latest_version = changelog[0]['version'] if changelog else '未知'
                 latest_version_date = changelog[0]['date'] if changelog else '未知'
 
+                # 1.x → 2.x 不支持软件内更新：2.0.0 是重构版，文件结构变了，
+                # 旧版本的「替换文件」更新逻辑覆盖不了，只能手动更新
+                try:
+                    from backend import __version__ as current_version
+                except Exception:
+                    current_version = '0.0.0'
+                from ...services.update_service import UpdateService
+                manual_update_required = UpdateService.requires_manual_update(
+                    current_version, latest_version
+                )
+
                 return JSONResponse(content={
                     'code': 200,
                     'msg': 'success',
                     'data': {
                         'latest_version': latest_version,
                         'latest_version_date': latest_version_date,
+                        'manual_update_required': manual_update_required,
+                        'manual_update_hint': (
+                            f'当前 {current_version} 不能软件内更新到 {latest_version}：'
+                            f'这是跨大版本重构，请手动更新（拉取代码 → 替换 backend/ 与 frontend/ → '
+                            f'docker compose up -d --build）'
+                            if manual_update_required else ''
+                        ),
                         'changelog': changelog
                     }
                 })
@@ -206,8 +225,8 @@ async def api_system_rollback(request: Request, current_user: dict = Depends(get
     """系统回滚API"""
     try:
         data = await request.json()
-        backup_path = data.get('backup_path')
-        
+        backup_path = (data.get('backup_path') or '').strip()
+
         if not backup_path:
             return JSONResponse(content={
                 'code': 400,
@@ -216,21 +235,45 @@ async def api_system_rollback(request: Request, current_user: dict = Depends(get
 
         from ...services.update_service import UpdateService
         update_service = UpdateService()
-        rollback_result = await update_service.rollback(backup_path)
+
+        # 前端「备份列表」只下发文件名（列表接口不下发完整路径），这里补成备份目录下的
+        # 绝对路径；同时挡住 ../ 之类越权路径——只允许备份目录里的文件
+        backup_dir = update_service.backup_dir.resolve()
+        candidate = Path(backup_path)
+        if not candidate.is_absolute():
+            candidate = backup_dir / candidate
+        candidate = candidate.resolve()
+        if backup_dir not in candidate.parents:
+            return JSONResponse(content={
+                'code': 400,
+                'msg': '备份文件必须位于备份目录内'
+            }, status_code=400)
+        if not candidate.is_file():
+            return JSONResponse(content={
+                'code': 400,
+                'msg': f'备份文件不存在：{candidate.name}'
+            }, status_code=400)
+
+        rollback_result = await update_service.rollback(str(candidate))
 
         await audit(request, 'system.rollback', current_user,
-                    target_type='system', target_id=backup_path,
-                    detail=f'回滚到备份 {backup_path}'[:200])
+                    target_type='system', target_id=candidate.name,
+                    detail=f'回滚到备份 {candidate.name}（{rollback_result}）'[:200])
 
         return JSONResponse(content={
             'code': 200,
             'msg': rollback_result
         })
+    except FileNotFoundError as e:
+        return JSONResponse(content={
+            'code': 400,
+            'msg': str(e)
+        }, status_code=400)
     except Exception as e:
         print(f"[ERROR] 执行回滚失败: {str(e)}")
         return JSONResponse(content={
             'code': 500,
-            'msg': f'执行回滚失败: {str(e)}'
+            'msg': f'回滚失败: {str(e)}'
         }, status_code=500)
 
 
@@ -306,6 +349,8 @@ async def api_get_system_info():
             response_data = {
                 'site_name': _config_cache['site_name'],
                 'favicon_url': _config_cache.get('favicon_url', ''),
+                # 首页「稳定交付 N 天」按这个日期算（公开信息，不含任何个人数据）
+                'launch_date': _config_cache.get('site_launch_date', ''),
             }
 
             # 只有当显示备案信息开关开启时，才返回备案信息
@@ -327,8 +372,9 @@ async def api_get_system_info():
             results = await conn.fetch('''
                 SELECT config_key, config_value 
                 FROM system_configs 
-                WHERE config_key IN ($1, $2, $3, $4, $5, $6)
-            ''', 'site_name', 'timezone', 'icp_beian', 'beian_link', 'show_beian_info', 'favicon_url')
+                WHERE config_key IN ($1, $2, $3, $4, $5, $6, $7)
+            ''', 'site_name', 'timezone', 'icp_beian', 'beian_link', 'show_beian_info', 'favicon_url',
+                'site_launch_date')
             
             # 构建配置字典
             configs = {row['config_key']: row['config_value'] for row in results}
@@ -340,6 +386,7 @@ async def api_get_system_info():
             icp_beian_url = configs.get('beian_link', 'https://beian.miit.gov.cn')
             show_beian_info = configs.get('show_beian_info', 'false')
             favicon_url = configs.get('favicon_url', '')
+            launch_date = configs.get('site_launch_date', '')
             
             # 更新缓存
             _cache_store({
@@ -348,13 +395,15 @@ async def api_get_system_info():
                 'icp_beian': icp_beian_code,
                 'beian_link': icp_beian_url,
                 'show_beian_info': show_beian_info,
-                'favicon_url': favicon_url
+                'favicon_url': favicon_url,
+                'site_launch_date': launch_date
             })
 
             # 构建响应数据
             response_data = {
                 'site_name': site_name,
-                'favicon_url': favicon_url
+                'favicon_url': favicon_url,
+                'launch_date': launch_date
             }
             
             # 只有当显示备案信息开关开启时，才返回备案信息
@@ -376,7 +425,8 @@ async def api_get_system_info():
             'msg': '获取系统基本信息失败，使用默认值',
             'data': {
                 'site_name': '随机图API',
-                'favicon_url': ''
+                'favicon_url': '',
+                'launch_date': ''
             }
         })
 

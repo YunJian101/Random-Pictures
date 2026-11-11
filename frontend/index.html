@@ -70,7 +70,7 @@
         <div class="hero__inner">
         <span class="hero__badge">
           <span class="hero__dot"></span>
-          <b>服务运行中</b> · 稳定交付 2000+ 天
+          <b>服务运行中</b><span id="uptime-wrap"> · 稳定交付 <span id="uptime-days">—</span> 天</span>
         </span>
         <h1 class="hero__title">
           随机图片直链 API
@@ -90,7 +90,7 @@
         </div>
 
         <div class="hero__try">
-          <span class="hero__try-label">直链</span>
+          <span class="hero__try-label">接口地址</span>
           <code id="hero-url">/random</code>
           <button class="btn btn--soft btn--sm" id="hero-copy">
             <i class="fa-solid fa-copy"></i>复制
@@ -101,7 +101,7 @@
           <span class="hero__stat" id="hero-status"><span class="pulse-dot" id="hero-status-dot"></span><b id="hero-status-text">检测中</b> · <span id="hero-status-desc">正在连接接口</span></span>
           <span class="hero__stat"><i class="fa-solid fa-layer-group"></i><b id="hero-stat-cats">—</b> 个分类</span>
           <span class="hero__stat"><i class="fa-solid fa-images"></i><b id="hero-stat-imgs">—</b> 张图片</span>
-          <span class="hero__stat"><i class="fa-solid fa-bolt"></i>直链零解析</span>
+          <span class="hero__stat"><i class="fa-solid fa-bolt"></i>图片直出</span>
         </div>
         </div>
       </div>
@@ -111,8 +111,8 @@
           <div class="feature__icon" style="color:var(--primary);background:var(--primary-weak)">
             <i class="fa-solid fa-bolt"></i>
           </div>
-          <h3 class="feature__title">毫秒级响应</h3>
-          <p class="feature__text">随机挑选走内存索引，不扫全表；直链支持浏览器长缓存，重复访问不产生额外流量。</p>
+          <h3 class="feature__title">低延迟随机</h3>
+          <p class="feature__text">随机取图只做一次计数 + 随机偏移定位，不做全表排序；/random 每次返回新图、不缓存，/image 直链带 7 天缓存。</p>
         </article>
         <article class="feature hairline-top">
           <div class="feature__icon" style="color:var(--accent);background:var(--accent-weak)">
@@ -227,7 +227,7 @@
               <div class="doc-item">
                 <h4 class="doc-h"><i class="fa-solid fa-link"></i>全局随机</h4>
                 <p class="doc-p">直接请求以下地址，服务会从所有分类中随机返回一张图片。
-                随机接口不做缓存，每次请求都会返回不同图片（需要缓存请用下面的直链）：</p>
+                随机接口不做缓存，每次请求都会返回不同图片（需要缓存请用下面的 /image 直链）：</p>
                 <div class="code" id="doc-base-url"></div>
               </div>
               <div class="doc-item">
@@ -490,7 +490,7 @@ Access-Control-Allow-Origin: *            # 全站开放跨域</div>
               </details>
               <details class="faq-item">
                 <summary>图片可以用在商业项目吗？</summary>
-                <p>图片由本项目自行收集整理，版权归属原作者。商用前请自行确认授权，本项目不承担相关责任。</p>
+                <p>图片由用户自行收集整理，版权归属原作者。商用前请自行确认授权，本项目不承担相关责任。</p>
               </details>
               <details class="faq-item">
                 <summary>有调用频率限制吗？</summary>

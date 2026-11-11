@@ -100,7 +100,7 @@ async def record(
         user_agent = None
         if request is not None:
             try:
-                ip = client_ip(request)
+                ip = await client_ip(request)
                 user_agent = (request.headers.get('user-agent') or '')[:200]
             except Exception:
                 pass

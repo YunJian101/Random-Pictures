@@ -89,6 +89,15 @@ def strip_metadata(raw: bytes) -> Tuple[Optional[bytes], str]:
             return data, f'已清理元数据（{fmt}）'
 
     except Exception as e:
+        # 内容不是图片（扩展名对不上）是最常见的一种，给用户看人话，
+        # 不要把 "_io.BytesIO object at 0x..." 这种内部信息甩到上传结果里
+        try:
+            from PIL import UnidentifiedImageError
+            if isinstance(e, UnidentifiedImageError):
+                print(f'[ERROR] 清理图片元数据失败（无法识别图片格式）: {str(e)}')
+                return None, '不是有效的图片文件（无法识别格式，请确认文件没损坏）'
+        except Exception:
+            pass
         print(f'[ERROR] 清理图片元数据失败: {str(e)}')
         return None, f'图片元数据处理失败: {str(e)}'
 

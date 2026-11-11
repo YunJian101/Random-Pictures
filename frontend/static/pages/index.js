@@ -67,6 +67,18 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   /* ------------------------------ 站点信息 ------------------------------ */
+  /** 把 YYYY-MM-DD 换算成「距今多少天」；格式不对 / 未来日期返回 null */
+  function daysSince(dateStr) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dateStr || '').trim());
+    if (!m) return null;
+    const start = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    if (Number.isNaN(start.getTime())) return null;
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const days = Math.floor((today - start) / 86400000);
+    return days >= 0 ? days : null;
+  }
+
   async function loadSiteInfo() {
     try {
       const res = await api('/api/system/info');
@@ -76,6 +88,17 @@ document.addEventListener('DOMContentLoaded', function () {
         document.title = `${d.site_name} - 随机图 API`;
       }
       if (d.favicon_url) $('favicon').href = d.favicon_url;
+
+      // 首页徽标「稳定交付 N 天」：按后台设置里的项目创建日期计算，没配就不显示天数
+      const days = daysSince(d.launch_date);
+      if (days === null) {
+        const wrap = $('uptime-wrap');
+        if (wrap) wrap.classList.add('hidden');
+      } else {
+        const el = $('uptime-days');
+        if (el) el.textContent = String(days);
+      }
+
       if (d.icp_beian_code && d.show_beian_info === 'true') {
         const link = $('beian-link');
         link.textContent = d.icp_beian_code;

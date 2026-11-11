@@ -226,6 +226,24 @@ class UpdateService:
 
         return 0
 
+    @staticmethod
+    def _major_of(version: str) -> int:
+        """取主版本号（'v1.1.4' / '1.1.4' → 1），解析失败当 0"""
+        try:
+            return int(str(version or '').strip().lstrip('vV').split('.')[0])
+        except (ValueError, IndexError):
+            return 0
+
+    @classmethod
+    def requires_manual_update(cls, current: str, latest: str) -> bool:
+        """跨大版本（如 1.x → 2.x）不允许软件内更新
+
+        2.0.0 是重构版：目录结构、依赖、配置项都变了，而软件内更新只是「删掉旧目录
+        → 复制新目录」，覆盖不了这些变化，硬升会把站点弄成半新半旧。所以只提示手动更新。
+        2.0.0 之后（同为 2.x）仍然可以正常软件内更新。
+        """
+        return cls._major_of(latest) > cls._major_of(current)
+
     async def check_update(self) -> dict:
         """
         检查更新
@@ -945,32 +963,33 @@ class UpdateService:
 
     async def rollback(self, backup_path: str) -> str:
         """
-        从压缩备份文件回滚（独立进程）
-        
+        从压缩备份文件回滚
+
+        回滚只是本地解压 + 拷贝（几百 KB 到几十 MB），秒级完成，所以直接在线程里
+        同步执行：这样能拿到真实结果，失败就明确报错。此前是起一个独立进程然后
+        无条件返回「回滚已完成」，等于失败了也告诉用户成功（实测就是这样）。
+
         Args:
-            backup_path: 备份路径
-            
+            backup_path: 备份文件的绝对路径
+
         Returns:
             str: 回滚结果
+
+        Raises:
+            FileNotFoundError: 备份文件不存在
+            RuntimeError: 有文件没能恢复
         """
-        # 启动独立进程
-        process = multiprocessing.Process(
-            target=_rollback_process,
-            args=(backup_path, str(self.app_dir), str(self.temp_dir), str(self.backup_dir), None)
+        backup_file = Path(backup_path)
+        if not backup_file.exists():
+            raise FileNotFoundError(f"备份文件不存在：{backup_path}")
+
+        await asyncio.to_thread(
+            _rollback_process,
+            str(backup_file), str(self.app_dir), str(self.temp_dir), str(self.backup_dir), None,
         )
-        process.daemon = False
-        process.start()
-
-        # 短暂等待
-        await asyncio.sleep(1)
-
-        # 进程已快速完成，等待并返回结果
-        if not process.is_alive():
-            # 等待进程结束
-            process.join(timeout=5)
-            return "回滚已完成，正在刷新..."
-
-        return "回滚已启动，正在后台独立执行..."
+        # 回滚只换了磁盘文件，运行中的进程还是新代码，这里让服务自己重启一次
+        asyncio.create_task(self._restart_service(2.0))
+        return "回滚完成，服务正在重启以加载旧代码"
 
     async def cleanup_temp_files(self):
         """
@@ -985,6 +1004,37 @@ class UpdateService:
         except Exception as e:
             logger.warning(f"清理临时文件失败: {e}")
 
+    @staticmethod
+    def _in_container() -> bool:
+        """是否跑在容器里（决定能不能靠「进程退出」让编排器把服务重新拉起来）"""
+        return Path('/.dockerenv').exists() or Path('/run/.containerenv').exists()
+
+    async def _restart_service(self, delay: float = 2.0) -> None:
+        """加载新代码：让整棵服务进程树优雅退出，由容器重启策略重新拉起
+
+        为什么不只重启当前 worker：uvicorn 多 worker 模式下，worker 收到 SIGTERM
+        退出后主进程不会把它补回来（实测：被停掉的那个再也没起来，另一个还跑着
+        旧代码）。所以这里把 SIGTERM 发给「主进程」，让整棵进程树优雅退出，
+        容器的 restart 策略会把服务整套重新拉起，新代码才真正生效。
+
+        用 SIGTERM 而不是 os._exit，是为了让 uvicorn 走优雅关闭（在途请求能收尾）。
+        非容器环境不擅自杀进程，只提示手动重启。
+        """
+        await asyncio.sleep(delay)
+
+        parent = os.getppid()
+        if not self._in_container() and parent != 1:
+            logger.warning("当前不在容器内，新代码已落盘，但需要手动重启服务才会生效")
+            return
+
+        target = parent if parent > 1 else os.getpid()
+        logger.info(f"准备重启服务以加载新代码（SIGTERM → pid {target}）")
+        try:
+            os.kill(target, signal.SIGTERM)
+        except Exception as e:
+            logger.error(f"发送 SIGTERM 失败，直接退出: {e}")
+            os._exit(0)
+
     async def execute_update(self) -> dict:
         """
         执行完整更新流程（独立进程）
@@ -992,6 +1042,26 @@ class UpdateService:
         Returns:
             dict: 更新结果
         """
+        # 1.x → 2.x 不允许软件内更新：跨大版本重构，文件结构变了，
+        # 「删旧目录 + 复制新目录」覆盖不了，硬升会把站点弄成半新半旧
+        try:
+            current_version = await self.get_current_version()
+            latest_version = str((await self.get_latest_version()).get('tag_name', '')).lstrip('vV')
+            if self.requires_manual_update(current_version, latest_version):
+                logger.warning(f"拒绝软件内更新：{current_version} → {latest_version} 跨大版本")
+                return {
+                    'success': False,
+                    'manual_update_required': True,
+                    'current_version': current_version,
+                    'latest_version': latest_version,
+                    'message': (f'当前 {current_version} 不能软件内更新到 {latest_version}：'
+                                f'这是跨大版本重构，请手动更新——拉取 {latest_version} 代码，'
+                                f'替换 backend/ 与 frontend/，然后 docker compose up -d --build'),
+                }
+        except Exception as e:
+            # 查不到远端版本就让原流程自己报网络错误，不要在这里吞掉
+            logger.warning(f"跨大版本检查失败，继续原流程: {e}")
+
         # 启动独立进程
         process = multiprocessing.Process(
             target=_update_process,
@@ -999,6 +1069,14 @@ class UpdateService:
         )
         process.daemon = False
         process.start()
+
+        # 子进程跑完（下载 + 替换文件）后自动重启，否则运行中的进程还是旧代码
+        async def _restart_when_done():
+            await asyncio.to_thread(process.join)
+            logger.info("更新子进程已结束，重启服务以加载新代码")
+            await self._restart_service(2.0)
+
+        asyncio.create_task(_restart_when_done())
 
         # 短暂等待
         await asyncio.sleep(1)
@@ -1009,13 +1087,13 @@ class UpdateService:
             process.join(timeout=5)
             return {
                 "success": True,
-                "message": "更新已启动，正在后台执行",
+                "message": "更新已启动，正在后台执行；完成后服务会自动重启",
                 "current_version": await self.get_current_version()
             }
 
         return {
             "success": True,
-            "message": "更新已启动，正在后台独立执行",
+            "message": "更新已启动，正在后台执行；完成后服务会自动重启",
             "current_version": await self.get_current_version()
         }
 
@@ -1463,7 +1541,7 @@ def _rollback_process(backup_path, app_dir, temp_dir, backup_dir, logger):
         backup_path = Path(backup_path)
         if not backup_path.exists():
             rollback_logger.error(f"备份文件不存在: {backup_path}")
-            return
+            raise FileNotFoundError(f"备份文件不存在：{backup_path}")
         
         app_dir = Path(app_dir)
         temp_dir = Path(temp_dir)
@@ -1481,7 +1559,7 @@ def _rollback_process(backup_path, app_dir, temp_dir, backup_dir, logger):
         extracted_items = list(extract_dir.iterdir())
         if not extracted_items:
             rollback_logger.error("解压后目录为空")
-            return
+            raise RuntimeError("备份文件解压后为空，无法回滚")
         
         source_dir = extracted_items[0] if len(extracted_items) == 1 else extract_dir
         
@@ -1490,6 +1568,7 @@ def _rollback_process(backup_path, app_dir, temp_dir, backup_dir, logger):
         
         # 开始回滚
         rollback_logger.info("开始回滚文件...")
+        failed_items = []
         for item in items_to_restore:
             source_item = source_dir / item
             target_item = app_dir / item
@@ -1511,10 +1590,14 @@ def _rollback_process(backup_path, app_dir, temp_dir, backup_dir, logger):
                     rollback_logger.info(f"已回滚: {item}")
                 except Exception as e:
                     rollback_logger.error(f"回滚 {item} 失败: {e}")
+                    failed_items.append(f"{item}: {e}")
         
         # 清理临时目录
         shutil.rmtree(extract_dir)
+        if failed_items:
+            raise RuntimeError("以下项目回滚失败：" + "；".join(failed_items))
         rollback_logger.info("回滚完成")
         
     except Exception as e:
         rollback_logger.error(f"回滚过程中发生错误: {e}")
+        raise

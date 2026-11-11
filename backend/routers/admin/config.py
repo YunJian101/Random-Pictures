@@ -30,6 +30,7 @@ INT_RULES: dict[str, tuple[int, int]] = {
     'max_sessions_per_user': (1, 100),
     'session_cleanup_interval': (60, 86400),
     'audit_retention_days': (7, 3650),
+    'max_upload_mb': (1, 100),
     'register_max_per_window': (1, 100),
     'register_window_seconds': (60, 86400),
     'register_min_interval_seconds': (0, 3600),
@@ -51,6 +52,7 @@ BOOL_CONFIG_KEYS = (
     'enable_rate_limit',
     'enable_login_guard',
     'enable_register_guard',
+    'trust_proxy',
 )
 
 
@@ -134,6 +136,17 @@ def validate_config_value(config_key: str, config_value: str) -> tuple[bool, str
         if config_value:
             if not is_remote_url(config_value):
                 return False, "备案信息链接必须是有效的URL格式"
+    elif config_key == 'site_launch_date':
+        # 允许留空（首页就不显示「稳定交付 N 天」）；有值必须是 YYYY-MM-DD 的真实日期
+        if config_value:
+            import re
+            from datetime import date
+            if not re.match(r'^\d{4}-\d{2}-\d{2}$', config_value):
+                return False, "项目创建日期格式应为 YYYY-MM-DD"
+            try:
+                date.fromisoformat(config_value)
+            except ValueError:
+                return False, "项目创建日期不是有效的日期"
     elif config_key == 'timezone':
         if not config_value:
             return False, "时区设置不能为空"

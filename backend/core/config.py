@@ -46,6 +46,14 @@ IMAGE_CACHE_SECONDS = int(os.getenv('IMAGE_CACHE_SECONDS', 604800))
 # 支持的图片格式元组
 SUPPORTED_IMAGE_FORMATS = ('.jpg', '.jpeg', '.png', '.gif', '.webp')
 
+# 单张图片上传大小上限（MB）的出厂默认值
+# 实际生效值取运行时配置 max_upload_mb（管理后台「系统设置」可改，保存即生效）
+MAX_UPLOAD_MB = int(os.getenv('MAX_UPLOAD_MB', 5))
+
+# 项目创建日期（YYYY-MM-DD）的出厂默认值
+# 首页「稳定交付 N 天」按它计算；实际生效值取运行时配置 site_launch_date
+SITE_LAUNCH_DATE = os.getenv('SITE_LAUNCH_DATE', '2026-02-11')
+
 # 图片根目录路径
 IMG_ROOT_DIR = os.getenv('IMG_ROOT_DIR', '/app/images')
 

@@ -139,20 +139,18 @@ async def create_error_response(request: Request, error_type: str, status_code: 
     """
     from fastapi.responses import HTMLResponse, JSONResponse
     from ..utils.utils import get_error_page
-    from ..utils.utils import get_client_ip
+    from ..utils.request import client_ip as resolve_client_ip
     
     # 生成唯一错误ID
     error_id = get_error_id()
     error_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    client_ip = get_client_ip(
-        request.headers.get('X-Forwarded-For', ''),
-        request.client.host if request.client else 'unknown'
-    )
+    client_ip = await resolve_client_ip(request)
     
     # 记录错误日志
     print(f"[ERROR] {error_time} - {status_code} - {error_type} - {detail or ''} - Error ID: {error_id}")
     print(f"[ERROR] 请求地址: {request.url.path} - IP: {client_ip}")
-    print(f"[ERROR] 请求头: {dict(request.headers)}")
+    # 只打 UA，不打整串请求头：那里面带着 cookie（会话令牌），日志会泄露登录态
+    print(f"[ERROR] 客户端: {(request.headers.get('user-agent') or '')[:120]}")
     
     # 更新上下文，添加错误ID
     if context is None:

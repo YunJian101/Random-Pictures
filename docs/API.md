@@ -183,9 +183,11 @@ curl -i -X POST http://localhost:8081/api/login \
 | PUT | `/api/admin/system/config/batch` | 批量修改（`items` 对象） |
 | POST | `/api/admin/system/config/reset` | 全部恢复默认值 |
 | GET | `/api/system/backups` | 备份列表 |
-| GET | `/api/system/check-update` | 检查新版本 |
-| POST | `/api/system/execute-update` | 执行更新 |
-| POST | `/api/system/rollback` | 回滚到指定备份 |
+| GET | `/api/system/check-update` | 检查新版本；返回 `manual_update_required` / `manual_update_hint`，为 `true` 表示跨大版本（如 1.x → 2.x），只能手动更新 |
+| POST | `/api/system/execute-update` | 执行更新；跨大版本时返回 `manual_update_required: true` 且不改动任何文件。正常更新完成后服务会自动重启 |
+| POST | `/api/system/rollback` | 回滚到指定备份（可传文件名或备份目录内的路径）；成功后服务会自动重启 |
+
+> 更新与回滚只替换磁盘上的代码，完成后服务会自己重启（多 worker 由 uvicorn 重启该 worker，单进程由容器 restart 策略拉起），期间约 10~30 秒无法访问。
 
 配置项名称与取值范围见 [CONFIG.md](CONFIG.md)。
 

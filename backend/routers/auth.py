@@ -43,7 +43,7 @@ async def api_register(data: RegisterRequest, request: Request):
     """
     from ..core.security.register_guard import check_register_allowed, record_register
 
-    ip = client_ip(request)
+    ip = await client_ip(request)
     guard = await check_register_allowed(ip)
     if not guard['allowed']:
         resp = JSONResponse(
@@ -71,7 +71,7 @@ async def api_login(data: LoginRequest, request: Request):
     """
     result = await login_user(
         data.account, data.password,
-        ip=client_ip(request),
+        ip=await client_ip(request),
         user_agent=request.headers.get('user-agent', ''),
     )
 

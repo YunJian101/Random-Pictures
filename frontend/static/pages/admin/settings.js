@@ -8,9 +8,15 @@ import { $, api, Toast, util } from './core.js';
 export const CONFIG_KEYS = [
   // 站点信息
   'site_name', 'site_domain', 'icp_beian', 'beian_link', 'timezone', 'favicon_url',
+  // 首页「稳定交付 N 天」按这个日期算
+  'site_launch_date',
   // 功能开关
   'show_beian_info', 'enable_access_log', 'enable_path_traversal_protection',
   'enable_hotlink_protection', 'enable_ip_blacklist',
+  // 上传限制（运行时配置，保存即生效）
+  'max_upload_mb',
+  // 反向代理（运行时配置，保存即生效）
+  'trust_proxy',
   // 限流与登录防护（运行时配置，保存即生效）
   'enable_rate_limit', 'rate_limit_per_minute', 'rate_limit_auth_per_minute',
   'enable_login_guard', 'login_max_failures', 'login_ip_max_failures',
@@ -22,7 +28,7 @@ export const CONFIG_KEYS = [
 export const BOOL_KEYS = [
   'show_beian_info', 'enable_access_log', 'enable_path_traversal_protection',
   'enable_hotlink_protection', 'enable_ip_blacklist',
-  'enable_rate_limit', 'enable_login_guard', 'enable_register_guard',
+  'enable_rate_limit', 'enable_login_guard', 'enable_register_guard', 'trust_proxy',
 ];
 
 export async function loadConfig() {
@@ -34,7 +40,11 @@ export async function loadConfig() {
       if (!el) return;
       const value = config[key] ? config[key].value : '';
       if (BOOL_KEYS.includes(key)) el.checked = value === 'true';
-      else el.value = value;
+      else {
+        el.value = value;
+        // 自定义日期控件靠 change 事件同步显示，直接改 value 不会刷新那层壳
+        if (el.type === 'date') el.dispatchEvent(new Event('change', { bubbles: true }));
+      }
     });
   } catch (e) {
     Toast.error(e.message || '配置加载失败');

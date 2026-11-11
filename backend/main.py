@@ -75,7 +75,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="随机图API",
-    description="一个高性能的随机图片API服务",
+    description="一个自托管的随机图片 API 服务",
     version="1.1.0",
     lifespan=lifespan,
     docs_url=None,    # 使用下方受保护的文档路由
@@ -129,7 +129,7 @@ async def get_openapi_json():
     return get_openapi(
         title="随机图API",
         version="1.1.0",
-        description="一个高性能的随机图片API服务",
+        description="一个自托管的随机图片 API 服务",
         routes=app.routes,
     )
 
@@ -312,7 +312,7 @@ async def run_server(host: str = HOST, port: int = PORT):
     print(f"📚 API文档: http://{host}:{port}/docs （需管理员登录）")
     print("⚡ 特性："
           "\n  - 支持运行中新增/删除图片，实时更新"
-          "\n  - 随机接口走内存索引，800 张规模下 <3ms"
+          "\n  - 随机接口按「计数 + 随机偏移」定位，不做全表排序"
           "\n  - 图片直链缓存 7 天，随机接口禁用缓存"
           f"\n  - 分类内分页：每页最多 {CATEGORY_PAGE_SIZE} 张")
     print(f"\n🔧 运行模式: {'热重载（单进程）' if reload_enabled else f'{workers} 个工作进程'}")

@@ -521,6 +521,11 @@
               <label class="label" for="cfg-favicon_url">站点图标地址</label>
               <input class="input" id="cfg-favicon_url" placeholder="static/favicon.ico 或 https://…">
             </div>
+            <div class="field">
+              <label class="label" for="cfg-site_launch_date">项目创建日期</label>
+              <input class="input" type="date" id="cfg-site_launch_date">
+              <div class="tiny dim">首页「稳定交付 N 天」按这个日期算；留空则不显示天数</div>
+            </div>
           </div>
 
           <div class="divider"></div>
@@ -575,6 +580,30 @@
               <input type="checkbox" id="cfg-enable_ip_blacklist">
               <span class="switch__track"></span>
             </label>
+          </div>
+          <div class="switch-row">
+            <div>
+              <div class="switch-row__title">信任反向代理</div>
+              <div class="switch-row__desc">按 X-Forwarded-For 记录客户端 IP；前置没有反代时务必关闭，否则该头可被伪造来绕过限流</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="cfg-trust_proxy">
+              <span class="switch__track"></span>
+            </label>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="row--between" style="margin-bottom:6px">
+            <h3 style="font-size:15px">上传限制</h3>
+            <span class="tiny dim">保存后 5 秒内生效</span>
+          </div>
+          <div class="settings-grid">
+            <div class="field">
+              <label class="label" for="cfg-max_upload_mb">单张图片大小上限（MB）</label>
+              <input class="input" type="number" min="1" max="100" id="cfg-max_upload_mb" placeholder="5">
+              <div class="tiny dim">默认 5 MB，按清理元数据后的实际落盘体积判断</div>
+            </div>
           </div>
 
           <div class="divider"></div>
@@ -725,6 +754,11 @@
           </div>
         </div>
 
+        <p class="tiny dim" style="margin:-6px 0 18px">
+          <i class="fa-solid fa-circle-info"></i>
+          执行更新或回滚后，服务会自动重启以加载新代码，期间约 10~30 秒无法访问；等一会儿刷新页面即可。
+        </p>
+
         <div class="card card--pad" style="margin-bottom:18px">
           <h3 style="font-size:15px;margin-bottom:12px">更新日志</h3>
           <div id="changelog-box"><div class="empty"><i class="fa-regular fa-file-lines"></i><p>点击「检查更新」后显示</p></div></div>
@@ -789,6 +823,28 @@
     <div class="modal__foot">
       <button class="btn btn--outline" data-modal-close>取消</button>
       <button class="btn btn--primary" id="upload-submit" disabled><i class="fa-solid fa-upload"></i>开始上传</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 上传结果弹窗 ==================== -->
+<div class="modal" id="modal-upload-result" aria-hidden="true">
+  <div class="modal__dialog modal__dialog--sm" role="dialog" aria-modal="true">
+    <div class="modal__head">
+      <div class="modal__title"><i class="fa-solid fa-clipboard-check"></i>上传结果</div>
+      <button class="icon-btn" data-modal-close aria-label="关闭"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal__body">
+      <p id="upload-result-title" style="font-size:15px;font-weight:600;margin:0 0 6px"></p>
+      <p id="upload-result-extra" class="tiny dim" style="margin:0 0 12px"></p>
+      <div id="upload-result-fail-block" class="hidden">
+        <div class="tiny dim" style="margin-bottom:6px">失败项目：</div>
+        <ol id="upload-result-failures"
+            style="margin:0;padding-left:22px;font-size:13px;line-height:1.7;max-height:260px;overflow:auto"></ol>
+      </div>
+    </div>
+    <div class="modal__foot">
+      <button class="btn btn--primary" data-modal-close>知道了</button>
     </div>
   </div>
 </div>
